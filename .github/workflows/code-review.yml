@@ -1,0 +1,64 @@
+﻿name: Code Review
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'  # UTC 2:00 = Beijing 10:00
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files (PR only)
+        id: changed-files
+        if: github.event_name == 'pull_request'
+        run: |
+          FILES=git diff --name-only origin/main...HEAD
+          echo "files=" >> 
+          echo "changed_count=" >> 
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts || npm install
+
+      - name: Run TypeScript check
+        run: npx tsc --noEmit || true
+
+      - name: Run Comate Code Review (PR)
+        if: github.event_name == 'pull_request'
+        env:
+          COMATE_LICENSE: ${{ secrets.COMATE_LICENSE }}
+          COMATE_USERNAME: ${{ secrets.COMATE_USERNAME }}
+          PR_FILES: ${{ steps.changed-files.outputs.files }}
+        run: node scripts/comate-review-pr.js
+
+      - name: Run Comate Full Review (Scheduled/Manual)
+        if: github.event_name != 'pull_request'
+        env:
+          COMATE_LICENSE: ${{ secrets.COMATE_LICENSE }}
+          COMATE_USERNAME: ${{ secrets.COMATE_USERNAME }}
+        run: node scripts/comate-review-full.js
+
+      - name: Upload review report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-review-report
+          path: review-report.md
+          retention-days: 30
