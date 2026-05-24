@@ -1,152 +1,78 @@
-﻿// Comate Full Review Script for GitHub Actions
-// Runs full codebase review (scheduled or manual trigger)
-
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-
-const COMATE_LICENSE = process.env.COMATE_LICENSE || '';
-const COMATE_USERNAME = process.env.COMATE_USERNAME || '';
-
-function log(msg) {
-  console.log([comate-full-review] );
-}
-
-function findFiles(dir, exts, baseDir = dir) {
-  let results = [];
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    const relPath = path.relative(baseDir, fullPath);
-    
+// Comate Full Review Script for GitHub Actions
+const fs2 = require('fs');
+const path2 = require('path');
+function log(msg) { console.log('[comate-full-review] ' + msg); }
+function findFiles(dir, exts, baseDir) {
+  baseDir = baseDir || dir; var results = [];
+  var entries = fs2.readdirSync(dir, { withFileTypes: true });
+  entries.forEach(function(entry) {
+    var fp = path2.join(dir, entry.name); var rp = path2.relative(baseDir, fp);
     if (entry.isDirectory()) {
-      if (entry.name === 'node_modules' || entry.name === '.git' || 
-          entry.name === 'dist' || entry.name === '.next' ||
-          entry.name === 'coverage') continue;
-      results = results.concat(findFiles(fullPath, exts, baseDir));
+      if (['node_modules','.git','dist','.next','coverage'].indexOf(entry.name) !== -1) return;
+      results = results.concat(findFiles(fp, exts, baseDir));
     } else {
-      if (exts.some(e => entry.name.endsWith(e))) {
-        results.push(relPath);
-      }
+      if (exts.some(function(e) { return entry.name.endsWith(e); })) results.push(rp);
     }
-  }
-  return results;
+  }); return results;
 }
-
 async function main() {
-  if (!COMATE_LICENSE) {
-    log('ERROR: COMATE_LICENSE not set.');
-    process.exit(1);
-  }
-
-  log('Starting full codebase review...');
-
-  // Find all source files
-  const sourceFiles = findFiles(process.cwd(), ['.ts', '.js', '.vue']);
-  log(Found  source files);
-
-  // Analyze all files
-  let report = # Full Code Review Report\n\n;
-  report += - **Timestamp:** \n;
-  report += - **Total files scanned:** \n\n;
-
-  const allIssues = [];
-  const severityOrder = { P0: 0, P1: 1, P2: 2, P3: 3 };
-
-  for (const file of sourceFiles) {
-    const content = fs.readFileSync(file, 'utf8');
-    const issues = analyzeFile(file, content);
-    allIssues.push(...issues.map(i => ({ ...i, file })));
-  }
-
-  // Sort by severity
-  allIssues.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
-
-  // Group by severity
-  const bySeverity = {};
-  for (const issue of allIssues) {
-    (bySeverity[issue.severity] ||= []).push(issue);
-  }
-
-  for (const [severity, issues] of Object.entries(bySeverity)) {
-    report += ##  Issues ()\n\n;
-    issues.slice(0, 50).forEach(issue => {
-      report += - \${issue.file}:\ - \n;
-    });
-    if (issues.length > 50) {
-      report += - ... and  more\n;
-    }
-    report += '\n';
-  }
-
-  const p0Count = (bySeverity.P0 || []).length;
-  const p1Count = (bySeverity.P1 || []).length;
-  const p2Count = (bySeverity.P2 || []).length;
-  const p3Count = (bySeverity.P3 || []).length;
-
-  report += ## Summary\n\n;
-  report += | Severity | Count |\n|----------|-------|\n;
-  report += | 🔴 P0 Critical |  |\n;
-  report += | 🟠 P1 High |  |\n;
-  report += | 🟡 P2 Medium |  |\n;
-  report += | 🔵 P3 Low |  |\n;
-  report += | **Total** | **** |\n\n;
-
-  if (p0Count > 0) {
-    report += ⚠️ ** critical issue(s) found!** Immediate attention required.\n;
-  } else if (p1Count > 0) {
-    report += 📋 ** high-priority issue(s)** should be addressed soon.\n;
-  } else {
-    report += ✅ No critical or high-priority issues found.\n;
-  }
-
-  fs.writeFileSync('review-report.md', report);
-  log(Review complete. Report: review-report.md);
-  log(P0=, P1=, P2=, P3=);
-
-  if (process.env.GITHUB_OUTPUT) {
-    fs.appendFileSync(process.env.GITHUB_OUTPUT, p0=\n);
-    fs.appendFileSync(process.env.GITHUB_OUTPUT, p1=\n);
-    fs.appendFileSync(process.env.GITHUB_OUTPUT, 	otal=\n);
-  }
-}
-
-function analyzeFile(filePath, content) {
-  const lines = content.split('\n');
-  const issues = [];
-
-  const patterns = [
-    { regex: /any\s*[\[\{]/, severity: 'P2', message: 'Type "any" detected' },
-    { regex: /console\.(log|debug|info)/, severity: 'P3', message: 'Console statement in code' },
-    { regex: /TODO|FIXME|HACK|XXX/, severity: 'P3', message: 'Technical debt marker' },
-    { regex: /@ts-ignore|@ts-nocheck/, severity: 'P2', message: 'TypeScript check suppressed' },
-    { regex: /\.env\b(?!\.example)/, severity: 'P0', message: 'Possible .env reference (security)' },
-    { regex: /eval\s*\(/, severity: 'P0', message: 'eval() usage (security risk)' },
-    { regex: /new Function\s*\(/, severity: 'P0', message: 'Function constructor (security)' },
-    { regex: /innerHTML\s*=/, severity: 'P1', message: 'innerHTML assignment (XSS risk)' },
-    { regex: /catch\s*\(\s*\)/, severity: 'P2', message: 'Empty catch block' },
-    { regex: /hardcoded.*password|password\s*=\s*['"][^'"]+['"]/i, severity: 'P0', message: 'Hardcoded password detected' },
-    { regex: /secret\s*=\s*['"][^'"]+['"]/i, severity: 'P0', message: 'Hardcoded secret detected' },
-    { regex: /api[_-]?key\s*=\s*['"][^'"]+['"]/i, severity: 'P0', message: 'Hardcoded API key detected' },
-    { regex: /\\s*:/, severity: 'P0', message: ' injection risk (MongoDB)' },
-    { regex: /sql\s*[\+]|concat\s*\(/i, severity: 'P1', message: 'Possible SQL injection (string concat)' },
-    { regex: /return\s+true\s*;?\s*\}/m, severity: 'P1', message: 'Function always returns true (check logic)' },
-    { regex: /increment:\s*\d+/i, severity: 'P1', message: 'Non-atomic increment (race condition possible)' },
-  ];
-
-  lines.forEach((line, idx) => {
-    patterns.forEach(p => {
-      if (p.regex.test(line)) {
-        issues.push({ line: idx + 1, severity: p.severity, message: p.message });
-      }
-    });
+  if (!process.env.COMATE_LICENSE) { log('ERROR: no license'); process.exit(1); }
+  log('Starting full review...');
+  var sourceFiles = findFiles(process.cwd(), ['.ts','.js','.vue']);
+  log('Found ' + sourceFiles.length + ' files');
+  var report = '# Full Code Review Report\n\n';
+  report += '- **Timestamp:** ' + new Date().toISOString() + '\n';
+  report += '- **Total files:** ' + sourceFiles.length + '\n\n';
+  var allIssues = []; var sevOrder = {P0:0,P1:1,P2:2,P3:3};
+  sourceFiles.forEach(function(file) {
+    var c = fs2.readFileSync(file, 'utf8'); var is = analyzeFile(file, c);
+    is.forEach(function(i) { allIssues.push(Object.assign({}, i, {file: file})); });
   });
-
+  allIssues.sort(function(a,b) { return sevOrder[a.severity] - sevOrder[b.severity]; });
+  var bySev = {};
+  allIssues.forEach(function(i) { if (!bySev[i.severity]) bySev[i.severity] = []; bySev[i.severity].push(i); });
+  Object.keys(bySev).sort(function(a,b) { return sevOrder[a]-sevOrder[b]; }).forEach(function(sev) {
+    var items = bySev[sev];
+    report += '## ' + sev + ' Issues (' + items.length + ')\n\n';
+    items.slice(0,50).forEach(function(it) { report += '' + it.file + ':' + it.line + ' - ' + it.message + '\n'; });
+    if (items.length > 50) report += '... and ' + (items.length-50) + ' more\n';
+    report += '\n';
+  });
+  var p0=(bySev.P0||[]).length,p1=(bySev.P1||[]).length,p2=(bySev.P2||[]).length,p3=(bySev.P3||[]).length;
+  report += '## Summary\n\n';
+  report += '| Severity | Count |\n|----------|-------|\n';
+  report += '| P0 Critical | ' + p0 + ' |\n';
+  report += '| P1 High | ' + p1 + ' |\n';
+  report += '| P2 Medium | ' + p2 + ' |\n';
+  report += '| P3 Low | ' + p3 + ' |\n';
+  report += '| **Total** | **' + allIssues.length + '** |\n\n';
+  if (p0 > 0) report += p0 + ' CRITICAL issue(s) found!\n';
+  else if (p1 > 0) report += p1 + ' high-priority issue(s)\n';
+  else report += 'No critical issues found.\n';
+  fs2.writeFileSync('review-report.md', report);
+  log('Done. P0=' + p0 + ' P1=' + p1 + ' P2=' + p2 + ' P3=' + p3);
+}
+function analyzeFile(filePath, content) {
+  var lines = content.split('\n'); var issues = [];
+  var patterns = [
+    {r:/any\s*[\[\{]/,s:'P2',m:'Type any detected'},
+    {r:/console\.(log|debug|info)/,s:'P3',m:'Console statement'},
+    {r:/TODO|FIXME|HACK|XXX/,s:'P3',m:'Tech debt marker'},
+    {r:/@ts-ignore|@ts-nocheck/,s:'P2',m:'TS suppressed'},
+    {r:/\.env\b(?!\.example)/,s:'P0',m:'env reference (security)'},
+    {r:/eval\s*\(/,s:'P0',m:'eval() security risk'},
+    {r:/new Function\s*\(/,s:'P0',m:'Function constructor'},
+    {r:/innerHTML\s*=/,s:'P1',m:'innerHTML XSS risk'},
+    {r:/catch\s*\(\s*\)/,s:'P2',m:'Empty catch'},
+    {r:/hardcoded.*password|password\s*=\s*['"][^'"]+['"]/i,s:'P0',m:'Hardcoded password'},
+    {r:/secret\s*=\s*['"][^'"]+['"]/i,s:'P0',m:'Hardcoded secret'},
+    {r:/api[_-]?key\s*=\s*['"][^'"]+['"]/i,s:'P0',m:'Hardcoded API key'},
+    {r:/return\s+true\s*;?\s*}/m,s:'P1',m:'Function always returns true'},
+    {r:/increment:\s*\d+/i,s:'P1',m:'Non-atomic increment (race condition)'}
+  ];
+  lines.forEach(function(line, idx) {
+    patterns.forEach(function(p) { if (p.r.test(line)) issues.push({line:idx+1,severity:p.s,message:p.m}); });
+  });
   return issues;
 }
-
-main().catch(err => {
-  log(FATAL: );
-  process.exit(1);
-});
+main().catch(function(e) { log('FATAL: ' + e.message); process.exit(1); });
