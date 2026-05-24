@@ -346,7 +346,6 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
       for (const item of items) {
         await tx.purchaseOrderItem.create({
           data: {
-            tenantId: req.user!.tenantId!,
             orderId: newOrder.id,
             productId: item.productId,
             quantity: item.quantity,
@@ -552,7 +551,6 @@ export const updatePurchaseOrder = async (req: Request, res: Response) => {
         for (const item of items) {
           await tx.purchaseOrderItem.create({
             data: {
-              tenantId: req.user!.tenantId!,
               orderId: id,
               productId: item.productId,
               quantity: item.quantity,

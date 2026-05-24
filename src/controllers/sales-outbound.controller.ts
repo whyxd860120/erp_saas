@@ -405,7 +405,6 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
       for (const detail of details) {
         await tx.salesOutboundDetail.create({
           data: {
-            tenantId: req.user!.tenantId!,
             outboundId: newOutbound.id,
             productId: detail.productId,
             quantity: detail.quantity,

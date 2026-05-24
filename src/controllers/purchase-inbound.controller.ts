@@ -393,7 +393,6 @@ export const createPurchaseInbound = async (req: Request, res: Response) => {
       for (const detail of details) {
         await tx.purchaseInboundDetail.create({
           data: {
-            tenantId: req.user!.tenantId!,
             inboundId: newInbound.id,
             productId: detail.productId,
             quantity: detail.quantity,
