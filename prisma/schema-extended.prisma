@@ -1,0 +1,929 @@
+// Prisma Schema for SaaS Inventory Management System - Extended
+// Multi-tenant architecture with complete SaaS features
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== 系统级模型（跨租户） ====================
+
+// 租户模型 - SaaS核心（扩展版）
+model Tenant {
+  id              String   @id @default(cuid())
+  name            String   @unique // 机构名称（唯一）
+  slug            String   @unique // 机构标识（用于子域名或路径）
+  displayName     String?  // 显示名称
+  description     String?  // 机构描述
+  logoUrl         String?  // Logo图片URL
+  faviconUrl      String?  // 网站图标
+  email           String?  // 联系邮箱
+  phone           String?  // 联系电话
+  address         String?  // 地址
+  taxNo           String?  // 税号
+  website         String?  // 网站
+  timezone        String   @default("Asia/Shanghai") // 时区
+  locale          String   @default("zh-CN") // 语言
+  currency        String   @default("CNY") // 货币
+  plan            String   @default("free") // 订阅计划: free, basic, pro, enterprise
+  status          String   @default("active") // active, suspended, trial, expired, cancelled
+  trialEndsAt     DateTime? // 试用期结束时间
+  currentPeriodStartsAt DateTime? // 当前计费周期开始时间
+  currentPeriodEndsAt   DateTime? // 当前计费周期结束时间
+  billingEmail     String?  // 账单邮箱
+  billingAddress   String?  // 账单地址
+  // 功能开关
+  featureMultiWarehouse Boolean @default(true)  // 多仓库
+  featureMultiCurrency  Boolean @default(false) // 多币种
+  featureCustomFields   Boolean @default(false) // 自定义字段
+  featureApiAccess      Boolean @default(false) // API访问
+  featureWebhooks       Boolean @default(false) // Webhook
+  featureAuditLogs      Boolean @default(true)  // 审计日志
+  featureAnalytics      Boolean @default(false) // 数据分析
+  // 配额
+  quotaUsers       Int      @default(5)  // 用户数量限制
+  quotaStorage     Int      @default(1000) // 存储空间(MB)
+  quotaApiCalls    Int      @default(1000) // API调用量/月
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // 关联关系
+  users                User[]
+  suppliers            Supplier[]
+  supplierCategories   SupplierCategory[]
+  customers            Customer[]
+  customerCategories   CustomerCategory[]
+  products             Product[]
+  productCategories    ProductCategory[]
+  warehouses           Warehouse[]
+  accounts             Account[]
+  purchaseOrders       PurchaseOrder[]
+  salesOrders          SalesOrder[]
+  purchaseInbounds     PurchaseInbound[]
+  salesOutbounds       SalesOutbound[]
+  paymentReceipts      PaymentReceipt[]
+  paymentPayments      PaymentPayment[]
+  inventoryItems       InventoryItem[]
+  inventoryLogs        InventoryLog[]
+  numberingRules       NumberingRule[]
+  tenantSettings       TenantSetting[]
+  customFields         CustomField[]
+  webhooks             Webhook[]
+  apiKeys              ApiKey[]
+  auditLogs            AuditLog[]
+  invitations          Invitation[]
+  subscriptions        Subscription[]
+  invoices             Invoice[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("tenants")
+}
+
+// 系统用户（租户管理员/超级管理员）
+model SystemUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // 加密存储
+  name      String
+  avatarUrl String?
+  role      String   @default("tenant_admin") // super_admin, tenant_admin
+  status    String   @default("active")
+  mfaEnabled Boolean  @default(false) // 双重认证启用
+  lastLoginAt DateTime?
+  lastLoginIp String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@map("system_users")
+}
+
+// ==================== SaaS管理模型 ====================
+
+// 订阅计划
+model Plan {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  description String?
+  price       Decimal  @default(0)
+  currency    String   @default("CNY")
+  billingCycle String  @default("monthly") // monthly, yearly
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  isPopular   Boolean  @default(false)
+  // 功能
+  featureMultiWarehouse Boolean @default(true)
+  featureMultiCurrency  Boolean @default(false)
+  featureCustomFields   Boolean @default(false)
+  featureApiAccess      Boolean @default(false)
+  featureWebhooks       Boolean @default(false)
+  featureAuditLogs      Boolean @default(true)
+  featureAnalytics      Boolean @default(false)
+  // 配额
+  quotaUsers       Int      @default(5)
+  quotaStorage     Int      @default(1000)
+  quotaApiCalls    Int      @default(1000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+// 订阅记录
+model Subscription {
+  id          String   @id @default(cuid())
+  tenantId    String
+  planId      String
+  externalId  String?  // 第三方支付订阅ID
+  status      String   @default("active") // active, cancelled, past_due, paused
+  price       Decimal  @default(0)
+  currency    String   @default("CNY")
+  billingCycle String  @default("monthly")
+  currentPeriodStartsAt DateTime?
+  currentPeriodEndsAt   DateTime?
+  cancelsAt   DateTime?
+  cancelledAt DateTime?
+  trialEndsAt DateTime?
+  metadata    Json?    // 额外数据
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan      Plan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  invoices  Invoice[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+// 发票记录
+model Invoice {
+  id             String   @id @default(cuid())
+  tenantId       String
+  subscriptionId String?
+  invoiceNo      String   @unique
+  amount         Decimal  @default(0)
+  currency       String   @default("CNY")
+  status         String   @default("draft") // draft, paid, pending, cancelled
+  paidAt         DateTime?
+  dueDate        DateTime?
+  pdfUrl         String?
+  billingEmail   String?
+  billingAddress String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, invoiceNo])
+  @@index([tenantId])
+  @@index([status])
+  @@map("invoices")
+}
+
+// 租户配置
+model TenantSetting {
+  id          String   @id @default(cuid())
+  tenantId    String
+  key         String   // 配置键
+  value       String?  // 配置值
+  category    String?  // 配置分类
+  description String?  // 描述
+  isPublic    Boolean  @default(false) // 是否对租户内用户公开
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@map("tenant_settings")
+}
+
+// 自定义字段
+model CustomField {
+  id          String   @id @default(cuid())
+  tenantId    String
+  entityType  String   // product, supplier, customer, order
+  fieldKey    String
+  label       String
+  fieldType   String   // text, number, date, select, boolean
+  options     Json?    // 选项（用于select类型）
+  defaultValue String?
+  placeholder String?
+  isRequired  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, entityType, fieldKey])
+  @@index([tenantId])
+  @@map("custom_fields")
+}
+
+// 自定义字段值
+model CustomFieldValue {
+  id            String   @id @default(cuid())
+  tenantId      String
+  customFieldId String
+  entityType    String
+  entityId      String
+  value         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customField   CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, customFieldId, entityType, entityId])
+  @@index([tenantId])
+  @@index([entityType, entityId])
+  @@map("custom_field_values")
+}
+
+// API密钥
+model ApiKey {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  key         String   @unique
+  lastUsedAt  DateTime?
+  lastUsedIp  String?
+  expiresAt   DateTime?
+  permissions Json?   // 权限配置
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([key])
+  @@map("api_keys")
+}
+
+// Webhook配置
+model Webhook {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  url         String
+  events      String[] // 触发事件
+  secret      String?  // 签名密钥
+  contentType String   @default("json")
+  isActive    Boolean  @default(true)
+  lastDeliveredAt DateTime?
+  lastSuccessAt DateTime?
+  lastErrorAt   DateTime?
+  lastError     String?
+  deliveryAttempts Int @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("webhooks")
+}
+
+// Webhook投递日志
+model WebhookLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  webhookId   String
+  event       String
+  payload     Json
+  url         String
+  statusCode  Int?
+  response    String?
+  success     Boolean  @default(false)
+  attempts    Int      @default(0)
+  nextRetryAt DateTime?
+  createdAt   DateTime @default(now())
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  webhook   Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([webhookId])
+  @@map("webhook_logs")
+}
+
+// 用户邀请
+model Invitation {
+  id          String   @id @default(cuid())
+  tenantId    String
+  email       String
+  role        String   @default("staff")
+  invitedBy   String
+  invitedAt   DateTime @default(now())
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  token       String   @unique
+  status      String   @default("pending") // pending, accepted, cancelled
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([token])
+  @@map("invitations")
+}
+
+// ==================== 租户级模型 ====================
+
+// 用户模型（每个租户内的用户）
+model User {
+  id            String   @id @default(cuid())
+  tenantId      String
+  email         String
+  password      String   // 加密存储
+  name          String
+  avatarUrl     String?
+  phone         String?
+  role          String   @default("staff") // admin, manager, staff, viewer, guest
+  department    String?
+  title         String?
+  bio           String?
+  status        String   @default("active")
+  emailVerified Boolean  @default(false)
+  mfaEnabled    Boolean  @default(false)
+  lastLoginAt   DateTime?
+  lastLoginIp   String?
+  timezone      String?
+  locale        String?
+  preferences   Json?    // 用户偏好设置
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // 关联
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  auditLogs AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+// ==================== 保持原有业务模型 ====================
+
+// 供应商分类
+model SupplierCategory {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String   // 分类名称
+  parentId  String?  // 父分类ID（支持多级）
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent    SupplierCategory? @relation("SupplierCategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  SupplierCategory[] @relation("SupplierCategoryHierarchy")
+  suppliers Supplier[]
+
+  @@index([tenantId, parentId])
+  @@map("supplier_categories")
+}
+
+// 供应商
+model Supplier {
+  id            String   @id @default(cuid())
+  tenantId      String
+  code          String   // 供应商编码（租户内唯一）
+  name          String   // 供应商名称
+  contact       String?  // 联系人
+  phone         String?  // 联系电话
+  email         String?  // 邮箱
+  address       String?  // 地址
+  taxNo         String?  // 税号
+  bankAccount   String?  // 银行账号
+  categoryId    String?  // 分类ID（替代原来的parentId）
+  status        String   @default("active") // active, inactive
+  remark        String?  // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category      SupplierCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  purchaseOrders PurchaseOrder[]
+  paymentPayments PaymentPayment[]
+  customFieldValues CustomFieldValue[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([name])
+  @@map("suppliers")
+}
+
+// 客户分类
+model CustomerCategory {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String   // 分类名称
+  parentId  String?  // 父分类ID（支持多级）
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent    CustomerCategory? @relation("CustomerCategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  CustomerCategory[] @relation("CustomerCategoryHierarchy")
+  customers Customer[]
+
+  @@index([tenantId, parentId])
+  @@map("customer_categories")
+}
+
+// 客户
+model Customer {
+  id            String   @id @default(cuid())
+  tenantId      String
+  code          String   // 客户编码（租户内唯一）
+  name          String   // 客户名称
+  contact       String?  // 联系人
+  phone         String?  // 联系电话
+  email         String?  // 邮箱
+  address       String?  // 地址
+  taxNo         String?  // 税号
+  bankAccount   String?  // 银行账号
+  categoryId    String?  // 分类ID（替代原来的parentId）
+  status        String   @default("active") // active, inactive
+  remark        String?  // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category      CustomerCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  salesOrders   SalesOrder[]
+  paymentReceipts PaymentReceipt[]
+  customFieldValues CustomFieldValue[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([name])
+  @@map("customers")
+}
+
+// 商品分类
+model ProductCategory {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String   // 分类名称
+  parentId  String?  // 父分类ID（支持多级）
+  sortOrder Int      @default(0)
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent    ProductCategory? @relation("ProductCategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  ProductCategory[] @relation("ProductCategoryHierarchy")
+  products  Product[]
+
+  @@index([tenantId, parentId])
+  @@map("product_categories")
+}
+
+// 商品/产品
+model Product {
+  id            String   @id @default(cuid())
+  tenantId      String
+  code          String   // 商品编码（租户内唯一）
+  name          String   // 商品名称
+  spec          String?  // 规格型号
+  unit          String   @default("个") // 单位
+  categoryId    String?  // 分类ID
+  costPrice     Decimal  @default(0) // 成本价
+  salePrice     Decimal  @default(0) // 销售价
+  barcode       String?  // 条码
+  imageUrl      String?  // 图片URL
+  status        String   @default("active") // active, inactive
+  remark        String?  // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category        ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  purchaseOrderItems PurchaseOrderItem[]
+  salesOrderItems SalesOrderItem[]
+  inventoryItems  InventoryItem[]
+  purchaseInboundDetails PurchaseInboundDetail[]
+  salesOutboundDetails SalesOutboundDetail[]
+  inventoryLogs   InventoryLog[]
+  customFieldValues CustomFieldValue[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([name])
+  @@map("products")
+}
+
+// 仓库
+model Warehouse {
+  id            String   @id @default(cuid())
+  tenantId      String
+  code          String   // 仓库编码（租户内唯一）
+  name          String   // 仓库名称
+  address       String?  // 地址
+  manager       String?  // 管理员
+  capacity      Int?     // 容量
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inbounds       PurchaseInbound[]   // 入库单
+  outbounds      SalesOutbound[]    // 出库单
+  inventoryItems InventoryItem[]     // 库存明细
+  inventoryLogs  InventoryLog[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("warehouses")
+}
+
+// 账户（银行账户、现金账户等）
+model Account {
+  id            String   @id @default(cuid())
+  tenantId      String
+  code          String   // 账户编码（租户内唯一）
+  name          String   // 账户名称
+  type          String   // bank, cash, alipay, wechat
+  balance       Decimal  @default(0) // 当前余额
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  receiptPayments     PaymentReceipt[] // 收款单
+  paymentPayments     PaymentPayment[] // 付款单
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("accounts")
+}
+
+// ==================== 编码规则 ====================
+
+// 单据编码规则
+model NumberingRule {
+  id            String   @id @default(cuid())
+  tenantId      String
+  businessType  String   // 业务类型：purchase_order, sales_order, purchase_inbound, sales_outbound, payment_receipt, payment_payment
+  name          String   // 规则名称，如"采购订单编号规则"
+  prefix        String   // 前缀，如"PO"、"SO"、"RK"等
+  dateFormat    String   @default("YYYYMMDD") // 日期格式：YYYYMMDD、YYYYMM、YYYY等
+  sequenceLength Int     @default(4) // 序号位数，如4位表示0001-9999
+  startNumber   Int      @default(1) // 起始序号
+  currentNumber Int      @default(0) // 当前序号
+  resetType     String   @default("never") // 重置类型：daily(每天), monthly(每月), yearly(每年), never(从不)
+  separator     String   @default("-") // 分隔符，如"-"
+  status        String   @default("active") // active, inactive
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, businessType])
+  @@index([tenantId])
+  @@map("numbering_rules")
+}
+
+// ==================== 核心业务单据 ====================
+
+// 采购订单
+model PurchaseOrder {
+  id            String   @id @default(cuid())
+  tenantId      String
+  orderNo       String   // 订单编号（租户内唯一）
+  supplierId    String   // 供应商ID
+  orderDate     DateTime @default(now()) // 订单日期
+  totalAmount   Decimal  @default(0) // 总金额
+  status        String   @default("draft") // draft, confirmed, partial, completed, cancelled
+  remark        String?  // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier        Supplier         @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items           PurchaseOrderItem[]
+  inbounds        PurchaseInbound[] // 关联的入库单
+  payments        PaymentPayment[]  // 关联的付款单
+  customFieldValues CustomFieldValue[]
+
+  @@unique([tenantId, orderNo])
+  @@index([tenantId, orderDate])
+  @@index([supplierId])
+  @@map("purchase_orders")
+}
+
+// 采购订单明细
+model PurchaseOrderItem {
+  id            String   @id @default(cuid())
+  orderId       String   // 订单ID
+  productId     String   // 商品ID
+  quantity      Int      @default(0) // 数量
+  unitPrice     Decimal  @default(0) // 单价
+  amount        Decimal  @default(0) // 金额（数量×单价）
+  receivedQty   Int      @default(0) // 已入库数量
+  status        String   @default("pending") // pending, partial, completed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("purchase_order_items")
+}
+
+// 销售订单
+model SalesOrder {
+  id            String   @id @default(cuid())
+  tenantId      String
+  orderNo       String   // 订单编号（租户内唯一）
+  customerId    String   // 客户ID
+  orderDate     DateTime @default(now()) // 订单日期
+  totalAmount   Decimal  @default(0) // 总金额
+  status        String   @default("draft") // draft, confirmed, partial, completed, cancelled
+  remark        String?  // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer        Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items           SalesOrderItem[]
+  outbounds       SalesOutbound[] // 关联的出库单
+  receipts        PaymentReceipt[] // 关联的收款单
+  customFieldValues CustomFieldValue[]
+
+  @@unique([tenantId, orderNo])
+  @@index([tenantId, orderDate])
+  @@index([customerId])
+  @@map("sales_orders")
+}
+
+// 销售订单明细
+model SalesOrderItem {
+  id            String   @id @default(cuid())
+  orderId       String   // 订单ID
+  productId     String   // 商品ID
+  quantity      Int      @default(0) // 数量
+  unitPrice     Decimal  @default(0) // 单价
+  amount        Decimal  @default(0) // 金额
+  shippedQty    Int      @default(0) // 已出库数量
+  status        String   @default("pending") // pending, partial, completed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  order   SalesOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("sales_order_items")
+}
+
+// 采购入库单
+model PurchaseInbound {
+  id            String   @id @default(cuid())
+  tenantId      String
+  inboundNo     String   // 入库单编号（租户内唯一）
+  orderId       String?  // 关联采购订单ID（可为空，支持直填入库）
+  warehouseId   String   // 仓库ID
+  inboundDate   DateTime @default(now()) // 入库日期
+  totalAmount   Decimal  @default(0) // 总金额
+  status        String   @default("draft") // draft, confirmed, cancelled
+  remark        String?  // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order           PurchaseOrder?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  warehouse       Warehouse            @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  details         PurchaseInboundDetail[]
+
+  @@unique([tenantId, inboundNo])
+  @@index([tenantId, inboundDate])
+  @@index([orderId])
+  @@index([warehouseId])
+  @@map("purchase_inbounds")
+}
+
+// 采购入库单明细
+model PurchaseInboundDetail {
+  id            String   @id @default(cuid())
+  inboundId     String   // 入库单ID
+  productId     String   // 商品ID
+  quantity      Int      @default(0) // 实际入库数量
+  unitPrice     Decimal  @default(0) // 单价（可从采购订单带出）
+  amount        Decimal  @default(0) // 金额
+  batchNo       String?  // 批次号
+  productionDate DateTime? // 生产日期
+  expiryDate     DateTime? // 过期日期
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  inbound  PurchaseInbound @relation(fields: [inboundId], references: [id], onDelete: Cascade)
+  product  Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([inboundId])
+  @@index([productId])
+  @@map("purchase_inbound_details")
+}
+
+// 销售出库单
+model SalesOutbound {
+  id            String   @id @default(cuid())
+  tenantId      String
+  outboundNo    String   // 出库单编号（租户内唯一）
+  orderId       String?  // 关联销售订单ID（可为空，支持直提出库）
+  warehouseId   String   // 仓库ID
+  outboundDate  DateTime @default(now()) // 出库日期
+  totalAmount   Decimal  @default(0) // 总金额
+  status        String   @default("draft") // draft, confirmed, cancelled
+  remark        String?  // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order           SalesOrder?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  warehouse       Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  details         SalesOutboundDetail[]
+
+  @@unique([tenantId, outboundNo])
+  @@index([tenantId, outboundDate])
+  @@index([orderId])
+  @@index([warehouseId])
+  @@map("sales_outbounds")
+}
+
+// 销售出库单明细
+model SalesOutboundDetail {
+  id            String   @id @default(cuid())
+  outboundId    String   // 出库单ID
+  productId     String   // 商品ID
+  quantity      Int      @default(0) // 实际出库数量
+  unitPrice     Decimal  @default(0) // 单价
+  amount        Decimal  @default(0) // 金额
+  batchNo       String?  // 批次号
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  outbound  SalesOutbound @relation(fields: [outboundId], references: [id], onDelete: Cascade)
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([outboundId])
+  @@index([productId])
+  @@map("sales_outbound_details")
+}
+
+// 收款单
+model PaymentReceipt {
+  id            String   @id @default(cuid())
+  tenantId      String
+  receiptNo     String   // 收款单编号（租户内唯一）
+  orderId       String?  // 关联销售订单ID
+  customerId    String   // 客户ID
+  receiptDate   DateTime @default(now()) // 收款日期
+  amount        Decimal  @default(0) // 收款金额
+  paymentMethod String   // cash, bank, alipay, wechat
+  accountId     String   // 收款账户ID
+  status        String   @default("draft") // draft, confirmed, cancelled
+  remark        String?  // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order     SalesOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  customer  Customer   @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  account   Account    @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, receiptNo])
+  @@index([tenantId, receiptDate])
+  @@index([orderId])
+  @@index([customerId])
+  @@map("payment_receipts")
+}
+
+// 付款单
+model PaymentPayment {
+  id            String   @id @default(cuid())
+  tenantId      String
+  paymentNo     String   // 付款单编号（租户内唯一）
+  orderId       String?  // 关联采购订单ID
+  supplierId    String   // 供应商ID
+  paymentDate   DateTime @default(now()) // 付款日期
+  amount        Decimal  @default(0) // 付款金额
+  paymentMethod String   // cash, bank, alipay, wechat
+  accountId     String   // 付款账户ID
+  status        String   @default("draft") // draft, confirmed, cancelled
+  remark        String?  // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order     PurchaseOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  supplier  Supplier   @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  account   Account    @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, paymentNo])
+  @@index([tenantId, paymentDate])
+  @@index([orderId])
+  @@index([supplierId])
+  @@map("payment_payments")
+}
+
+// ==================== 库存管理 ====================
+
+// 库存明细（按商品+仓库+批次）
+model InventoryItem {
+  id            String   @id @default(cuid())
+  tenantId      String
+  productId     String   // 商品ID
+  warehouseId   String   // 仓库ID
+  batchNo       String?  // 批次号
+  quantity      Int      @default(0) // 当前库存数量
+  costPrice     Decimal  @default(0) // 成本价（加权平均）
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, productId, warehouseId, batchNo])
+  @@index([tenantId])
+  @@index([productId])
+  @@index([warehouseId])
+  @@map("inventory_items")
+}
+
+// 库存变动记录（审计日志）
+model InventoryLog {
+  id            String   @id @default(cuid())
+  tenantId      String
+  productId     String   // 商品ID
+  warehouseId   String   // 仓库ID
+  batchNo       String?  // 批次号
+  changeType    String   // purchase_inbound, sales_outbound, adjustment, transfer
+  changeQty     Int      // 变动数量（正数为入库，负数为出库）
+  beforeQty     Int      // 变动前数量
+  afterQty      Int      // 变动后数量
+  relatedOrderNo String?  // 关联单据编号
+  remark        String?  // 备注
+  createdAt     DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([productId])
+  @@index([relatedOrderNo])
+  @@map("inventory_logs")
+}
+
+// ==================== 系统日志 ====================
+
+// 操作日志
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String?  // 系统级日志可为空
+  userId    String?  // 用户ID（可为空，系统操作）
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // 操作动作：create, update, delete, view, login, logout
+  module    String   // 模块：user, product, order, inbound, outbound, etc.
+  resource  String?  // 资源标识（如订单号）
+  detail    String?  // 详细信息（JSON）
+  ip        String?  // IP地址
+  userAgent String?  // User Agent
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([userId])
+  @@index([action])
+  @@map("audit_logs")
+}
