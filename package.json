@@ -12,7 +12,9 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "test": "jest",
-    "seed:admin": "ts-node src/scripts/seed-admin.ts"
+    "seed:admin": "ts-node src/scripts/seed-admin.ts",
+    "deploy:check": "node deploy-tool/check-env.js",
+    "deploy:cli": "node deploy-tool/cli-deploy.js"
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
