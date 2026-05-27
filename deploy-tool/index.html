@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数企管家 部署工具</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1f35 0%, #0d1117 100%);
+      min-height: 100vh;
+      color: #fff;
+    }
+
+    .container {
+      max-width: 850px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 1px solid #333;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: #909399;
+      margin-top: 5px;
+      font-size: 14px;
+    }
+
+    .tabs {
+      display: flex;
+      background: #1e243c;
+      border-radius: 8px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+      color: #fff;
+    }
+
+    .tab:not(.active):hover {
+      background: #2a304a;
+    }
+
+    .panel {
+      display: none;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    .card {
+      background: #1e243c;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #333;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #333;
+    }
+
+    .card-header .icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .card-header .icon.info {
+      background: #e6f7ff;
+      color: #1890ff;
+    }
+
+    .card-header .icon.success {
+      background: #f6ffed;
+      color: #52c41a;
+    }
+
+    .card-header .icon.warning {
+      background: #fff7e6;
+      color: #fa8c16;
+    }
+
+    .card-header .icon.error {
+      background: #fff2f0;
+      color: #f5222d;
+    }
+
+    .card-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .env-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: #252d4a;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .env-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .env-item .name {
+      font-size: 14px;
+    }
+
+    .env-item .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.ok {
+      background: #52c41a;
+      color: #fff;
+    }
+
+    .status-badge.missing {
+      background: #f5222d;
+      color: #fff;
+    }
+
+    .status-badge.unknown {
+      background: #909399;
+      color: #fff;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: #909399;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px 14px;
+      background: #252d4a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: #00d2ff;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .btn {
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 210, 255, 0.4);
+    }
+
+    .btn-secondary {
+      background: #3a4364;
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: #4a5578;
+    }
+
+    .btn-danger {
+      background: #f5222d;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #ff4d4f;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: #252d4a;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      font-size: 14px;
+      color: #909399;
+      margin-bottom: 15px;
+    }
+
+    .log-area {
+      height: 200px;
+      background: #0d1117;
+      border-radius: 6px;
+      padding: 12px;
+      overflow-y: auto;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px;
+      color: #8b949e;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .log-area::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .log-area::-webkit-scrollbar-track {
+      background: #161b22;
+    }
+
+    .log-area::-webkit-scrollbar-thumb {
+      background: #30363d;
+      border-radius: 3px;
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 20px;
+    }
+
+    .radio-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .radio-item input[type="radio"] {
+      width: auto;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .alert.success {
+      background: #f6ffed;
+      color: #52c41a;
+      border: 1px solid #b7eb8f;
+    }
+
+    .alert.error {
+      background: #fff2f0;
+      color: #f5222d;
+      border: 1px solid #ffccc7;
+    }
+
+    .alert.info {
+      background: #e6f7ff;
+      color: #1890ff;
+      border: 1px solid #91d5ff;
+    }
+
+    .server-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .server-status .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .server-status .dot.running {
+      background: #52c41a;
+      animation: pulse 2s infinite;
+    }
+
+    .server-status .dot.stopped {
+      background: #909399;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .feature-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+
+    .feature-item {
+      background: #252d4a;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .feature-item .icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .feature-item .title {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .feature-item .desc {
+      font-size: 12px;
+      color: #909399;
+      margin-top: 4px;
+    }
+
+    .install-steps {
+      counter-reset: step;
+    }
+
+    .install-step {
+      display: flex;
+      gap: 15px;
+      padding: 15px;
+      background: #252d4a;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .install-step::before {
+      counter-increment: step;
+      content: counter(step);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #3a7bd5;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .install-step .content {
+      flex: 1;
+    }
+
+    .install-step .content h4 {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .install-step .content p {
+      font-size: 12px;
+      color: #909399;
+    }
+
+    .install-step.completed::before {
+      background: #52c41a;
+      content: '✓';
+    }
+
+    .install-step.current::before {
+      background: #00d2ff;
+      animation: pulse 1.5s infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+        <h1>数企管家 部署工具</h1>
+        <p>图形化环境管理工具 - 一键部署开发/生产环境</p>
+      </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('home')">🏠 首页</div>
+      <div class="tab" onclick="showTab('detect')">🔍 环境检测</div>
+      <div class="tab" onclick="showTab('config')">⚙️ 环境配置</div>
+      <div class="tab" onclick="showTab('deploy')">🚀 部署安装</div>
+      <div class="tab" onclick="showTab('server')">🔧 服务器管理</div>
+    </div>
+
+    <!-- 首页 -->
+    <div id="home" class="panel active">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon info">📋</div>
+          <h3>欢迎使用 数企管家 部署工具</h3>
+        </div>
+        <div class="feature-list">
+          <div class="feature-item">
+            <div class="icon">🔍</div>
+            <div class="title">环境检测</div>
+            <div class="desc">自动检测系统环境</div>
+          </div>
+          <div class="feature-item">
+            <div class="icon">⚙️</div>
+            <div class="title">环境配置</div>
+            <div class="desc">可视化配置环境变量</div>
+          </div>
+          <div class="feature-item">
+            <div class="icon">🚀</div>
+            <div class="title">一键部署</div>
+            <div class="desc">自动安装依赖和初始化</div>
+          </div>
+          <div class="feature-item">
+            <div class="icon">🔧</div>
+            <div class="title">服务器管理</div>
+            <div class="desc">启动/停止开发服务器</div>
+          </div>
+          <div class="feature-item">
+            <div class="icon">📦</div>
+            <div class="title">前端构建</div>
+            <div class="desc">构建生产版本</div>
+          </div>
+          <div class="feature-item">
+            <div class="icon">💾</div>
+            <div class="title">数据库初始化</div>
+            <div class="desc">迁移和种子数据</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="icon info">📝</div>
+          <h3>使用流程</h3>
+        </div>
+        <div class="install-steps">
+          <div class="install-step">
+            <div class="content">
+              <h4>环境检测</h4>
+              <p>检查系统是否安装了必要的软件（Node.js、MySQL、Redis）</p>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="content">
+              <h4>环境配置</h4>
+              <p>配置数据库连接、端口等环境变量</p>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="content">
+              <h4>部署安装</h4>
+              <p>安装依赖、初始化数据库、构建前端</p>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="content">
+              <h4>启动服务</h4>
+              <p>启动前后端开发服务器</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 环境检测 -->
+    <div id="detect" class="panel">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon info">🔍</div>
+          <h3>环境检测</h3>
+        </div>
+        <button class="btn btn-primary" onclick="checkEnvironment()">开始检测</button>
+        
+        <div id="detect-results" style="display: none; margin-top: 20px;">
+          <div class="env-item">
+            <span class="name">Node.js</span>
+            <span class="status">
+              <span id="node-status" class="status-badge">检测中...</span>
+              <span id="node-version"></span>
+            </span>
+          </div>
+          <div class="env-item">
+            <span class="name">npm</span>
+            <span class="status">
+              <span id="npm-status" class="status-badge">检测中...</span>
+              <span id="npm-version"></span>
+            </span>
+          </div>
+          <div class="env-item">
+            <span class="name">MySQL</span>
+            <span class="status">
+              <span id="mysql-status" class="status-badge">检测中...</span>
+              <span id="mysql-version"></span>
+            </span>
+          </div>
+          <div class="env-item">
+            <span class="name">Redis</span>
+            <span class="status">
+              <span id="redis-status" class="status-badge">检测中...</span>
+              <span id="redis-version"></span>
+            </span>
+          </div>
+          <div class="env-item">
+            <span class="name">Prisma</span>
+            <span class="status">
+              <span id="prisma-status" class="status-badge">检测中...</span>
+              <span id="prisma-version"></span>
+            </span>
+          </div>
+          <div class="env-item">
+            <span class="name">后端项目</span>
+            <span class="status">
+              <span id="backend-status" class="status-badge">检测中...</span>
+            </span>
+          </div>
+          <div class="env-item">
+            <span class="name">前端项目</span>
+            <span class="status">
+              <span id="frontend-status" class="status-badge">检测中...</span>
+            </span>
+          </div>
+          <div class="env-item">
+            <span class="name">.env 文件</span>
+            <span class="status">
+              <span id="env-status" class="status-badge">检测中...</span>
+            </span>
+          </div>
+        </div>
+
+        <div id="detect-summary" style="display: none; margin-top: 20px;">
+          <div class="alert" id="detect-alert"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 环境配置 -->
+    <div id="config" class="panel">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon info">⚙️</div>
+          <h3>环境配置</h3>
+        </div>
+
+        <div class="form-group">
+          <label>环境类型</label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="envType" value="development" checked>
+              <span>开发环境</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="envType" value="production">
+              <span>生产环境</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>服务器端口</label>
+            <input type="number" id="port" value="3000" min="1" max="65535">
+          </div>
+          <div class="form-group">
+            <label>日志级别</label>
+            <select id="logLevel">
+              <option value="debug">debug</option>
+              <option value="info" selected>info</option>
+              <option value="warn">warn</option>
+              <option value="error">error</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+          <h4 style="margin-bottom: 15px; font-size: 14px;">数据库配置</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>数据库主机</label>
+              <input type="text" id="dbHost" value="localhost">
+            </div>
+            <div class="form-group">
+              <label>数据库端口</label>
+              <input type="number" id="dbPort" value="3306">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>数据库用户名</label>
+              <input type="text" id="dbUser" value="root">
+            </div>
+            <div class="form-group">
+              <label>数据库密码</label>
+              <input type="password" id="dbPassword" placeholder="请输入密码">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>数据库名称</label>
+            <input type="text" id="dbName" value="inventory_saas">
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+          <h4 style="margin-bottom: 15px; font-size: 14px;">Redis配置</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Redis主机</label>
+              <input type="text" id="redisHost" value="localhost">
+            </div>
+            <div class="form-group">
+              <label>Redis端口</label>
+              <input type="number" id="redisPort" value="6379">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Redis密码（可选）</label>
+            <input type="password" id="redisPassword" placeholder="留空表示无密码">
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+          <h4 style="margin-bottom: 15px; font-size: 14px;">JWT配置</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>JWT密钥</label>
+              <input type="text" id="jwtSecret" value="your-secret-key-change-in-production">
+            </div>
+            <div class="form-group">
+              <label>过期时间</label>
+              <input type="text" id="jwtExpiresIn" value="7d">
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+          <h4 style="margin-bottom: 15px; font-size: 14px;">前端配置</h4>
+          <div class="form-group">
+            <label>API地址</label>
+            <input type="text" id="frontendApiUrl" value="" placeholder="开发环境留空，生产环境填服务器地址">
+          </div>
+          <div class="form-group">
+            <label>CORS来源</label>
+            <input type="text" id="corsOrigin" value="http://localhost:5173">
+          </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+        </div>
+
+        <div id="config-result" style="display: none; margin-top: 20px;"></div>
+      </div>
+    </div>
+
+    <!-- 部署安装 -->
+    <div id="deploy" class="panel">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon info">🚀</div>
+          <h3>部署安装</h3>
+        </div>
+
+        <div class="install-steps">
+          <div class="install-step" id="step1">
+            <div class="content">
+              <h4>安装依赖</h4>
+              <p>安装后端和前端的npm依赖包</p>
+            </div>
+          </div>
+          <div class="install-step" id="step2">
+            <div class="content">
+              <h4>数据库初始化</h4>
+              <p>运行数据库迁移和初始化数据</p>
+            </div>
+          </div>
+          <div class="install-step" id="step3">
+            <div class="content">
+              <h4>前端构建</h4>
+              <p>构建生产版本的前端代码</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <button class="btn btn-primary" onclick="runInstall()">开始安装</button>
+          <button class="btn btn-secondary" onclick="runInstallStep('install')">仅安装依赖</button>
+          <button class="btn btn-secondary" onclick="runInstallStep('database')">仅初始化数据库</button>
+          <button class="btn btn-secondary" onclick="runInstallStep('build')">仅构建前端</button>
+        </div>
+
+        <div id="install-progress" style="display: none; margin-top: 20px;">
+          <div class="progress-text" id="progress-text">准备安装...</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div id="install-log" style="display: none; margin-top: 20px;">
+          <h4 style="margin-bottom: 10px; font-size: 14px;">安装日志</h4>
+          <div class="log-area" id="log-content"></div>
+        </div>
+
+        <div id="install-result" style="display: none; margin-top: 20px;"></div>
+      </div>
+    </div>
+
+    <!-- 服务器管理 -->
+    <div id="server" class="panel">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon info">🔧</div>
+          <h3>开发服务器管理</h3>
+        </div>
+
+        <div class="server-status" id="server-status-bar">
+          <span class="dot stopped"></span>
+          <span>服务器状态：已停止</span>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <button class="btn btn-primary" onclick="startServers()" id="start-btn">启动开发服务器</button>
+          <button class="btn btn-danger" onclick="stopServers()" id="stop-btn" disabled>停止服务器</button>
+        </div>
+
+        <div id="server-log" style="display: none;">
+          <h4 style="margin-bottom: 10px; font-size: 14px;">服务器日志</h4>
+          <div class="log-area" id="server-log-content"></div>
+        </div>
+
+        <div class="alert info" style="margin-top: 20px;">
+          <strong>提示：</strong>启动后可以通过 http://localhost:5173 访问前端，后端API地址为 http://localhost:3000/api
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    function showTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    async function checkEnvironment() {
+      document.getElementById('detect-results').style.display = 'block';
+      document.getElementById('detect-summary').style.display = 'none';
+
+      const results = await ipcRenderer.invoke('check-environment');
+
+      updateStatus('node', results.node);
+      updateStatus('npm', results.npm);
+      updateStatus('mysql', results.mysql);
+      updateStatus('redis', results.redis);
+      updateStatus('prisma', results.prisma);
+      updateStatus('backend', { installed: results.backendPackageExists, status: results.backendPackageExists ? 'ok' : 'missing' });
+      updateStatus('frontend', { installed: results.frontendExists, status: results.frontendExists ? 'ok' : 'missing' });
+      updateStatus('env', { installed: results.envExists, status: results.envExists ? 'ok' : 'missing' });
+
+      const allOk = results.node.installed && results.npm.installed && 
+                   results.mysql.installed && results.redis.installed && 
+                   results.backendPackageExists && results.frontendExists;
+      const alert = document.getElementById('detect-alert');
+      
+      if (allOk) {
+        alert.className = 'alert success';
+        alert.innerHTML = '<strong>✓ 检测完成</strong><br>所有环境已就绪，可以开始部署！';
+      } else {
+        alert.className = 'alert warning';
+        alert.innerHTML = '<strong>⚠️ 检测完成</strong><br>部分组件缺失，请先安装必要的软件。<br><br>';
+        
+        const missingItems = [];
+        if (!results.node.installed) missingItems.push('Node.js');
+        if (!results.npm.installed) missingItems.push('npm');
+        if (!results.mysql.installed) missingItems.push('MySQL');
+        if (!results.redis.installed) missingItems.push('Redis');
+        if (!results.backendPackageExists) missingItems.push('后端项目文件');
+        if (!results.frontendExists) missingItems.push('前端项目文件');
+        
+        if (missingItems.length > 0) {
+          alert.innerHTML += '缺失的组件：' + missingItems.join('、');
+        }
+      }
+      document.getElementById('detect-summary').style.display = 'block';
+    }
+
+    function updateStatus(key, result) {
+      const statusEl = document.getElementById(`${key}-status`);
+      const versionEl = document.getElementById(`${key}-version`);
+      
+      statusEl.className = `status-badge ${result.status}`;
+      statusEl.textContent = result.status === 'ok' ? '已安装' : result.status === 'missing' ? '未安装' : '未知';
+      
+      if (versionEl && result.version) {
+        versionEl.textContent = result.version;
+      }
+    }
+
+    async function saveConfig() {
+      const config = {
+        nodeEnv: document.querySelector('input[name="envType"]:checked').value,
+        port: document.getElementById('port').value,
+        logLevel: document.getElementById('logLevel').value,
+        dbHost: document.getElementById('dbHost').value,
+        dbPort: document.getElementById('dbPort').value,
+        dbUser: document.getElementById('dbUser').value,
+        dbPassword: document.getElementById('dbPassword').value,
+        dbName: document.getElementById('dbName').value,
+        redisHost: document.getElementById('redisHost').value,
+        redisPort: document.getElementById('redisPort').value,
+        redisPassword: document.getElementById('redisPassword').value,
+        jwtSecret: document.getElementById('jwtSecret').value,
+        jwtExpiresIn: document.getElementById('jwtExpiresIn').value,
+        frontendApiUrl: document.getElementById('frontendApiUrl').value,
+        corsOrigin: document.getElementById('corsOrigin').value
+      };
+
+      const result = await ipcRenderer.invoke('configure-env', config);
+      const resultEl = document.getElementById('config-result');
+      
+      if (result.success) {
+        resultEl.innerHTML = '<div class="alert success"><strong>✓ 配置成功</strong><br>环境变量已保存！</div>';
+      } else {
+        resultEl.innerHTML = `<div class="alert error"><strong>✗ 配置失败</strong><br>${result.message}</div>`;
+      }
+      resultEl.style.display = 'block';
+    }
+
+    async function runInstall() {
+      document.getElementById('install-progress').style.display = 'block';
+      document.getElementById('install-log').style.display = 'block';
+      document.getElementById('install-result').style.display = 'none';
+      document.getElementById('log-content').textContent = '';
+      document.getElementById('progress-fill').style.width = '0%';
+
+      resetSteps();
+
+      const envType = document.querySelector('input[name="envType"]:checked').value;
+      
+      try {
+        document.getElementById('step1').classList.add('current');
+        const installResult = await ipcRenderer.invoke('install-dependencies', envType);
+        document.getElementById('step1').classList.remove('current');
+        document.getElementById('step1').classList.add('completed');
+
+        if (!installResult.success) throw new Error(installResult.message);
+
+        document.getElementById('step2').classList.add('completed');
+        document.getElementById('step3').classList.add('completed');
+        document.getElementById('progress-fill').style.width = '100%';
+
+        document.getElementById('install-result').innerHTML = '<div class="alert success"><strong>✓ 部署完成</strong><br>所有安装步骤已完成！</div>';
+      } catch (error) {
+        document.getElementById('install-result').innerHTML = `<div class="alert error"><strong>✗ 部署失败</strong><br>${error.message}</div>`;
+      }
+      document.getElementById('install-result').style.display = 'block';
+    }
+
+    async function runInstallStep(step) {
+      document.getElementById('install-progress').style.display = 'block';
+      document.getElementById('install-log').style.display = 'block';
+      document.getElementById('install-result').style.display = 'none';
+      document.getElementById('log-content').textContent = '';
+
+      try {
+        let result;
+        if (step === 'install') {
+          result = await ipcRenderer.invoke('install-dependencies');
+        } else if (step === 'database') {
+          result = await ipcRenderer.invoke('init-database');
+        } else if (step === 'build') {
+          const envType = document.querySelector('input[name="envType"]:checked').value;
+          result = await ipcRenderer.invoke('build-frontend', envType);
+        }
+
+        if (result.success) {
+          document.getElementById('install-result').innerHTML = `<div class="alert success"><strong>✓ 操作完成</strong><br>${result.message}</div>`;
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (error) {
+        document.getElementById('install-result').innerHTML = `<div class="alert error"><strong>✗ 操作失败</strong><br>${error.message}</div>`;
+      }
+      document.getElementById('install-result').style.display = 'block';
+    }
+
+    function resetSteps() {
+      document.querySelectorAll('.install-step').forEach(s => {
+        s.classList.remove('completed', 'current');
+      });
+    }
+
+    ipcRenderer.on('install-progress', (event, data) => {
+      document.getElementById('progress-text').textContent = data.message;
+      if (data.total && data.step !== undefined) {
+        const percentage = Math.round((data.step / data.total) * 100);
+        document.getElementById('progress-fill').style.width = `${percentage}%`;
+      }
+    });
+
+    ipcRenderer.on('install-log', (event, data) => {
+      const logContent = document.getElementById('log-content');
+      logContent.textContent += data;
+      logContent.scrollTop = logContent.scrollHeight;
+    });
+
+    async function startServers() {
+      document.getElementById('server-log').style.display = 'block';
+      document.getElementById('server-log-content').textContent = '';
+      document.getElementById('start-btn').disabled = true;
+      document.getElementById('stop-btn').disabled = false;
+
+      const statusBar = document.getElementById('server-status-bar');
+      statusBar.innerHTML = '<span class="dot running"></span><span>服务器状态：运行中</span>';
+
+      try {
+        await ipcRenderer.invoke('start-dev-servers');
+      } catch (error) {
+        document.getElementById('server-log-content').textContent += `[错误] ${error.message}\n`;
+      }
+    }
+
+    async function stopServers() {
+      await ipcRenderer.invoke('stop-servers');
+      
+      document.getElementById('start-btn').disabled = false;
+      document.getElementById('stop-btn').disabled = true;
+
+      const statusBar = document.getElementById('server-status-bar');
+      statusBar.innerHTML = '<span class="dot stopped"></span><span>服务器状态：已停止</span>';
+    }
+
+    ipcRenderer.on('server-log', (event, data) => {
+      const logContent = document.getElementById('server-log-content');
+      logContent.textContent += data + '\n';
+      logContent.scrollTop = logContent.scrollHeight;
+    });
+  </script>
+</body>
+</html>

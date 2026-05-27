@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Backup & Restore Tool</title>
+    <HTA:APPLICATION 
+        APPLICATIONNAME="DatabaseBackupTool"
+        BORDER="dialog"
+        BORDERSTYLE="normal"
+        CAPTION="yes"
+        ICON=""
+        MAXIMIZEBUTTON="no"
+        MINIMIZEBUTTON="no"
+        SHOWINTASKBAR="yes"
+        SINGLEINSTANCE="yes"
+        SYSMENU="yes"
+        VERSION="1.0"
+        WINDOWSTATE="normal"/>
+    
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .info-box p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .btn-backup {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        
+        .btn-backup:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+        
+        .btn-restore {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-restore:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+        
+        .btn-exit {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            flex: 0.5;
+        }
+        
+        .btn-exit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+        
+        .log-box {
+            background: #1e1e1e;
+            color: #4af626;
+            padding: 15px;
+            border-radius: 5px;
+            height: 250px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        
+        .status-bar {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Database Backup & Restore Tool</h1>
+        
+        <div class="info-box">
+            <p><strong>Database:</strong> <span id="dbName">Loading...</span></p>
+            <p><strong>Host:</strong> <span id="dbHost">Loading...</span></p>
+            <p><strong>User:</strong> <span id="dbUser">Loading...</span></p>
+            <p><strong>Status:</strong> <span id="mysqlStatus">Checking MySQL tools...</span></p>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-backup" onclick="backupDatabase()">💾 Backup Database</button>
+            <button class="btn-restore" onclick="restoreDatabase()"> Restore Database</button>
+            <button class="btn-exit" onclick="window.close()">❌ Exit</button>
+        </div>
+        
+        <div class="log-box" id="logBox">Tool initialized...
+</div>
+        
+        <div class="status-bar" id="statusBar">Ready</div>
+    </div>
+
+    <script language="VBScript">
+        Option Explicit
+        
+        Dim dbUser, dbPass, dbHost, dbPort, dbName
+        Dim mysqlDump, mysqlClient
+        Dim shell, fso
+        
+        Set shell = CreateObject("WScript.Shell")
+        Set fso = CreateObject("Scripting.FileSystemObject")
+        
+        ' Database configuration - MODIFY THESE VALUES
+        dbUser = "root"
+        dbPass = "Esoft123@456"
+        dbHost = "localhost"
+        dbPort = "3306"
+        dbName = "erpnext_db"
+        
+        ' Find MySQL tools
+        Function FindMySQLTools()
+            Dim paths, path
+            
+            paths = Array( _
+                "C:\mysql\bin", _
+                "C:\Program Files\MySQL\MySQL Server 8.0\bin", _
+                "C:\Program Files\MySQL\MySQL Server 5.7\bin", _
+                "C:\xampp\mysql\bin", _
+                "C:\tools\mysql\current\bin", _
+                "C:\tools\mysql\mysql-9.6.0-winx64\bin" _
+            )
+            
+            For Each path In paths
+                If fso.FileExists(path & "\mysqldump.exe") Then
+                    mysqlDump = path & "\mysqldump.exe"
+                    mysqlClient = path & "\mysql.exe"
+                    FindMySQLTools = True
+                    Exit Function
+                End If
+            Next
+            
+            FindMySQLTools = False
+        End Function
+        
+        ' Write to log
+        Sub WriteLog(message, msgType)
+            Dim logBox, timestamp, prefix
+            
+            Set logBox = document.getElementById("logBox")
+            timestamp = Now()
+            
+            Select Case msgType
+                Case "success"
+                    prefix = "[SUCCESS] "
+                Case "error"
+                    prefix = "[ERROR] "
+                Case "warning"
+                    prefix = "[WARNING] "
+                Case Else
+                    prefix = "[INFO] "
+            End Select
+            
+            logBox.innerText = logBox.innerText & vbCrLf & "[" & timestamp & "] " & prefix & message
+            logBox.scrollTop = logBox.scrollHeight
+        End Sub
+        
+        ' Update status bar
+        Sub UpdateStatus(message)
+            document.getElementById("statusBar").innerText = message
+        End Sub
+        
+        ' Initialize on load
+        Sub Window_OnLoad
+            Dim found
+            
+            document.getElementById("dbName").innerText = dbName
+            document.getElementById("dbHost").innerText = dbHost & ":" & dbPort
+            document.getElementById("dbUser").innerText = dbUser
+            
+            WriteLog "Tool started", "info"
+            WriteLog "Database: " & dbName & " @ " & dbHost & ":" & dbPort, "info"
+            
+            found = FindMySQLTools()
+            
+            If found Then
+                document.getElementById("mysqlStatus").innerText = "OK MySQL tools found"
+                document.getElementById("mysqlStatus").style.color = "green"
+                WriteLog "MySQL tools located successfully", "success"
+            Else
+                document.getElementById("mysqlStatus").innerText = "X MySQL tools NOT found"
+                document.getElementById("mysqlStatus").style.color = "red"
+                WriteLog "ERROR: Cannot find MySQL command-line tools!", "error"
+                WriteLog "Please install MySQL or specify the correct path in the script.", "warning"
+                MsgBox "Cannot find MySQL tools!" & vbCrLf & vbCrLf & _
+                       "Please install MySQL Server or MySQL Client first." & vbCrLf & vbCrLf & _
+                       "Download from: https://dev.mysql.com/downloads/mysql/", _
+                       vbCritical, "Error"
+            End If
+            
+            UpdateStatus "Ready"
+        End Sub
+        
+        ' Backup database
+        Sub backupDatabase()
+            Dim saveDialog, backupFile, cmd, result, fileSize
+            
+            If mysqlDump = "" Then
+                MsgBox "MySQL tools not available!", vbCritical, "Error"
+                Exit Sub
+            End If
+            
+            ' Show save dialog using common dialog control
+            On Error Resume Next
+            Set saveDialog = CreateObject("MSComDlg.CommonDialog")
+            
+            If Err.Number <> 0 Then
+                ' Fallback to simple input box if CommonDialog not available
+                backupFile = InputBox("Enter backup file path:", "Save Backup File", _
+                            "C:\db-backups\db-backup-" & Replace(Replace(Now(), "/", "-"), ":", "-") & ".sql")
+                
+                If backupFile = "" Then
+                    WriteLog "Backup cancelled by user", "warning"
+                    UpdateStatus "Cancelled"
+                    Exit Sub
+                End If
+            Else
+                saveDialog.Filter = "SQL Files (*.sql)|*.sql|All Files (*.*)|*.*"
+                saveDialog.FileName = "db-backup-" & Replace(Replace(Now(), "/", "-"), ":", "-") & ".sql"
+                saveDialog.Flags = 2 ' Overwrite prompt
+                saveDialog.ShowSave
+                
+                If saveDialog.FileName = "" Then
+                    WriteLog "Backup cancelled by user", "warning"
+                    UpdateStatus "Cancelled"
+                    Exit Sub
+                End If
+                
+                backupFile = saveDialog.FileName
+            End If
+            On Error GoTo 0
+            
+            WriteLog "Starting database backup...", "info"
+            WriteLog "Target file: " & backupFile, "info"
+            UpdateStatus "Backing up..."
+            
+            ' Build command
+            cmd = """" & mysqlDump & """ -u " & dbUser & " -h " & dbHost & " -P " & dbPort & _
+                  " --single-transaction --routines --triggers --result-file=""" & backupFile & """ " & dbName
+            
+            ' Set password environment variable
+            shell.Environment("Process")("MYSQL_PWD") = dbPass
+            
+            ' Execute command
+            result = shell.Run(cmd, 0, True)
+            
+            If result = 0 And fso.FileExists(backupFile) Then
+                fileSize = Round(fso.GetFile(backupFile).Size / 1048576, 2)
+                WriteLog "Backup completed successfully! Size: " & fileSize & " MB", "success"
+                UpdateStatus "Backup successful"
+                MsgBox "Database backup successful!" & vbCrLf & vbCrLf & _
+                       "File: " & backupFile & vbCrLf & _
+                       "Size: " & fileSize & " MB", _
+                       vbInformation, "Success"
+            Else
+                WriteLog "Backup failed! Exit code: " & result, "error"
+                UpdateStatus "Backup failed"
+                MsgBox "Backup failed! Please check the log for details.", vbCritical, "Error"
+            End If
+        End Sub
+        
+        ' Restore database
+        Sub restoreDatabase()
+            Dim openDialog, restoreFile, confirm, cmd, result
+            
+            If mysqlClient = "" Then
+                MsgBox "MySQL tools not available!", vbCritical, "Error"
+                Exit Sub
+            End If
+            
+            ' Show open dialog
+            On Error Resume Next
+            Set openDialog = CreateObject("MSComDlg.CommonDialog")
+            
+            If Err.Number <> 0 Then
+                ' Fallback to simple input box
+                restoreFile = InputBox("Enter backup file path to restore:", "Open Backup File", "C:\db-backups\")
+                
+                If restoreFile = "" Or Not fso.FileExists(restoreFile) Then
+                    If restoreFile <> "" Then
+                        WriteLog "File not found: " & restoreFile, "error"
+                    Else
+                        WriteLog "Restore cancelled by user", "warning"
+                    End If
+                    UpdateStatus "Cancelled"
+                    Exit Sub
+                End If
+            Else
+                openDialog.Filter = "SQL Files (*.sql)|*.sql|All Files (*.*)|*.*"
+                openDialog.Flags = 4 ' File must exist
+                openDialog.ShowOpen
+                
+                If openDialog.FileName = "" Then
+                    WriteLog "Restore cancelled by user", "warning"
+                    UpdateStatus "Cancelled"
+                    Exit Sub
+                End If
+                
+                restoreFile = openDialog.FileName
+            End If
+            On Error GoTo 0
+            
+            ' Confirm restore
+            confirm = MsgBox("WARNING: This will overwrite ALL data in database '" & dbName & "'!" & vbCrLf & vbCrLf & _
+                            "Are you sure you want to continue?", _
+                            vbYesNo + vbExclamation, "Confirm Restore")
+            
+            If confirm = vbYes Then
+                WriteLog "Starting database restore...", "info"
+                WriteLog "Source file: " & restoreFile, "info"
+                UpdateStatus "Restoring..."
+                
+                ' Build command - use a temporary batch file for redirection
+                Dim tempBat, batPath
+                batPath = fso.GetSpecialFolder(2) & "\restore_temp.bat"
+                Set tempBat = fso.CreateTextFile(batPath, True)
+                tempBat.WriteLine("@echo off")
+                tempBat.WriteLine("set MYSQL_PWD=" & dbPass)
+                tempBat.WriteLine("""" & mysqlClient & """ -u " & dbUser & " -h " & dbHost & " -P " & dbPort & " " & dbName & " < """ & restoreFile & """")
+                tempBat.Close
+                
+                ' Execute batch file
+                result = shell.Run(batPath, 0, True)
+                
+                ' Clean up temp file
+                If fso.FileExists(batPath) Then fso.DeleteFile batPath
+                
+                If result = 0 Then
+                    WriteLog "Restore completed successfully!", "success"
+                    UpdateStatus "Restore successful"
+                    MsgBox "Database restore successful!", vbInformation, "Success"
+                Else
+                    WriteLog "Restore failed! Exit code: " & result, "error"
+                    UpdateStatus "Restore failed"
+                    MsgBox "Restore failed! Please check the log for details.", vbCritical, "Error"
+                End If
+            Else
+                WriteLog "Restore cancelled by user", "warning"
+                UpdateStatus "Cancelled"
+            End If
+        End Sub
+    </script>
+</body>
+</html>

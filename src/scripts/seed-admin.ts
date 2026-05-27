@@ -83,6 +83,7 @@ async function main() {
           email: 'admin@demo.com',
           password: hashedPassword,
           name: '租户管理员',
+          code: 'ADMIN001',
           role: 'admin',
           status: 'active',
         },

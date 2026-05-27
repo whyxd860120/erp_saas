@@ -4,18 +4,24 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { changePassword } from '@/api/auth'
+import { getMenus } from '@/api/menu'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+
+// 从数据库读取的菜单数据
+const databaseMenus = ref<any[]>([])
+const loadingMenus = ref(false)
 
 const isCollapse = ref(false)
 const breadcrumbItems = computed(() => {
   return route.matched.filter((r) => r.meta && r.meta.title)
 })
 
-// 菜单模式: 'combined'(综合) / 'top'(顶部) / 'left'(左侧)
-const menuMode = ref(localStorage.getItem('menuMode') || 'combined')
+// 菜单模式: 'top'(顶部) / 'left'(左侧)
+const savedMode = localStorage.getItem('menuMode')
+const menuMode = ref(savedMode === 'top' ? 'top' : 'left')
 
 // 保存菜单模式
 const saveMenuMode = (mode: string) => {
@@ -78,6 +84,7 @@ const topMenuChildren = computed(() => {
   const settingsChildren = [
     { title: '用户管理', index: '/users', requiresAdmin: true },
     { title: '角色权限', index: '/roles', requiresAdmin: true },
+    { title: '菜单管理', index: '/menus', requiresAdmin: true },
     { title: '租户管理', index: '/tenants', requiresSuperAdmin: true },
     { title: '套餐与账单', index: '/subscription', requiresSuperAdmin: true },
     { title: '功能开关', index: '/feature-settings', requiresAdmin: true },
@@ -110,12 +117,13 @@ const filteredTopChildren = (key: string) => {
   const initStatus = authStore.tenant?.initializationStatus || 'pending'
   const isSuperAdmin = userRole === 'super_admin'
   const isAdmin = isSuperAdmin || userRole === 'admin'
+  const isSystemTenant = authStore.tenant?.isSystem === true
 
   const children = topMenuChildren.value[key as keyof typeof topMenuChildren.value] || []
   return children.filter((item: any) => {
     if (item.requiresSuperAdmin && !isSuperAdmin) return false
     if (item.requiresAdmin && !isAdmin) return false
-    if (item.requiresInitComplete && initStatus !== 'completed') return false
+    if (item.requiresInitComplete && !isSuperAdmin && !isSystemTenant && initStatus !== 'completed') return false
     return true
   })
 }
@@ -161,6 +169,7 @@ const allMenuConfig: any[] = [
   // 用户与权限
   { title: '用户管理', icon: 'Avatar', index: '/users', requiresAdmin: true },
   { title: '角色权限', icon: 'Grid', index: '/roles', requiresAdmin: true },
+  { title: '菜单管理', icon: 'Menu', index: '/menus', requiresAdmin: true },
   // SaaS配置
   { title: '租户管理', icon: 'OfficeBuilding', index: '/tenants', requiresSuperAdmin: true },
   { title: '套餐与账单', icon: 'CreditCard', index: '/subscription', requiresSuperAdmin: true },
@@ -183,12 +192,13 @@ const filteredAllMenu = computed(() => {
   const initStatus = authStore.tenant?.initializationStatus || 'pending'
   const isSuperAdmin = userRole === 'super_admin'
   const isAdmin = isSuperAdmin || userRole === 'admin'
+  const isSystemTenant = authStore.tenant?.isSystem === true
 
   const filterItems = (items: any[]): any[] => {
     return items.filter(item => {
       if (item.requiresSuperAdmin && !isSuperAdmin) return false
       if (item.requiresAdmin && !isAdmin) return false
-      if (item.requiresInitComplete && initStatus !== 'completed') return false
+      if (item.requiresInitComplete && !isSuperAdmin && !isSystemTenant && initStatus !== 'completed') return false
 
       if (item.children) {
         item.children = filterItems(item.children)
@@ -198,7 +208,7 @@ const filteredAllMenu = computed(() => {
     })
   }
 
-  return filterItems([...allMenuConfig])
+  return filterItems([...convertedMenuConfig.value])
 })
 
 // 根据顶部菜单获取左侧菜单（综合模式）
@@ -208,6 +218,47 @@ const leftMenuItems = computed(() => {
   const isSuperAdmin = userRole === 'super_admin'
   const isAdmin = isSuperAdmin || userRole === 'admin'
 
+  // 如果有数据库菜单，直接使用数据库菜单
+  if (databaseMenus.value.length > 0) {
+    const filterItems = (items: any[], isSuper: boolean, isAdm: boolean, init: string, isSystem: boolean): any[] => {
+      return items.filter(item => {
+        // 只显示有path的菜单项或者有子菜单的分组
+        if (!item.path && (!item.children || item.children.length === 0)) return false
+        
+        if (item.requiresSuperAdmin && !isSuper) return false
+        if (item.requiresAdmin && !isAdm) return false
+        if (item.requiresInitComplete && !isSuper && !isSystem && init !== 'completed') return false
+        
+        if (item.children) {
+          item.children = filterItems(item.children, isSuper, isAdm, init, isSystem)
+          // 如果是分组菜单，即使没有path也保留（只要有子菜单）
+          return item.children.length > 0 || item.path
+        }
+        return !!item.path
+      })
+    }
+
+    // 转换数据库菜单格式
+    const convert = (items: any[]): any[] => {
+      return items.map(item => {
+        const converted: any = {
+          title: item.name,
+          icon: item.icon || 'Document',
+          index: item.path
+        }
+
+        if (item.children && item.children.length > 0) {
+          converted.children = convert(item.children)
+        }
+
+        return converted
+      })
+    }
+
+    return filterItems(convert(databaseMenus.value), isSuperAdmin, isAdmin, initStatus, authStore.tenant?.isSystem === true)
+  }
+
+  // 回退到硬编码菜单
   const supplyMenu = [
     { title: '采购管理', icon: 'ShoppingCart', children: [
       { index: '/purchase-orders', title: '采购订单', icon: 'List', requiresInitComplete: true }
@@ -245,7 +296,8 @@ const leftMenuItems = computed(() => {
   const settingsMenu = [
     { title: '用户与权限', icon: 'User', children: [
       { index: '/users', title: '用户管理', icon: 'Avatar', requiresAdmin: true },
-      { index: '/roles', title: '角色权限', icon: 'Grid', requiresAdmin: true }
+      { index: '/roles', title: '角色权限', icon: 'Grid', requiresAdmin: true },
+      { index: '/menus', title: '菜单管理', icon: 'Menu', requiresAdmin: true }
     ]},
     { title: 'SaaS配置', icon: 'Tools', children: [
       { index: '/tenants', title: '租户管理', icon: 'OfficeBuilding', requiresSuperAdmin: true },
@@ -277,21 +329,123 @@ const leftMenuItems = computed(() => {
     help: helpMenu
   }
 
-  const filterItems = (items: any[], isSuper: boolean, isAdm: boolean, init: string): any[] => {
+  const filterItems = (items: any[], isSuper: boolean, isAdm: boolean, init: string, isSystem: boolean): any[] => {
     return items.filter(item => {
       if (item.requiresSuperAdmin && !isSuper) return false
       if (item.requiresAdmin && !isAdm) return false
-      if (item.requiresInitComplete && init !== 'completed') return false
+      if (item.requiresInitComplete && !isSuper && !isSystem && init !== 'completed') return false
       if (item.children) {
-        item.children = filterItems(item.children, isSuper, isAdm, init)
+        item.children = filterItems(item.children, isSuper, isAdm, init, isSystem)
         return item.children.length > 0
       }
       return true
     })
   }
 
-  return filterItems(menuMap[activeTopMenu.value] || [], isSuperAdmin, isAdmin, initStatus)
+  return filterItems(menuMap[activeTopMenu.value] || [], isSuperAdmin, isAdmin, initStatus, authStore.tenant?.isSystem === true)
 })
+
+// 用于渲染的菜单项（避免模板中的复杂v-if/v-for嵌套）
+const combinedMenuItems = computed(() => {
+  return leftMenuItems.value.map(item => ({
+    ...item,
+    isSubMenu: !!item.children,
+    key: item.index || item.title
+  }))
+})
+
+const leftMenuItemsFiltered = computed(() => {
+  return filteredAllMenu.value.map(item => ({
+    ...item,
+    isSubMenu: !!item.children,
+    key: item.index || item.title
+  }))
+})
+
+// 使用渲染函数渲染菜单，避免模板中的复杂v-if/v-for嵌套
+import { h, resolveComponent } from 'vue'
+
+// 图标名称映射 - 将自定义图标名映射到 Element Plus 图标组件名
+const iconMap: Record<string, string> = {
+  'Package': 'Box',
+  'ShoppingCart': 'ShoppingCart',
+  'Sell': 'Sell',
+  'Money': 'Money',
+  'Search': 'Search',
+  'Box': 'Box',
+  'Van': 'Van',
+  'List': 'List',
+  'Transfer': 'Transfer',
+  'FolderOpened': 'FolderOpened',
+  'OfficeBuilding': 'OfficeBuilding',
+  'UserFilled': 'UserFilled',
+  'Goods': 'Goods',
+  'House': 'House',
+  'Wallet': 'Wallet',
+  'Connection': 'Connection',
+  'CircleCheck': 'CircleCheck',
+  'Avatar': 'UserFilled',
+  'Grid': 'Grid',
+  'CreditCard': 'CreditCard',
+  'Switch': 'Switch',
+  'Office': 'OfficeBuilding',
+  'DocumentCopy': 'DocumentCopy',
+  'Calendar': 'Calendar',
+  'VideoPlay': 'VideoPlay',
+  'Timer': 'Timer',
+  'Document': 'Document',
+  'QuestionFilled': 'QuestionFilled',
+  'Odometer': 'Odometer',
+  'User': 'User',
+  'Tools': 'Tools',
+  'Postcard': 'Postcard',
+  'Tickets': 'Tickets'
+}
+
+const renderMenu = () => {
+  const ElMenuItem = resolveComponent('el-menu-item')
+  const ElSubMenu = resolveComponent('el-sub-menu')
+  const ElIcon = resolveComponent('el-icon')
+
+  const items = menuMode.value === 'combined' ? combinedMenuItems.value : leftMenuItemsFiltered.value
+
+  return items.map(item => {
+    const key = item.key
+    const iconName = iconMap[item.icon] || item.icon
+
+    if (!item.children) {
+      // 普通菜单项
+      return h(ElMenuItem, { index: item.index, key }, () => [
+        h(ElIcon, null, () => h(resolveComponent(iconName))),
+        h('span', item.title)
+      ])
+    } else {
+      // 子菜单
+      const titleSlot = () => [
+        h(ElIcon, null, () => h(resolveComponent(iconName))),
+        h('span', item.title)
+      ]
+
+      const children = item.children.map((child: any) => {
+        const childIconName = iconMap[child.icon] || child.icon || 'Document'
+        try {
+          return h(ElMenuItem, { index: child.index, key: child.index }, () => [
+            h(ElIcon, null, () => h(resolveComponent(childIconName))),
+            h('span', child.title)
+          ])
+        } catch (e) {
+          // 如果图标解析失败，使用默认图标
+          return h(ElMenuItem, { index: child.index, key: child.index }, () => [
+            h(ElIcon, null, () => h(resolveComponent('Document'))),
+            h('span', child.title)
+          ])
+        }
+      })
+
+      return h(ElSubMenu, { index: key, key }, { title: titleSlot, default: () => children })
+    }
+  })
+}
 
 // 切换顶部菜单
 const handleTopMenuSelect = (key: string) => {
@@ -354,8 +508,122 @@ const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
 }
 
+// 加载菜单数据
+const loadMenuData = async () => {
+  try {
+    loadingMenus.value = true
+    const response = await getMenus()
+    if (response.success) {
+      databaseMenus.value = response.data
+    }
+  } catch (error) {
+    console.error('加载菜单失败:', error)
+  } finally {
+    loadingMenus.value = false
+  }
+}
+
+// 将数据库菜单转换为前端菜单格式
+const convertDatabaseMenu = (menuData: any[]): any[] => {
+  const userRole = authStore.user?.role || ''
+  const initStatus = authStore.tenant?.initializationStatus || 'pending'
+  const isSuperAdmin = userRole === 'super_admin'
+  const isAdmin = isSuperAdmin || userRole === 'admin'
+  const isSystemTenant = authStore.tenant?.isSystem === true
+
+  const convert = (items: any[]): any[] => {
+    return items
+      .filter(item => {
+        // 过滤没有path的菜单项（通常是分组菜单，保留作为子菜单容器）
+        if (!item.path && (!item.children || item.children.length === 0)) {
+          return false
+        }
+        return true
+      })
+      .map(item => {
+        const converted: any = {
+          title: item.name,
+          icon: item.icon || 'Document',
+          index: item.path
+        }
+
+        if (item.children && item.children.length > 0) {
+          converted.children = convert(item.children)
+        }
+
+        return converted
+      })
+  }
+
+  return convert(menuData)
+}
+
+// 从数据库菜单转换后的菜单配置
+const convertedMenuConfig = computed(() => {
+  if (databaseMenus.value.length === 0) {
+    return allMenuConfig
+  }
+  return convertDatabaseMenu(databaseMenus.value)
+})
+
+// 获取一级菜单（从数据库）
+const topLevelMenus = computed(() => {
+  return databaseMenus.value
+})
+
+// 获取图标组件
+const getIconComponent = (iconName: string) => {
+  const iconMap: Record<string, string> = {
+    'Odometer': 'Odometer',
+    'Files': 'Files',
+    'ShoppingCart': 'ShoppingCart',
+    'Sell': 'Sell',
+    'Package': 'Box',
+    'Money': 'Money',
+    'User': 'User',
+    'Guide': 'Guide',
+    'Setting': 'Setting',
+    'Document': 'Document',
+    'QuestionFilled': 'QuestionFilled',
+    'Connection': 'Connection',
+    'OfficeBuilding': 'OfficeBuilding',
+    'UserFilled': 'UserFilled',
+    'Goods': 'Goods',
+    'House': 'House',
+    'Wallet': 'Wallet',
+    'List': 'List',
+    'Box': 'Box',
+    'Van': 'Van',
+    'CreditCard': 'CreditCard',
+    'Postcard': 'Postcard',
+    'Tickets': 'Tickets',
+    'Search': 'Search',
+    'Grid': 'Grid',
+    'Avatar': 'UserFilled',
+    'Menu': 'Menu',
+    'Stamp': 'Stamp',
+    'Calendar': 'Calendar'
+  }
+  return iconMap[iconName] || 'Document'
+}
+
+// 过滤子菜单（只保留有路径的）
+const getFilteredChildren = (children: any[]): any[] => {
+  return children.filter(child => child.path)
+}
+
+// 处理顶部菜单点击
+const handleTopMenuClick = (menu: any) => {
+  activeTopMenu.value = menu.code
+  if (menu.path) {
+    router.push(menu.path)
+  }
+}
+
 onMounted(async () => {
   await authStore.refreshTenantInfo()
+  // 加载菜单数据
+  await loadMenuData()
   const userRole = authStore.user?.role || ''
   if (userRole === 'super_admin') return
   if (authStore.trialWarning) {
@@ -369,7 +637,10 @@ onMounted(async () => {
     <!-- 顶部菜单区域 -->
     <div class="top-nav" :class="{ 'top-only': menuMode === 'top' }">
       <div class="top-nav-left">
-        <div class="logo">数企管家</div>
+        <div class="logo">
+  <span class="logo-text">数企</span>
+  <span class="logo-text">管家</span>
+</div>
         <el-menu
           v-if="menuMode !== 'left'"
           mode="horizontal"
@@ -377,55 +648,90 @@ onMounted(async () => {
           :ellipsis="false"
           @select="handleTopMenuSelect"
           class="top-menu"
+          background-color="transparent"
+          text-color="#ffffff"
+          active-text-color="#ffffff"
         >
-          <el-menu-item index="dashboard">
-            <el-icon><Odometer /></el-icon>
-            <span>仪表盘</span>
-          </el-menu-item>
-          <el-sub-menu index="supply">
-            <template #title>
-              <el-icon><Connection /></el-icon>
-              <span>供应链</span>
+          <template v-if="databaseMenus.length > 0">
+            <template v-for="menu in topLevelMenus" :key="menu.id">
+              <el-menu-item v-if="!menu.children || menu.children.length === 0" :index="menu.code" @click="handleTopMenuClick(menu)">
+                <el-icon><component :is="getIconComponent(menu.icon)" /></el-icon>
+                <span>{{ menu.name }}</span>
+              </el-menu-item>
+              <el-sub-menu v-else :index="menu.code">
+                <template #title>
+                  <el-icon><component :is="getIconComponent(menu.icon)" /></el-icon>
+                  <span>{{ menu.name }}</span>
+                </template>
+                <template v-for="child in getFilteredChildren(menu.children)" :key="child.id">
+                  <el-menu-item v-if="!child.children || child.children.length === 0" :index="child.path" @click="navigateToMenu(child.path)">
+                    <el-icon><component :is="getIconComponent(child.icon)" /></el-icon>
+                    <span>{{ child.name }}</span>
+                  </el-menu-item>
+                  <el-sub-menu v-else :index="child.path">
+                    <template #title>
+                      <el-icon><component :is="getIconComponent(child.icon)" /></el-icon>
+                      <span>{{ child.name }}</span>
+                    </template>
+                    <el-menu-item v-for="grandchild in getFilteredChildren(child.children)" :key="grandchild.id" :index="grandchild.path" @click="navigateToMenu(grandchild.path)">
+                      <el-icon><component :is="getIconComponent(grandchild.icon)" /></el-icon>
+                      <span>{{ grandchild.name }}</span>
+                    </el-menu-item>
+                  </el-sub-menu>
+                </template>
+              </el-sub-menu>
             </template>
-            <el-menu-item v-for="item in filteredTopChildren('supply')" :key="item.index" :index="item.index" @click="navigateToMenu(item.index)">
-              {{ item.title }}
+          </template>
+          <template v-else>
+            <el-menu-item index="dashboard">
+              <el-icon><Odometer /></el-icon>
+              <span>仪表盘</span>
             </el-menu-item>
-          </el-sub-menu>
-          <el-sub-menu index="basic">
-            <template #title>
-              <el-icon><Files /></el-icon>
-              <span>基础资料</span>
-            </template>
-            <el-menu-item v-for="item in filteredTopChildren('basic')" :key="item.index" :index="item.index" @click="navigateToMenu(item.index)">
-              {{ item.title }}
+            <el-sub-menu index="supply">
+              <template #title>
+                <el-icon><Connection /></el-icon>
+                <span>供应链</span>
+              </template>
+              <el-menu-item v-for="item in filteredTopChildren('supply')" :key="item.index" :index="item.index" @click="navigateToMenu(item.index)">
+                {{ item.title }}
+              </el-menu-item>
+            </el-sub-menu>
+            <el-sub-menu index="basic">
+              <template #title>
+                <el-icon><Files /></el-icon>
+                <span>基础资料</span>
+              </template>
+              <el-menu-item v-for="item in filteredTopChildren('basic')" :key="item.index" :index="item.index" @click="navigateToMenu(item.index)">
+                {{ item.title }}
+              </el-menu-item>
+            </el-sub-menu>
+            <el-sub-menu index="workflow">
+              <template #title>
+                <el-icon><Guide /></el-icon>
+                <span>工作流</span>
+              </template>
+              <el-menu-item v-for="item in filteredTopChildren('workflow')" :key="item.index" :index="item.index" @click="navigateToMenu(item.index)">
+                {{ item.title }}
+              </el-menu-item>
+            </el-sub-menu>
+            <el-sub-menu index="settings">
+              <template #title>
+                <el-icon><Setting /></el-icon>
+                <span>设置</span>
+              </template>
+              <el-menu-item v-for="item in filteredTopChildren('settings')" :key="item.index" :index="item.index" @click="navigateToMenu(item.index)">
+                {{ item.title }}
+              </el-menu-item>
+            </el-sub-menu>
+            <el-menu-item index="logs">
+              <el-icon><Document /></el-icon>
+              <span>日志</span>
             </el-menu-item>
-          </el-sub-menu>
-          <el-sub-menu index="workflow">
-            <template #title>
-              <el-icon><Guide /></el-icon>
-              <span>工作流</span>
-            </template>
-            <el-menu-item v-for="item in filteredTopChildren('workflow')" :key="item.index" :index="item.index" @click="navigateToMenu(item.index)">
-              {{ item.title }}
+            <el-menu-item index="help">
+              <el-icon><QuestionFilled /></el-icon>
+              <span>帮助</span>
             </el-menu-item>
-          </el-sub-menu>
-          <el-sub-menu index="settings">
-            <template #title>
-              <el-icon><Setting /></el-icon>
-              <span>设置</span>
-            </template>
-            <el-menu-item v-for="item in filteredTopChildren('settings')" :key="item.index" :index="item.index" @click="navigateToMenu(item.index)">
-              {{ item.title }}
-            </el-menu-item>
-          </el-sub-menu>
-          <el-menu-item index="logs">
-            <el-icon><Document /></el-icon>
-            <span>日志</span>
-          </el-menu-item>
-          <el-menu-item index="help">
-            <el-icon><QuestionFilled /></el-icon>
-            <span>帮助</span>
-          </el-menu-item>
+          </template>
         </el-menu>
       </div>
       <div class="top-nav-right">
@@ -433,14 +739,11 @@ onMounted(async () => {
         <el-dropdown trigger="click" @command="saveMenuMode">
           <el-button type="primary" plain size="small" class="menu-mode-btn">
             <el-icon><Grid /></el-icon>
-            {{ menuMode === 'combined' ? '综合' : menuMode === 'top' ? '顶部' : '左侧' }}
+            {{ menuMode === 'top' ? '顶部' : '左侧' }}
             <el-icon class="el-icon--right"><ArrowDown /></el-icon>
           </el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item :command="'combined'" :class="{ 'is-active': menuMode === 'combined' }">
-                <el-icon><Menu /></el-icon> 综合模式
-              </el-dropdown-item>
               <el-dropdown-item :command="'top'" :class="{ 'is-active': menuMode === 'top' }">
                 <el-icon><MoreFilled /></el-icon> 顶部模式
               </el-dropdown-item>
@@ -487,74 +790,7 @@ onMounted(async () => {
             router
             class="sidebar-menu"
           >
-            <template v-if="menuMode === 'combined'">
-              <template v-for="item in leftMenuItems" :key="item.index || item.title">
-                <el-menu-item v-if="!item.children" :index="item.index">
-                  <el-tooltip :disabled="!isCollapse" :content="item.title" placement="right" :show-after="300">
-                    <div class="menu-item-wrapper">
-                      <el-icon><component :is="item.icon" /></el-icon>
-                      <template #title>{{ item.title }}</template>
-                    </div>
-                  </el-tooltip>
-                </el-menu-item>
-                <el-sub-menu v-else :index="item.title">
-                  <template #title>
-                    <el-tooltip v-if="isCollapse" :content="item.title" placement="right" :show-after="300">
-                      <div class="menu-item-wrapper">
-                        <el-icon><component :is="item.icon" /></el-icon>
-                        <span>{{ item.title }}</span>
-                      </div>
-                    </el-tooltip>
-                    <template v-else>
-                      <el-icon><component :is="item.icon" /></el-icon>
-                      <span>{{ item.title }}</span>
-                    </template>
-                  </template>
-                  <el-menu-item v-for="child in item.children" :key="child.index" :index="child.index">
-                    <el-tooltip :disabled="!isCollapse" :content="child.title" placement="right" :show-after="300">
-                      <div class="menu-item-wrapper">
-                        <el-icon><component :is="child.icon" /></el-icon>
-                        <template #title>{{ child.title }}</template>
-                      </div>
-                    </el-tooltip>
-                  </el-menu-item>
-                </el-sub-menu>
-              </template>
-            </template>
-            <template v-else>
-              <template v-for="item in filteredAllMenu" :key="item.index || item.title">
-                <el-menu-item v-if="!item.children" :index="item.index">
-                  <el-tooltip v-if="menuMode === 'left'" :content="item.title" placement="right" :show-after="300">
-                    <div class="menu-item-wrapper">
-                      <el-icon><component :is="item.icon" /></el-icon>
-                      <template #title>{{ item.title }}</template>
-                    </div>
-                  </el-tooltip>
-                  <template v-else>
-                    <el-icon><component :is="item.icon" /></el-icon>
-                    <template #title>{{ item.title }}</template>
-                  </template>
-                </el-menu-item>
-                <el-sub-menu v-else :index="item.title">
-                  <template #title>
-                    <el-icon><component :is="item.icon" /></el-icon>
-                    <span>{{ item.title }}</span>
-                  </template>
-                  <el-menu-item v-for="child in item.children" :key="child.index" :index="child.index">
-                    <el-tooltip v-if="menuMode === 'left'" :content="child.title" placement="right" :show-after="300">
-                      <div class="menu-item-wrapper">
-                        <el-icon><component :is="child.icon" /></el-icon>
-                        <template #title>{{ child.title }}</template>
-                      </div>
-                    </el-tooltip>
-                    <template v-else>
-                      <el-icon><component :is="child.icon" /></el-icon>
-                      <template #title>{{ child.title }}</template>
-                    </template>
-                  </el-menu-item>
-                </el-sub-menu>
-              </template>
-            </template>
+            <component :is="renderMenu" />
           </el-menu>
         </el-scrollbar>
       </aside>
@@ -615,38 +851,50 @@ onMounted(async () => {
 }
 
 .logo {
-  color: #fff;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 3px;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  width: 48px;
+  height: 48px;
   display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 10px;
-}
-
-.logo::before {
-  content: '';
-  width: 32px;
-  height: 32px;
   background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,210,255,0.4);
 }
 
+.logo-text {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.logo::before {
+  content: none;
+}
+
 .top-menu {
-  background: transparent;
+  background: transparent !important;
   border-bottom: none;
 }
 
-.top-menu .el-menu-item {
-  color: rgba(255,255,255,0.85);
-  font-size: 14px;
-  height: 60px;
-  line-height: 60px;
-  padding: 0 18px;
+.top-menu :deep(.el-menu-item) {
+  color: #ffffff !important;
+  font-size: 14px !important;
+  height: 60px !important;
+  line-height: 60px !important;
+  padding: 0 18px !important;
   position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.top-menu :deep(.el-menu-item) .el-icon {
+  color: #ffffff !important;
+}
+
+.top-menu :deep(.el-menu-item span) {
+  color: #ffffff !important;
 }
 
 .top-menu .el-menu-item::after {
@@ -662,10 +910,10 @@ onMounted(async () => {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.top-menu .el-menu-item:hover,
-.top-menu .el-menu-item.is-active {
-  background: rgba(255,255,255,0.08);
-  color: #fff;
+.top-menu :deep(.el-menu-item:hover),
+.top-menu :deep(.el-menu-item.is-active) {
+  background: rgba(0, 210, 255, 0.15) !important;
+  color: #ffffff !important;
 }
 
 .top-menu .el-menu-item:hover::after,
@@ -675,13 +923,21 @@ onMounted(async () => {
 
 /* 顶部菜单下拉样式 */
 .top-menu .el-sub-menu__title {
-  color: rgba(255,255,255,0.85);
+  color: #ffffff !important;
   font-size: 14px;
   height: 60px;
   line-height: 60px;
   padding: 0 18px;
   position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.top-menu .el-sub-menu__title .el-icon {
+  color: #ffffff !important;
+}
+
+.top-menu :deep(.el-sub-menu__title span) {
+  color: #ffffff !important;
 }
 
 .top-menu .el-sub-menu__title::after {
@@ -697,9 +953,9 @@ onMounted(async () => {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.top-menu .el-sub-menu__title:hover {
-  background: rgba(255,255,255,0.08);
-  color: #fff;
+.top-menu :deep(.el-sub-menu__title:hover) {
+  background: rgba(0, 210, 255, 0.15) !important;
+  color: #ffffff !important;
 }
 
 .top-menu .el-sub-menu__title:hover::after {
@@ -707,17 +963,18 @@ onMounted(async () => {
 }
 
 .top-menu :deep(.el-sub-menu .el-menu) {
-  background: rgba(26, 31, 53, 0.95);
+  background-color: rgba(30, 36, 60, 0.98) !important;
+  background: rgba(30, 36, 60, 0.98) !important;
   backdrop-filter: blur(20px);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.12);
   padding: 8px;
   min-width: 180px;
 }
 
 .top-menu :deep(.el-sub-menu .el-menu .el-menu-item) {
-  color: rgba(255,255,255,0.85);
+  color: #ffffff !important;
   height: 42px;
   line-height: 42px;
   padding: 0 16px;
@@ -727,16 +984,87 @@ onMounted(async () => {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.top-menu :deep(.el-sub-menu .el-menu .el-menu-item) .el-icon {
+  color: rgba(255,255,255,0.7) !important;
+}
+
+.top-menu :deep(.el-sub-menu .el-menu .el-menu-item span) {
+  color: #ffffff !important;
+}
+
 .top-menu :deep(.el-sub-menu .el-menu .el-menu-item:hover) {
   background: rgba(0,210,255,0.12);
-  color: #00d2ff;
+  color: #ffffff !important;
   padding-left: 24px;
 }
 
 .top-menu :deep(.el-sub-menu .el-menu .el-menu-item.is-active) {
-  background: linear-gradient(135deg, rgba(0,210,255,0.2) 0%, rgba(58,123,213,0.2) 100%);
-  color: #00d2ff;
+  background: rgba(0,210,255,0.15);
+  color: #ffffff !important;
   font-weight: 500;
+}
+
+/* 三级菜单样式 */
+.top-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-sub-menu__title) {
+  color: #ffffff !important;
+  height: 38px;
+  line-height: 38px;
+  padding: 0 16px;
+  font-size: 13px;
+  border-radius: 6px;
+  margin: 2px 0;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.top-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-sub-menu__title) .el-icon {
+  color: rgba(255,255,255,0.7) !important;
+}
+
+.top-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-sub-menu__title span) {
+  color: #ffffff !important;
+}
+
+.top-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-sub-menu__title:hover) {
+  background: rgba(0,210,255,0.1);
+  color: #ffffff !important;
+}
+
+.top-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-menu) {
+  background-color: rgba(35, 40, 65, 0.98) !important;
+  background: rgba(35, 40, 65, 0.98) !important;
+  border-radius: 8px;
+  box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 4px;
+  min-width: 160px;
+}
+
+.top-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-menu .el-menu-item) {
+  color: #ffffff !important;
+  height: 36px;
+  line-height: 36px;
+  padding: 0 14px;
+  font-size: 12px;
+  border-radius: 6px;
+  margin: 1px 0;
+}
+
+.top-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-menu .el-menu-item) .el-icon {
+  color: rgba(255,255,255,0.6) !important;
+}
+
+.top-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-menu .el-menu-item span) {
+  color: #ffffff !important;
+}
+
+.top-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-menu .el-menu-item:hover) {
+  background: rgba(0,210,255,0.1);
+  color: #ffffff !important;
+}
+
+.top-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-menu .el-menu-item.is-active) {
+  background: rgba(0,210,255,0.15);
+  color: #ffffff !important;
 }
 
 .top-nav-right {

@@ -5,34 +5,6 @@ import { applyDataPermissions } from '../utils/data-permission.util';
 
 const prisma = new PrismaClient();
 
-/**
- * 构建分类树形结构
- */
-function buildCategoryTree(categories: any[]): any[] {
-  const categoryMap = new Map();
-  const roots: any[] = [];
-
-  categories.forEach((cat) => {
-    cat.children = [];
-    categoryMap.set(cat.id, cat);
-  });
-
-  categories.forEach((cat) => {
-    if (cat.parentId) {
-      const parent = categoryMap.get(cat.parentId);
-      if (parent) {
-        parent.children.push(cat);
-      } else {
-        roots.push(cat);
-      }
-    } else {
-      roots.push(cat);
-    }
-  });
-
-  return roots;
-}
-
 // ==================== 客户分类管理 ====================
 
 /**

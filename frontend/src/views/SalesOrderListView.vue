@@ -65,12 +65,12 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm">
         <el-row :gutter="16">
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="7">
             <el-form-item label="单据编号" class="search-item">
               <el-input v-model="searchForm.keyword" placeholder="订单号/客户" clearable />
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="7">
             <el-form-item label="客户" class="search-item">
               <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable>
                 <el-option
@@ -82,7 +82,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="5">
             <el-form-item label="单据状态" class="search-item">
               <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
                 <el-option label="草稿" value="draft" />
@@ -93,7 +93,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="5">
             <el-form-item label="日期范围" class="search-item">
               <el-date-picker
                 v-model="searchForm.dateRange"
@@ -335,7 +335,6 @@
           <div class="section-title">
             <el-icon><Goods /></el-icon>
             <span>物料明细</span>
-            <span class="section-tip">（双击行或点击编辑按钮可修改明细）</span>
           </div>
           <el-table :data="formData.details" border size="small" show-summary :summary-method="getSummary">
             <el-table-column type="index" label="序号" width="60" />
@@ -758,12 +757,10 @@ const getRowClassName = ({ row }: { row: any }) => {
 const getSummary = () => {
   calculateAmounts()
   return [
-    '', '', '',
-    '',
-    `<span class="amount">合计</span>`,
-    '',
-    '',
-    `<span class="amount">¥${formatAmount(formData.goodsAmount)}</span>`,
+    '', '', '', '', '',
+    '合计',
+    '', '',
+    '¥' + formatAmount(formData.goodsAmount),
     ''
   ]
 }

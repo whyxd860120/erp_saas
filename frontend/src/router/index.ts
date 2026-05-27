@@ -125,6 +125,12 @@ const router = createRouter({
         },
         // 系统管理
         {
+          path: 'menus',
+          name: 'Menus',
+          component: () => import('@/views/MenuListView.vue'),
+          meta: { title: '菜单管理', requiresAuth: true, requiresAdmin: true }
+        },
+        {
           path: 'tenants',
           name: 'Tenants',
           component: () => import('@/views/TenantListView.vue'),
@@ -270,10 +276,13 @@ router.beforeEach(async (to) => {
     return redirect
   }
 
-  // 账套初始化页面检查：只有已完成的才重定向
+  // 账套初始化页面检查：只有已完成的才重定向（系统管理员除外）
   if (to.path === '/account-init') {
     const initStatus = authStore.tenant?.initializationStatus
-    if (initStatus === 'completed') {
+    const isSuperAdmin = authStore.user?.role === 'super_admin'
+    const isSystemTenant = authStore.tenant?.isSystem === true
+    
+    if (initStatus === 'completed' && !isSuperAdmin && !isSystemTenant) {
       return { path: '/' }
     }
   }

@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>ERP 后端服务修复工具</title>
+    <HTA:APPLICATION 
+        APPLICATIONNAME="ERPBackendFixTool"
+        BORDER="dialog"
+        BORDERSTYLE="normal"
+        CAPTION="yes"
+        ICON=""
+        MAXIMIZEBUTTON="no"
+        MINIMIZEBUTTON="no"
+        SHOWINTASKBAR="yes"
+        SINGLEINSTANCE="yes"
+        SYSMENU="yes"
+        VERSION="1.0"
+        WINDOWSTATE="normal"/>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 30px 20px;
+            color: #000000;
+        }
+        
+        .container {
+            background: #e8e8e8;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #cccccc;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #000000;
+            margin-bottom: 25px;
+            font-size: 28px;
+            font-weight: bold;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #666666;
+        }
+        
+        .info-box {
+            background: #d9d9d9;
+            border-left: 5px solid #666666;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        
+        .info-box h3 {
+            color: #000000;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .info-box p {
+            color: #000000;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        
+        .status-card {
+            background: #ffffff;
+            padding: 18px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 2px solid #cccccc;
+        }
+        
+        .status-card.success {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .status-card.error {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .status-card.warning {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+        
+        .status-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .status-label {
+            font-size: 13px;
+            color: #000000;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .status-value {
+            font-size: 15px;
+            font-weight: bold;
+            color: #000000;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 12px 20px;
+            border: 2px solid #666666;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #000000;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0,0,0,0.15);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #c0c0c0 0%, #a0a0a0 100%);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #90ee90 0%, #7dd87d 100%);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ffd700 0%, #ffcc00 100%);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .log-container {
+            background: #d3d3d3;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            max-height: 280px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            border: 2px solid #999999;
+        }
+        
+        .log-entry {
+            margin-bottom: 6px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            animation: fadeIn 0.3s ease;
+            color: #000000;
+            background: #e0e0e0;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .log-info {
+            color: #000000;
+            background: #cce5ff;
+            border-left: 3px solid #0066cc;
+        }
+        
+        .log-success {
+            color: #000000;
+            background: #d4edda;
+            border-left: 3px solid #28a745;
+        }
+        
+        .log-error {
+            color: #000000;
+            background: #f8d7da;
+            border-left: 3px solid #dc3545;
+        }
+        
+        .log-warning {
+            color: #000000;
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #cccccc;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: none;
+            border: 1px solid #999999;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #666666, #999999);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .result-panel {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .result-panel.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #000000;
+            margin-bottom: 12px;
+        }
+        
+        .result-content {
+            color: #000000;
+            line-height: 1.6;
+        }
+        
+        .config-display {
+            background: #e0e0e0;
+            border: 1px solid #999999;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+        }
+        
+        .config-line {
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .config-key {
+            color: #000000;
+            font-weight: bold;
+            min-width: 140px;
+        }
+        
+        .config-value {
+            color: #000000;
+        }
+        
+        .config-status {
+            margin-left: auto;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .config-status.ok {
+            background: #d4edda;
+            color: #000000;
+            border: 1px solid #28a745;
+        }
+        
+        .config-status.error {
+            background: #f8d7da;
+            color: #000000;
+            border: 1px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 ERP 后端服务修复工具</h1>
+        
+        <div class="info-box">
+            <h3>📋 工具说明</h3>
+            <p>此工具用于自动检测和修复 ERP 系统后端服务的常见问题，包括数据库配置错误、服务未启动等。</p>
+            <p><strong>主要功能：</strong>自动修复配置文件、验证数据库连接、启动后端服务、测试 API 接口</p>
+        </div>
+        
+        <div class="status-grid" id="statusGrid">
+            <div class="status-card" id="cardEnv">
+                <div class="status-icon">📄</div>
+                <div class="status-label">配置文件</div>
+                <div class="status-value" id="statusEnv">检查中...</div>
+            </div>
+            <div class="status-card" id="cardMysql">
+                <div class="status-icon">🗄️</div>
+                <div class="status-label">MySQL 服务</div>
+                <div class="status-value" id="statusMysql">检查中...</div>
+            </div>
+            <div class="status-card" id="cardNode">
+                <div class="status-icon">⚙️</div>
+                <div class="status-label">Node.js</div>
+                <div class="status-value" id="statusNode">检查中...</div>
+            </div>
+            <div class="status-card" id="cardServer">
+                <div class="status-icon">🚀</div>
+                <div class="status-label">后端服务</div>
+                <div class="status-value" id="statusServer">检查中...</div>
+            </div>
+        </div>
+        
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="action-buttons">
+            <button class="btn btn-primary" id="btnCheck" onclick="checkAll()">
+                🔍 全面检查
+            </button>
+            <button class="btn btn-success" id="btnFix" onclick="fixAndStart()" disabled>
+                🔧 一键修复
+            </button>
+            <button class="btn btn-warning" id="btnHealth" onclick="healthCheck()">
+                🏥 健康检查
+            </button>
+            <button class="btn btn-danger" id="btnStop" onclick="stopServer()">
+                ⏹️ 停止服务
+            </button>
+        </div>
+        
+        <div class="log-container" id="logBox">
+            <div class="log-entry log-info">[系统] 工具已就绪，请点击"全面检查"开始诊断...</div>
+        </div>
+        
+        <div class="result-panel" id="resultPanel">
+            <div class="result-title" id="resultTitle">✅ 修复完成</div>
+            <div class="result-content" id="resultContent"></div>
+        </div>
+    </div>
+
+    <script language="VBScript">
+        Option Explicit
+        
+        Dim fso, shellApp, projectRoot, envFile, mysqlPath, nodeVersion
+        Dim dbPassword, dbUrl, isConfigFixed, isServerRunning
+        
+        ' 初始化
+        Sub Window_OnLoad
+            Set fso = CreateObject("Scripting.FileSystemObject")
+            Set shellApp = CreateObject("Shell.Application")
+            
+            ' 获取项目根目录（脚本所在目录）
+            projectRoot = Left(window.location.pathname, InStrRev(window.location.pathname, "\") - 1)
+            projectRoot = Replace(projectRoot, "/", "\")
+            If Left(projectRoot, 1) = "\" Then projectRoot = Mid(projectRoot, 2)
+            
+            envFile = projectRoot & "\.env"
+            mysqlPath = "C:\tools\mysql\current\bin\mysql.exe"
+            isConfigFixed = False
+            isServerRunning = False
+            
+            WriteLog "[系统] 工具已启动", "info"
+            WriteLog "[系统] 项目目录: " & projectRoot, "info"
+            
+            ' 自动执行初步检查
+            CheckEnvironment
+        End Sub
+        
+        ' 写入日志
+        Sub WriteLog(message, msgType)
+            Dim logBox, timestamp, prefix, logClass
+            
+            Set logBox = document.getElementById("logBox")
+            timestamp = Now()
+            
+            Select Case msgType
+                Case "success"
+                    prefix = "[成功] "
+                    logClass = "log-success"
+                Case "error"
+                    prefix = "[错误] "
+                    logClass = "log-error"
+                Case "warning"
+                    prefix = "[警告] "
+                    logClass = "log-warning"
+                Case Else
+                    prefix = "[信息] "
+                    logClass = "log-info"
+            End Select
+            
+            logBox.innerHTML = logBox.innerHTML & "<div class='log-entry " & logClass & "'>[" & timestamp & "] " & prefix & message & "</div>"
+            logBox.scrollTop = logBox.scrollHeight
+        End Sub
+        
+        ' 更新进度条
+        Sub UpdateProgress(percent)
+            Dim progressBar, progressFill
+            Set progressBar = document.getElementById("progressBar")
+            Set progressFill = document.getElementById("progressFill")
+            
+            progressBar.style.display = "block"
+            progressFill.style.width = percent & "%"
+        End Sub
+        
+        ' 隐藏进度条
+        Sub HideProgress
+            Dim progressBar
+            Set progressBar = document.getElementById("progressBar")
+            progressBar.style.display = "none"
+        End Sub
+        
+        ' 检查环境
+        Sub CheckEnvironment
+            WriteLog "[检查] 开始环境诊断...", "info"
+            UpdateProgress 10
+            
+            ' 检查 .env 文件
+            If fso.FileExists(envFile) Then
+                document.getElementById("statusEnv").innerText = "✓ 存在"
+                document.getElementById("cardEnv").className = "status-card success"
+                WriteLog "[检查] .env 文件存在", "success"
+                
+                ' 读取配置
+                ReadConfig
+            Else
+                document.getElementById("statusEnv").innerText = "✗ 缺失"
+                document.getElementById("cardEnv").className = "status-card error"
+                WriteLog "[检查] .env 文件不存在", "error"
+            End If
+            
+            UpdateProgress 20
+            
+            ' 检查 MySQL
+            CheckMySQL
+            
+            UpdateProgress 30
+            
+            ' 检查 Node.js
+            CheckNodeJS
+            
+            UpdateProgress 40
+            
+            ' 检查后端服务
+            CheckServer
+            
+            UpdateProgress 50
+            HideProgress
+            
+            WriteLog "[检查] 环境诊断完成", "success"
+            
+            ' 启用修复按钮
+            document.getElementById("btnFix").disabled = False
+        End Sub
+        
+        ' 读取配置
+        Sub ReadConfig
+            Dim file, line, lines, i
+            
+            Set file = fso.OpenTextFile(envFile, 1, False, -1) ' -1 = UTF-8
+            lines = Split(file.ReadAll, vbCrLf)
+            file.Close
+            
+            For i = 0 To UBound(lines)
+                line = Trim(lines(i))
+                
+                If Left(line, 12) = "DB_PASSWORD=" Then
+                    dbPassword = Mid(line, 13)
+                ElseIf Left(line, 13) = "DATABASE_URL=" Then
+                    dbUrl = Mid(line, 14)
+                    dbUrl = Replace(dbUrl, """", "")
+                End If
+            Next
+            
+            If dbPassword <> "" And dbUrl <> "" Then
+                WriteLog "[配置] DB_PASSWORD: " & dbPassword, "info"
+                WriteLog "[配置] DATABASE_URL: " & dbUrl, "info"
+                
+                ' 检查密码是否一致
+                If InStr(dbUrl, dbPassword) > 0 Then
+                    isConfigFixed = True
+                    WriteLog "[配置] ✓ 密码配置正确", "success"
+                Else
+                    isConfigFixed = False
+                    WriteLog "[配置] ✗ 密码不一致，需要修复", "error"
+                End If
+            End If
+        End Sub
+        
+        ' 检查 MySQL
+        Sub CheckMySQL
+            If fso.FileExists(mysqlPath) Then
+                WriteLog "[检查] MySQL 工具路径存在: " & mysqlPath, "info"
+                document.getElementById("statusMysql").innerText = "? 需手动验证"
+                document.getElementById("cardMysql").className = "status-card warning"
+                
+                ' 测试连接 (现在只会返回 False 并记录警告)
+                TestMySQLConnection
+            Else
+                document.getElementById("statusMysql").innerText = "✗ 未找到"
+                document.getElementById("cardMysql").className = "status-card error"
+                WriteLog "[检查] MySQL 工具未找到", "error"
+            End If
+        End Sub
+        
+        ' 测试 MySQL 连接（HTA 兼容版本）
+        Function TestMySQLConnection
+            Dim cmd, result
+            
+            If dbPassword = "" Then
+                TestMySQLConnection = False
+                Exit Function
+            End If
+            
+            ' 创建临时批处理文件
+            Dim tempFile, batchFile
+            tempFile = fso.GetSpecialFolder(2) ' 2 = TemporaryFolder
+            batchFile = tempFile & "\mysql_test.bat"
+            
+            ' 写入测试命令
+            Dim file
+            Set file = fso.CreateTextFile(batchFile, True)
+            file.WriteLine "@echo off"
+            file.WriteLine "set MYSQL_PWD=" & dbPassword
+            file.WriteLine """" & mysqlPath & """ -u root -h localhost -P 3306 -e ""SELECT 1;"" erpnext_db >nul 2>&1"
+            file.WriteLine "exit %errorlevel%"
+            file.Close
+            
+            ' 执行批处理文件
+            On Error Resume Next
+            shellApp.ShellExecute batchFile, "", "", "open", 0
+            
+            ' 等待执行完成
+            DelaySeconds 2
+            
+            ' 检查退出码（通过读取临时文件）
+            Dim exitCodeFile
+            exitCodeFile = tempFile & "\exit_code.txt"
+            
+            If fso.FileExists(exitCodeFile) Then
+                Dim codeFile, code
+                Set codeFile = fso.OpenTextFile(exitCodeFile, 1)
+                code = Trim(codeFile.ReadAll)
+                codeFile.Close
+                
+                If code = "0" Then
+                    TestMySQLConnection = True
+                Else
+                    TestMySQLConnection = False
+                End If
+                
+                fso.DeleteFile exitCodeFile, True
+            Else
+                TestMySQLConnection = False
+            End If
+            
+            ' 清理临时文件
+            If fso.FileExists(batchFile) Then
+                fso.DeleteFile batchFile, True
+            End If
+            On Error GoTo 0
+        End Function
+        
+        ' 检查 Node.js（HTA 兼容版本）
+        Sub CheckNodeJS
+            Dim tempFile, batchFile, file
+            
+            ' 创建临时批处理文件
+            tempFile = fso.GetSpecialFolder(2)
+            batchFile = tempFile & "\node_check.bat"
+            
+            Set file = fso.CreateTextFile(batchFile, True)
+            file.WriteLine "@echo off"
+            file.WriteLine "node --version > """ & tempFile & "\node_version.txt"" 2>&1"
+            file.WriteLine "exit %errorlevel%"
+            file.Close
+            
+            ' 执行
+            On Error Resume Next
+            shellApp.ShellExecute batchFile, "", "", "open", 0
+            DelaySeconds 2
+            
+            ' 读取结果
+            Dim versionFile
+            versionFile = tempFile & "\node_version.txt"
+            
+            If fso.FileExists(versionFile) Then
+                Dim vFile, version
+                Set vFile = fso.OpenTextFile(versionFile, 1)
+                version = Trim(vFile.ReadAll)
+                vFile.Close
+                
+                If version <> "" And InStr(version, "v") > 0 Then
+                    nodeVersion = version
+                    document.getElementById("statusNode").innerText = "✓ " & version
+                    document.getElementById("cardNode").className = "status-card success"
+                    WriteLog "[检查] Node.js 版本: " & version, "success"
+                Else
+                    document.getElementById("statusNode").innerText = "✗ 未安装"
+                    document.getElementById("cardNode").className = "status-card error"
+                    WriteLog "[检查] Node.js 未找到", "error"
+                End If
+                
+                fso.DeleteFile versionFile, True
+            Else
+                document.getElementById("statusNode").innerText = "✗ 未安装"
+                document.getElementById("cardNode").className = "status-card error"
+                WriteLog "[检查] Node.js 未找到", "error"
+            End If
+            
+            ' 清理
+            If fso.FileExists(batchFile) Then
+                fso.DeleteFile batchFile, True
+            End If
+            On Error GoTo 0
+        End Sub
+        
+        ' 检查后端服务
+        Sub CheckServer
+            Dim result
+            
+            result = TestAPIEndpoint
+            
+            If result Then
+                isServerRunning = True
+                document.getElementById("statusServer").innerText = "✓ 运行中"
+                document.getElementById("cardServer").className = "status-card success"
+                WriteLog "[检查] 后端服务正常运行", "success"
+            Else
+                isServerRunning = False
+                document.getElementById("statusServer").innerText = "✗ 未运行"
+                document.getElementById("cardServer").className = "status-card error"
+                WriteLog "[检查] 后端服务未运行或响应异常", "warning"
+            End If
+        End Sub
+        
+        ' 测试 API 端点
+        Function TestAPIEndpoint
+            Dim http, url, result
+            
+            On Error Resume Next
+            Set http = CreateObject("MSXML2.XMLHTTP")
+            url = "http://localhost:3000/api/v1/auth/search-tenants?username=test"
+            
+            http.Open "GET", url, False
+            http.Send
+            
+            If Err.Number = 0 Then
+                result = http.Status
+                If result = 200 Or result = 404 Then
+                    TestAPIEndpoint = True
+                Else
+                    TestAPIEndpoint = False
+                End If
+            Else
+                TestAPIEndpoint = False
+            End If
+            On Error GoTo 0
+        End Function
+        
+        ' 全面检查
+        Sub checkAll
+            WriteLog "", "info"
+            WriteLog "========================================", "info"
+            WriteLog "开始全面检查...", "info"
+            WriteLog "========================================", "info"
+            
+            CheckEnvironment
+        End Sub
+        
+        ' 修复并启动
+        Sub fixAndStart
+            WriteLog "", "info"
+            WriteLog "========================================", "info"
+            WriteLog "开始修复流程...", "info"
+            WriteLog "========================================", "info"
+            
+            UpdateProgress 10
+            
+            ' 步骤 1: 备份配置
+            WriteLog "[步骤 1/5] 备份配置文件...", "info"
+            BackupConfig
+            
+            UpdateProgress 20
+            
+            ' 步骤 2: 修复配置
+            WriteLog "[步骤 2/5] 修复数据库配置...", "info"
+            FixConfig
+            
+            UpdateProgress 40
+            
+            ' 步骤 3: 验证 MySQL
+            WriteLog "[步骤 3/5] 验证 MySQL 连接...", "info"
+            CheckMySQL
+            
+            UpdateProgress 60
+            
+            ' 步骤 4: 启动服务
+            WriteLog "[步骤 4/5] 启动后端服务...", "info"
+            StartServer
+            
+            UpdateProgress 80
+            
+            ' 步骤 5: 测试 API
+            WriteLog "[步骤 5/5] 测试 API 接口...", "info"
+            CheckServer
+            
+            UpdateProgress 100
+            
+            HideProgress
+            
+            ' 显示结果
+            ShowResult
+        End Sub
+        
+        ' 备份配置
+        Sub BackupConfig
+            Dim backupFile
+            
+            backupFile = projectRoot & "\.env.backup"
+            
+            If fso.FileExists(envFile) Then
+                fso.CopyFile envFile, backupFile, True
+                WriteLog "[备份] 配置文件已备份到: .env.backup", "success"
+            Else
+                WriteLog "[备份] 配置文件不存在，跳过备份", "warning"
+            End If
+        End Sub
+        
+        ' 修复配置
+        Sub FixConfig
+            Dim file, content, lines, newLines, i, line, fixed
+            
+            If Not fso.FileExists(envFile) Then
+                WriteLog "[修复] 配置文件不存在，无法修复", "error"
+                Exit Sub
+            End If
+            
+            Set file = fso.OpenTextFile(envFile, 1, False, -1)
+            content = file.ReadAll
+            file.Close
+            
+            lines = Split(content, vbCrLf)
+            newLines = Array()
+            fixed = False
+            
+            For i = 0 To UBound(lines)
+                line = lines(i)
+                
+                If Left(Trim(line), 13) = "DATABASE_URL=" And dbPassword <> "" Then
+                    ' 修复 DATABASE_URL
+                    Dim newUrl
+                    newUrl = "DATABASE_URL=""mysql://root:" & dbPassword & "@localhost:3306/erpnext_db?charset=utf8mb4"""
+                    newLines = AddToArray(newLines, newUrl)
+                    WriteLog "[修复] DATABASE_URL 已更新", "success"
+                    fixed = True
+                Else
+                    newLines = AddToArray(newLines, line)
+                End If
+            Next
+            
+            If fixed Then
+                ' 写回文件
+                Set file = fso.CreateTextFile(envFile, True, True) ' True, True = overwrite, Unicode
+                
+                For i = 0 To UBound(newLines)
+                    If i < UBound(newLines) Then
+                        file.WriteLine newLines(i)
+                    Else
+                        file.Write newLines(i)
+                    End If
+                Next
+                
+                file.Close
+                
+                isConfigFixed = True
+                WriteLog "[修复] 配置文件修复完成", "success"
+            Else
+                WriteLog "[修复] 配置已正确，无需修复", "info"
+            End If
+        End Sub
+        
+        ' 添加元素到数组
+        Function AddToArray(arr, item)
+            Dim newArr, i
+            
+            If IsEmpty(arr) Then
+                ReDim newArr(0)
+                newArr(0) = item
+            Else
+                ReDim newArr(UBound(arr) + 1)
+                For i = 0 To UBound(arr)
+                    newArr(i) = arr(i)
+                Next
+                newArr(UBound(newArr)) = item
+            End If
+            
+            AddToArray = newArr
+        End Function
+        
+        ' 启动服务器（HTA 兼容版本）
+        Sub StartServer
+            Dim cmd
+            
+            WriteLog "[启动] 正在启动后端服务...", "info"
+            
+            ' 使用 Shell.Application 启动 PowerShell 窗口运行 npm
+            cmd = "powershell.exe -Command ""cd '" & projectRoot & "'; npm run dev"""
+            
+            On Error Resume Next
+            shellApp.ShellExecute "powershell.exe", "-NoExit -Command ""cd '" & projectRoot & "'; npm run dev""", "", "open", 1
+            
+            If Err.Number = 0 Then
+                WriteLog "[启动] 后端服务正在启动...", "success"
+                WriteLog "[提示] 新窗口已打开，请查看启动日志", "warning"
+                
+                ' 等待 15 秒
+                WriteLog "[等待] 等待服务初始化（15秒）...", "info"
+                
+                Dim i
+                For i = 15 To 1 Step -1
+                    WriteLog "[等待] 剩余 " & i & " 秒...", "info"
+                    DelaySeconds 1
+                Next
+                
+                WriteLog "[等待] 等待完成", "success"
+            Else
+                WriteLog "[启动] 启动失败: " & Err.Description, "error"
+            End If
+            On Error GoTo 0
+        End Sub
+        
+        ' 自定义延迟函数（HTA 兼容）
+        Sub DelaySeconds(seconds)
+            Dim endTime
+            endTime = DateAdd("s", seconds, Now())
+            Do While Now() < endTime
+                ' 空循环等待
+            Loop
+        End Sub
+        
+        ' 健康检查
+        Sub healthCheck
+            WriteLog "", "info"
+            WriteLog "========================================", "info"
+            WriteLog "开始健康检查...", "info"
+            WriteLog "========================================", "info"
+            
+            UpdateProgress 10
+            
+            ' 检查配置
+            WriteLog "[检查] 配置文件...", "info"
+            If isConfigFixed Then
+                WriteLog "[检查] ✓ 配置正确", "success"
+            Else
+                WriteLog "[检查] ✗ 配置存在问题", "error"
+            End If
+            
+            UpdateProgress 30
+            
+            ' 检查 MySQL
+            WriteLog "[检查] MySQL 连接...", "info"
+            CheckMySQL
+            
+            UpdateProgress 50
+            
+            ' 检查 Node.js
+            WriteLog "[检查] Node.js...", "info"
+            CheckNodeJS
+            
+            UpdateProgress 70
+            
+            ' 检查服务
+            WriteLog "[检查] 后端服务...", "info"
+            CheckServer
+            
+            UpdateProgress 100
+            HideProgress
+            
+            ' 显示总结
+            WriteLog "", "info"
+            WriteLog "========================================", "info"
+            WriteLog "健康检查完成", "info"
+            WriteLog "========================================", "info"
+            
+            If isConfigFixed And isServerRunning Then
+                WriteLog "✓ 所有检查通过，系统运行正常", "success"
+            Else
+                WriteLog "✗ 部分检查失败，建议运行'一键修复'", "warning"
+            End If
+        End Sub
+        
+        ' 停止服务（HTA 兼容版本）
+        Sub stopServer
+            Dim confirm
+            
+            confirm = MsgBox("确定要停止后端服务吗？" & vbCrLf & "这将关闭所有 Node.js 进程。", vbYesNo + vbQuestion, "确认")
+            
+            If confirm = vbYes Then
+                WriteLog "[停止] 正在停止后端服务...", "warning"
+                
+                ' 使用 taskkill 终止 Node 进程
+                On Error Resume Next
+                shellApp.ShellExecute "cmd.exe", "/c taskkill /F /IM node.exe", "", "open", 0
+                
+                DelaySeconds 2
+                
+                isServerRunning = False
+                document.getElementById("statusServer").innerText = "✗ 已停止"
+                document.getElementById("cardServer").className = "status-card error"
+                
+                WriteLog "[停止] 后端服务已停止", "success"
+                On Error GoTo 0
+            End If
+        End Sub
+        
+        ' 显示结果
+        Sub ShowResult
+            Dim resultPanel, resultTitle, resultContent
+            
+            Set resultPanel = document.getElementById("resultPanel")
+            Set resultTitle = document.getElementById("resultTitle")
+            Set resultContent = document.getElementById("resultContent")
+            
+            If isServerRunning Then
+                resultTitle.innerText = "✅ 修复成功！"
+                resultContent.innerHTML = _
+                    "<p><strong>后端服务已成功启动并正常运行。</strong></p>" & _
+                    "<p>接下来您可以：</p>" & _
+                    "<ul style='margin-left: 20px; line-height: 2;'>" & _
+                    "<li>刷新浏览器页面，测试前端应用</li>" & _
+                    "<li>使用账号登录系统</li>" & _
+                    "<li>如遇到问题，请查看后端服务窗口的日志</li>" & _
+                    "</ul>" & _
+                    "<p style='margin-top: 15px; padding: 10px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;'>" & _
+                    "<strong>提示：</strong>保持后端服务窗口打开，关闭该窗口会停止服务。" & _
+                    "</p>"
+                
+                resultPanel.className = "result-panel show"
+            Else
+                resultTitle.innerText = "⚠️ 需要手动检查"
+                resultContent.innerHTML = _
+                    "<p>服务可能仍在启动中，请稍后再次检查。</p>" & _
+                    "<p>或者查看后端服务窗口的输出，确认是否有错误信息。</p>"
+                
+                resultPanel.className = "result-panel show"
+            End If
+        End Sub
+        
+    </script>
+</body>
+</html>

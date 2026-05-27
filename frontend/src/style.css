@@ -5,3 +5,104 @@ html, body {
   width: 100%;
   height: 100%;
 }
+
+/* 顶部菜单下拉菜单样式覆盖 */
+.top-menu .el-sub-menu .el-menu,
+.top-menu .el-menu--popup {
+  background-color: #1a1f35 !important;
+  background: #1a1f35 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.top-menu .el-sub-menu .el-menu .el-menu-item,
+.top-menu .el-menu--popup .el-menu-item {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+.top-menu .el-sub-menu .el-menu .el-menu-item:hover,
+.top-menu .el-menu--popup .el-menu-item:hover {
+  background: rgba(0, 210, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.top-menu .el-sub-menu .el-menu .el-menu-item.is-active,
+.top-menu .el-menu--popup .el-menu-item.is-active {
+  background: rgba(0, 210, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.top-menu .el-sub-menu .el-menu .el-sub-menu .el-sub-menu__title,
+.top-menu .el-menu--popup .el-sub-menu__title {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+.top-menu .el-sub-menu .el-menu .el-sub-menu .el-sub-menu__title:hover,
+.top-menu .el-menu--popup .el-sub-menu__title:hover {
+  background: rgba(0, 210, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.top-menu .el-sub-menu .el-menu .el-sub-menu .el-menu,
+.top-menu .el-menu--popup .el-sub-menu .el-menu {
+  background-color: #161a2e !important;
+  background: #161a2e !important;
+}
+
+.top-menu .el-sub-menu .el-menu .el-sub-menu .el-menu .el-menu-item,
+.top-menu .el-menu--popup .el-sub-menu .el-menu .el-menu-item {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+.top-menu .el-sub-menu .el-menu .el-sub-menu .el-menu .el-menu-item:hover,
+.top-menu .el-menu--popup .el-sub-menu .el-menu .el-menu-item:hover {
+  background: rgba(0, 210, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.top-menu .el-sub-menu .el-menu .el-sub-menu .el-menu .el-menu-item.is-active,
+.top-menu .el-menu--popup .el-sub-menu .el-menu .el-menu-item.is-active {
+  background: rgba(0, 210, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+/* Element Plus 弹出菜单全局覆盖 */
+.el-menu--popup {
+  background-color: #1a1f35 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.el-menu--popup .el-menu-item {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+.el-menu--popup .el-menu-item:hover {
+  background: rgba(0, 210, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.el-menu--popup .el-menu-item.is-active {
+  background: rgba(0, 210, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.el-menu--popup .el-sub-menu__title {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+.el-menu--popup .el-sub-menu__title:hover {
+  background: rgba(0, 210, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.el-menu--popup .el-sub-menu .el-menu {
+  background-color: #161a2e !important;
+}
+
+.el-menu--popup .el-sub-menu .el-menu .el-menu-item {
+  color: #ffffff !important;
+}
