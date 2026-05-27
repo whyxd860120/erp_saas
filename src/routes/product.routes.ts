@@ -17,6 +17,7 @@ import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.mi
 const router = Router();
 
 // 商品分类路由
+router.get('/categories/tree', authenticate, tenantIsolation(true), getCategories);
 router.get('/categories', authenticate, tenantIsolation(true), getCategories);
 router.post('/categories', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), createCategory);
 router.put('/categories/:id', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), updateCategory);

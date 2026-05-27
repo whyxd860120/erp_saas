@@ -65,14 +65,14 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm">
         <el-row :gutter="16">
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="5">
             <el-form-item label="单据编号" class="search-item">
-              <el-input v-model="searchForm.keyword" placeholder="订单号/供应商" clearable />
+              <el-input v-model="searchForm.keyword" placeholder="订单号/供应商" clearable style="width: 100%;" />
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="7">
             <el-form-item label="供应商" class="search-item">
-              <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable>
+              <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable style="width: 220px;">
                 <el-option
                   v-for="supplier in suppliers"
                   :key="supplier.id"
@@ -84,7 +84,7 @@
           </el-col>
           <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="单据状态" class="search-item">
-              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
+              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 180px;">
                 <el-option label="草稿" value="draft" />
                 <el-option label="已确认" value="confirmed" />
                 <el-option label="部分入库" value="partial" />

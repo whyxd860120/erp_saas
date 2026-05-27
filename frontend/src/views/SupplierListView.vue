@@ -3,48 +3,48 @@
     <el-card shadow="never">
       <template #header>
         <div class="card-header">
-          <span>��Ӧ�̹���</span>
+          <span>供应商管理</span>
           <div class="header-actions">
             <el-button type="primary" plain @click="handleAddRootCategory">
               <el-icon><FolderAdd /></el-icon>
-              ������Ӧ�̷���
+              新增供应商分类
             </el-button>
             <el-button type="primary" plain :disabled="!selectedCategoryId" @click="handleAddChildCategory">
               <el-icon><FolderAdd /></el-icon>
-              �����ӷ���
+              新增子分类
             </el-button>
             <el-button type="primary" :disabled="!selectedCategoryId" @click="handleCreateSupplier">
               <el-icon><Plus /></el-icon>
-              ������Ӧ��
+              新增供应商
             </el-button>
             <el-button @click="loadData">
               <el-icon><Refresh /></el-icon>
-              ˢ��
+              刷新
             </el-button>
             <el-button :type="showInactive ? 'warning' : 'default'" @click="toggleShowInactive">
               <el-icon><View v-if="!showInactive" /><Hide v-else /></el-icon>
-              {{ showInactive ? '���ؽ���' : '��ʾ����' }}
+              {{ showInactive ? '隐藏禁用' : '显示禁用' }}
             </el-button>
             <el-dropdown split-button type="success" plain @click="handleImport">
               <el-icon><Upload /></el-icon>
-              ���빩Ӧ��
+              导入供应商
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item @click="handleImportCategories">
                     <el-icon><FolderAdd /></el-icon>
-                    �������
+                    导入分类
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
             <el-dropdown split-button type="info" plain @click="handleExport">
               <el-icon><Download /></el-icon>
-              ������Ӧ��
+              导出供应商
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item @click="handleExportCategories">
                     <el-icon><Download /></el-icon>
-                    ��������
+                    导出分类
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -54,10 +54,10 @@
       </template>
 
       <div class="supplier-layout">
-        <!-- �������� -->
+        <!-- 左侧分类树 -->
         <div class="category-panel">
           <div class="panel-title">
-            <span>��Ӧ�̷���</span>
+            <span>供应商分类</span>
             <el-button
               link
               type="primary"
@@ -65,12 +65,12 @@
               :class="{ 'is-active': !selectedCategoryId }"
               @click="handleShowAll"
             >
-              ȫ��
+              全部
             </el-button>
           </div>
           <el-input
             v-model="categoryFilterText"
-            placeholder="ɸѡ����"
+            placeholder="筛选分类"
             clearable
             class="category-filter"
           />
@@ -90,33 +90,33 @@
                   <el-icon class="node-icon"><Folder /></el-icon>
                   <span>{{ data.name }}</span>
                   <span v-if="data.supplierCount !== undefined" class="category-count">
-                    ({{ data.children?.length || 0 }}���ӷ���, {{ data.supplierCount }}����Ӧ��)
+                    ({{ data.children?.length || 0 }}个子分类, {{ data.supplierCount }}个供应商)
                   </span>
                 </span>
               </template>
             </el-tree>
           </el-scrollbar>
           <div class="category-actions" v-if="selectedCategoryId">
-            <el-button link type="primary" @click="handleEditCategory">�༭����</el-button>
-            <el-button link type="danger" @click="handleDeleteCategory">ɾ������</el-button>
+            <el-button link type="primary" @click="handleEditCategory">编辑分类</el-button>
+            <el-button link type="danger" @click="handleDeleteCategory">删除分类</el-button>
           </div>
         </div>
 
-        <!-- �Ҳ����α��� -->
+        <!-- 右侧树形表格 -->
         <div class="table-panel">
           <el-form :inline="true" :model="searchForm" class="search-form" @submit.prevent>
-            <el-form-item label="�ؼ���">
+            <el-form-item label="关键词">
               <el-input
                 v-model="searchForm.keyword"
-                placeholder="���� / ���� / ��ϵ��"
+                placeholder="编码 / 名称 / 联系人"
                 clearable
                 @input="handleSearch"
                 @keyup.enter="handleSearch"
               />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleSearch">����</el-button>
-              <el-button @click="handleResetSearch">����</el-button>
+              <el-button type="primary" @click="handleSearch">搜索</el-button>
+              <el-button @click="handleResetSearch">重置</el-button>
             </el-form-item>
           </el-form>
 
@@ -128,7 +128,7 @@
             stripe
             style="width: 100%"
           >
-            <el-table-column prop="name" label="��Ӧ������" min-width="220">
+            <el-table-column prop="name" label="供应商名称" min-width="220">
               <template #default="{ row }">
                 <span v-if="row.category?.name" class="supplier-name-with-category">
                   <span class="category-prefix">[{{ row.category.name }}]</span>
@@ -137,25 +137,25 @@
                 <span v-else>{{ row.name }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="code" label="��Ӧ�̱���" width="130" />
-            <el-table-column prop="contact" label="��ϵ��" width="120" />
-            <el-table-column prop="phone" label="�绰" width="140" />
-            <el-table-column prop="bankName" label="������" width="180" />
-            <el-table-column prop="bankAccount" label="�����˺�" width="180" />
-            <el-table-column label="״̬" width="90" align="center">
+            <el-table-column prop="code" label="供应商编码" width="130" />
+            <el-table-column prop="contact" label="联系人" width="120" />
+            <el-table-column prop="phone" label="电话" width="140" />
+            <el-table-column prop="bankName" label="开户行" width="180" />
+            <el-table-column prop="bankAccount" label="银行账号" width="180" />
+            <el-table-column label="状态" width="90" align="center">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
-                  {{ row.status === 'active' ? '����' : '����' }}
+                  {{ row.status === 'active' ? '启用' : '禁用' }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="����" width="200" fixed="right">
+            <el-table-column label="操作" width="200" fixed="right">
               <template #default="{ row }">
                 <el-button link type="primary" size="small" @click="handleEditSupplier(row)">
-                  �༭
+                  编辑
                 </el-button>
                 <el-button link type="danger" size="small" @click="handleDeleteSupplier(row)">
-                  ɾ��
+                  删除
                 </el-button>
               </template>
             </el-table-column>
@@ -164,98 +164,98 @@
       </div>
     </el-card>
 
-    <!-- ����Ի��� -->
+    <!-- 分类对话框 -->
     <el-dialog v-model="categoryDialogVisible" :title="categoryDialogTitle" width="480px" @close="resetCategoryForm">
       <el-form ref="categoryFormRef" :model="categoryForm" :rules="categoryRules" label-width="90px">
-        <el-form-item label="��������" prop="name">
-          <el-input v-model="categoryForm.name" placeholder="�������������" />
+        <el-form-item label="分类名称" prop="name">
+          <el-input v-model="categoryForm.name" placeholder="请输入分类名称" />
         </el-form-item>
-        <el-form-item label="�ϼ�����" prop="parentId">
+        <el-form-item label="上级分类" prop="parentId">
           <el-tree-select
             v-model="categoryForm.parentId"
             :data="categoryTreeForSelect"
             :props="treeProps"
             check-strictly
             clearable
-            placeholder="��ѡ��Ϊ������"
+            placeholder="不选则为根分类"
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="����" prop="sortOrder">
+        <el-form-item label="排序" prop="sortOrder">
           <el-input-number v-model="categoryForm.sortOrder" :min="0" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="categoryDialogVisible = false">ȡ��</el-button>
+        <el-button @click="categoryDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="categorySubmitLoading" @click="handleSubmitCategory">
-          ȷ��
+          确定
         </el-button>
       </template>
     </el-dialog>
 
-    <!-- ��Ӧ�̶Ի��� -->
+    <!-- 供应商对话框 -->
     <el-dialog v-model="supplierDialogVisible" :title="supplierDialogTitle" width="560px" @close="resetSupplierForm">
       <el-form ref="supplierFormRef" :model="supplierForm" :rules="supplierRules" label-width="90px">
-        <el-form-item label="����" prop="code">
-          <el-input v-model="supplierForm.code" placeholder="��Ӧ�̱���" />
+        <el-form-item label="编码" prop="code">
+          <el-input v-model="supplierForm.code" placeholder="供应商编码" />
         </el-form-item>
-        <el-form-item label="����" prop="name">
-          <el-input v-model="supplierForm.name" placeholder="��Ӧ������" />
+        <el-form-item label="名称" prop="name">
+          <el-input v-model="supplierForm.name" placeholder="供应商名称" />
         </el-form-item>
-        <el-form-item label="��������" prop="categoryId">
+        <el-form-item label="所属分类" prop="categoryId">
           <el-tree-select
             v-model="supplierForm.categoryId"
             :data="categoryTreeForSelect"
             :props="treeProps"
             check-strictly
-            placeholder="��ѡ�����"
+            placeholder="请选择分类"
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="��ϵ��" prop="contact">
-          <el-input v-model="supplierForm.contact" placeholder="��ϵ��" />
+        <el-form-item label="联系人" prop="contact">
+          <el-input v-model="supplierForm.contact" placeholder="联系人" />
         </el-form-item>
-        <el-form-item label="�绰" prop="phone">
-          <el-input v-model="supplierForm.phone" placeholder="�绰" />
+        <el-form-item label="电话" prop="phone">
+          <el-input v-model="supplierForm.phone" placeholder="电话" />
         </el-form-item>
-        <el-form-item label="����" prop="email">
-          <el-input v-model="supplierForm.email" placeholder="����" />
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="supplierForm.email" placeholder="邮箱" />
         </el-form-item>
-        <el-form-item label="��ַ" prop="address">
-          <el-input v-model="supplierForm.address" type="textarea" :rows="2" placeholder="��ַ" />
+        <el-form-item label="地址" prop="address">
+          <el-input v-model="supplierForm.address" type="textarea" :rows="2" placeholder="地址" />
         </el-form-item>
-        <el-form-item label="������" prop="bankName">
-          <el-input v-model="supplierForm.bankName" placeholder="������" />
+        <el-form-item label="开户行" prop="bankName">
+          <el-input v-model="supplierForm.bankName" placeholder="开户行" />
         </el-form-item>
-        <el-form-item label="�����˺�" prop="bankAccount">
-          <el-input v-model="supplierForm.bankAccount" placeholder="�����˺�" />
+        <el-form-item label="银行账号" prop="bankAccount">
+          <el-input v-model="supplierForm.bankAccount" placeholder="银行账号" />
         </el-form-item>
-        <el-form-item label="״̬" prop="status">
+        <el-form-item label="状态" prop="status">
           <el-radio-group v-model="supplierForm.status">
-            <el-radio value="active">����</el-radio>
-            <el-radio value="inactive">����</el-radio>
+            <el-radio value="active">启用</el-radio>
+            <el-radio value="inactive">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="supplierDialogVisible = false">ȡ��</el-button>
+        <el-button @click="supplierDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="supplierSubmitLoading" @click="handleSubmitSupplier">
-          ȷ��
+          确定
         </el-button>
       </template>
     </el-dialog>
 
-    <!-- ����Ի��� -->
+    <!-- 导入对话框 -->
     <CommonImportDialog
       v-model="importDialogVisible"
-      title="��Ӧ��"
+      title="供应商"
       :columns="importColumns"
       :format-tips="importFormatTips"
       :import-fn="handleImportSubmit"
       @success="handleImportSuccess"
     />
 
-    <!-- ���ർ��Ի��� -->
+    <!-- 分类导入对话框 -->
     <SupplierCategoryImportDialog
       v-model="categoryImportDialogVisible"
       @success="loadData"
@@ -326,18 +326,18 @@ const categoryTreeRef = ref<InstanceType<typeof ElTree>>()
 
 const searchForm = reactive({ keyword: '' })
 
-// ����Ի���
+// 分类对话框
 const categoryDialogVisible = ref(false)
-const categoryDialogTitle = ref('��������')
+const categoryDialogTitle = ref('新增分类')
 const categoryIsEdit = ref(false)
 const categorySubmitLoading = ref(false)
 const categoryFormRef = ref<FormInstance>()
 const categoryForm = reactive({ id: '', name: '', parentId: null as string | null, sortOrder: 0 })
-const categoryRules: FormRules = { name: [{ required: true, message: '�������������', trigger: 'blur' }] }
+const categoryRules: FormRules = { name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }] }
 
-// ��Ӧ�̶Ի���
+// 供应商对话框
 const supplierDialogVisible = ref(false)
-const supplierDialogTitle = ref('������Ӧ��')
+const supplierDialogTitle = ref('新增供应商')
 const supplierIsEdit = ref(false)
 const supplierSubmitLoading = ref(false)
 const supplierFormRef = ref<FormInstance>()
@@ -355,36 +355,36 @@ const supplierForm = reactive({
   status: 'active'
 })
 const supplierRules: FormRules = {
-  code: [{ required: true, message: '�����빩Ӧ�̱���', trigger: 'blur' }],
-  name: [{ required: true, message: '�����빩Ӧ������', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '��ѡ�����', trigger: 'change' }]
+  code: [{ required: true, message: '请输入供应商编码', trigger: 'blur' }],
+  name: [{ required: true, message: '请输入供应商名称', trigger: 'blur' }],
+  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }]
 }
 
-// ����
+// 导入
 const importDialogVisible = ref(false)
 const categoryImportDialogVisible = ref(false)
 const importColumns = [
-  { prop: 'code', label: '����', required: true, unique: true },
-  { prop: 'name', label: '����', required: true },
-  { prop: 'category', label: '��Ӧ�̷���' },
-  { prop: 'contact', label: '��ϵ��' },
-  { prop: 'phone', label: '�绰' },
-  { prop: 'email', label: '����' },
-  { prop: 'address', label: '��ַ' },
-  { prop: 'bankName', label: '������' },
-  { prop: 'bankAccount', label: '�����˺�' },
-  { prop: 'status', label: '״̬' }
+  { prop: 'code', label: '编码', required: true, unique: true },
+  { prop: 'name', label: '名称', required: true },
+  { prop: 'category', label: '供应商分类' },
+  { prop: 'contact', label: '联系人' },
+  { prop: 'phone', label: '电话' },
+  { prop: 'email', label: '邮箱' },
+  { prop: 'address', label: '地址' },
+  { prop: 'bankName', label: '开户行' },
+  { prop: 'bankAccount', label: '银行账号' },
+  { prop: 'status', label: '状态' }
 ]
 const importFormatTips = [
-  '���룺���Ψһ��ʶ�������ظ�',
-  '���ƣ�����',
-  '��Ӧ�̷��ࣺѡ���д�������ƣ�������ʱ���Զ�����',
-  '��ϵ�ˡ��绰�����䡢��ַ��ѡ��',
-  '�����С������˺ţ�ѡ��',
-  '״̬��ѡ���д"����"��"����"��Ĭ��Ϊ����'
+  '编码：必填，唯一标识，不可重复',
+  '名称：必填',
+  '供应商分类：选填，填写分类名称，导入时若不存在则自动创建',
+  '联系人、电话、邮箱、地址：选填',
+  '开户行、银行账号：选填',
+  '状态：选填，填写"启用"或"禁用"，默认为启用'
 ]
 
-// ����ѡ�������ݣ��༭ʱ�ų����������
+// 树形选择器数据
 const categoryTreeForSelect = computed(() => {
   if (!categoryIsEdit.value || !categoryForm.id) {
     return categoryTree.value
@@ -417,7 +417,7 @@ function findCategoryNode(nodes: CategoryNode[], id: string): CategoryNode | nul
   return null
 }
 
-// �Ż�������ɸѡ����
+// 优化：分类筛选防抖
 let categoryFilterTimer: ReturnType<typeof setTimeout> | null = null
 watch(categoryFilterText, (val) => {
   if (categoryFilterTimer) clearTimeout(categoryFilterTimer)
@@ -433,20 +433,20 @@ async function loadData() {
     if (catRes.success) {
       categoryTree.value = catRes.data || []
     }
-    // �����ѡ�з��࣬���ظ÷���Ĺ�Ӧ�̣��������ǰ100��
+    // 如果有选中分类，加载该分类的供应商，否则加载前100个
     if (selectedCategoryId.value) {
       await loadSuppliersByCategory(selectedCategoryId.value)
     } else {
       await loadAllSuppliers(100)
     }
   } catch (e) {
-    console.error('��������ʧ��:', e)
+    console.error('加载数据失败:', e)
   } finally {
     loading.value = false
   }
 }
 
-// �������й�Ӧ�̣�����������
+// 加载所有供应商（限制100条）
 async function loadAllSuppliers(limit: number = 100) {
   try {
     const res = await getSuppliers({
@@ -459,11 +459,11 @@ async function loadAllSuppliers(limit: number = 100) {
       displaySuppliers.value = res.data.items || []
     }
   } catch (e) {
-    console.error('���ع�Ӧ���б�ʧ��:', e)
+    console.error('加载供应商列表失败:', e)
   }
 }
 
-// ��������ع�Ӧ��
+// 按分类加载供应商
 async function loadSuppliersByCategory(categoryId: string) {
   try {
     const res = await getSuppliers({
@@ -477,7 +477,7 @@ async function loadSuppliersByCategory(categoryId: string) {
       displaySuppliers.value = res.data.items || []
     }
   } catch (e) {
-    console.error('��������ع�Ӧ��ʧ��:', e)
+    console.error('按分类加载供应商失败:', e)
   }
 }
 
@@ -497,7 +497,7 @@ function handleCategoryNodeClick(data: CategoryNode) {
   loadSuppliersByCategory(data.id)
 }
 
-// �Ż���ʹ�÷�������������Ƶ���ؽ����ṹ
+// 优化：使用防抖搜索，避免频繁重建树结构
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 function handleSearch() {
@@ -509,7 +509,7 @@ function handleSearch() {
         page: 1,
         limit: 100,
         search: searchForm.keyword.trim() || undefined,
-        // ����ʱ�����Ʒ��࣬�������������
+        // 搜索时不限制分类，允许跨分类搜索
         ...(showInactive.value ? {} : { status: 'active' })
       })
       if (res.success) {
@@ -517,7 +517,7 @@ function handleSearch() {
         displaySuppliers.value = res.data.items || []
       }
     } catch (e) {
-      console.error('������Ӧ��ʧ��:', e)
+      console.error('搜索供应商失败:', e)
     } finally {
       loading.value = false
     }
@@ -533,10 +533,10 @@ function handleResetSearch() {
   }
 }
 
-// �������
+// 分类操作
 function handleAddRootCategory() {
   categoryIsEdit.value = false
-  categoryDialogTitle.value = '������Ӧ�̷���'
+  categoryDialogTitle.value = '新增供应商分类'
   categoryForm.id = ''
   categoryForm.name = ''
   categoryForm.parentId = null
@@ -547,7 +547,7 @@ function handleAddRootCategory() {
 function handleAddChildCategory() {
   if (!selectedCategoryId.value) return
   categoryIsEdit.value = false
-  categoryDialogTitle.value = '�����ӷ���'
+  categoryDialogTitle.value = '新增子分类'
   categoryForm.id = ''
   categoryForm.name = ''
   categoryForm.parentId = selectedCategoryId.value
@@ -557,7 +557,7 @@ function handleAddChildCategory() {
 
 async function handleEditCategory() {
   if (!selectedCategoryId.value) return
-  // �Ӻ�˻�ȡ��������
+  // 从后端获取分类详情
   getSupplierCategories().then(res => {
     if (res.success) {
       const categories = res.data || []
@@ -565,7 +565,7 @@ async function handleEditCategory() {
       const node = flatCategories.find(c => c.id === selectedCategoryId.value)
       if (node) {
         categoryIsEdit.value = true
-        categoryDialogTitle.value = '�༭����'
+        categoryDialogTitle.value = '编辑分类'
         categoryForm.id = node.id
         categoryForm.name = node.name
         categoryForm.parentId = node.parentId || null
@@ -579,9 +579,9 @@ async function handleEditCategory() {
 async function handleDeleteCategory() {
   if (!selectedCategoryId.value) return
   try {
-    // ��ȡ������������ȷ��
+    // 获取分类名称以便确认
     const categoriesRes = await getSupplierCategories()
-    let categoryName = '�÷���'
+    let categoryName = '该分类'
     if (categoriesRes.success) {
       const categories = categoriesRes.data || []
       const flatCategories = flattenCategories(categories)
@@ -589,10 +589,10 @@ async function handleDeleteCategory() {
       if (node) categoryName = node.name
     }
 
-    await ElMessageBox.confirm(`ȷ��ɾ�����ࡸ${categoryName}����`, '��ʾ', { type: 'warning' })
+    await ElMessageBox.confirm(`确定删除分类「${categoryName}」吗？`, '提示', { type: 'warning' })
     const res = await deleteSupplierCategory(selectedCategoryId.value)
     if (res.success) {
-      ElMessage.success('ɾ���ɹ�')
+      ElMessage.success('删除成功')
       selectedCategoryId.value = null
       await loadData()
     }
@@ -622,10 +622,10 @@ async function handleSubmitCategory() {
     const payload = { name: categoryForm.name, parentId: categoryForm.parentId || undefined, sortOrder: categoryForm.sortOrder }
     if (categoryIsEdit.value) {
       const res = await updateSupplierCategory(categoryForm.id, payload)
-      if (res.success) ElMessage.success('���³ɹ�')
+      if (res.success) ElMessage.success('更新成功')
     } else {
       const res = await createSupplierCategory(payload)
-      if (res.success) ElMessage.success('�����ɹ�')
+      if (res.success) ElMessage.success('创建成功')
     }
     categoryDialogVisible.value = false
     await loadData()
@@ -635,7 +635,7 @@ async function handleSubmitCategory() {
       nextTick(() => categoryTreeRef.value?.setCurrentKey(categoryForm.parentId!))
     }
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.message || '����ʧ��')
+    ElMessage.error(e?.response?.data?.message || '操作失败')
   } finally {
     categorySubmitLoading.value = false
   }
@@ -645,10 +645,10 @@ function resetCategoryForm() {
   categoryFormRef.value?.resetFields()
 }
 
-// ��Ӧ�̲���
+// 供应商操作
 function handleCreateSupplier() {
   supplierIsEdit.value = false
-  supplierDialogTitle.value = '������Ӧ��'
+  supplierDialogTitle.value = '新增供应商'
   resetSupplierForm()
   if (selectedCategoryId.value) {
     supplierForm.categoryId = selectedCategoryId.value
@@ -661,7 +661,7 @@ async function handleEditSupplier(row: SupplierItem) {
     const res = await getSupplierById(row.id)
     if (res.success) {
       supplierIsEdit.value = true
-      supplierDialogTitle.value = '�༭��Ӧ��'
+      supplierDialogTitle.value = '编辑供应商'
       const s = res.data
       supplierForm.id = s.id
       supplierForm.code = s.code
@@ -681,50 +681,12 @@ async function handleEditSupplier(row: SupplierItem) {
   }
 }
 
-
-async function toggleSupplierStatus(row: SupplierItem) {
-  const newStatus = row.status === 'active' ? 'inactive' : 'active'
-  const actionName = newStatus === 'active' ? '����' : '����'
-  try {
-    await ElMessageBox.confirm(`ȷ��${actionName}��${row.name}����`, '��ʾ', { type: 'warning' })
-    const res = await toggleSupplierStatus(row.id, newStatus)
-    if (res.success) {
-      ElMessage.success(`${actionName}�ɹ�`)
-      await loadData()
-    } else {
-      ElMessage.error(res.message || `${actionName}ʧ��`)
-    }
-  } catch (e: any) {
-    if (e !== 'cancel' && e?.response?.data?.message) {
-      ElMessage.error(e.response.data.message)
-    }
-  }
-}
-async function toggleSupplierStatus(row: any) {
-  const newStatus = row.status === 'active' ? 'inactive' : 'active'
-  const actionName = newStatus === 'active' ? '启用' : '禁用'
-  try {
-    await ElMessageBox.confirm(`确定${actionName}「${row.name}」吗？`, '提示', { type: 'warning' })
-    const res = await toggleSupplierStatus(row.id, newStatus)
-    if (res.success) {
-      ElMessage.success(`${actionName}成功`)
-      await loadData()
-    } else {
-      ElMessage.error(res.message || `${actionName}失败`)
-    }
-  } catch (e: any) {
-    if (e !== 'cancel' && e?.response?.data?.message) {
-      ElMessage.error(e.response.data.message)
-    }
-  }
-}
-
 async function handleDeleteSupplier(row: SupplierItem) {
   try {
-    await ElMessageBox.confirm(`ȷ��ɾ����Ӧ�̡�${row.name}����`, '��ʾ', { type: 'warning' })
+    await ElMessageBox.confirm(`确定删除供应商「${row.name}」吗？`, '提示', { type: 'warning' })
     const res = await deleteSupplier(row.id)
     if (res.success) {
-      ElMessage.success('ɾ���ɹ�')
+      ElMessage.success('删除成功')
       await loadData()
     }
   } catch (e: any) {
@@ -753,15 +715,15 @@ async function handleSubmitSupplier() {
     }
     if (supplierIsEdit.value) {
       const res = await updateSupplier(supplierForm.id, payload)
-      if (res.success) ElMessage.success('���³ɹ�')
+      if (res.success) ElMessage.success('更新成功')
     } else {
       const res = await createSupplier(payload as any)
-      if (res.success) ElMessage.success('�����ɹ�')
+      if (res.success) ElMessage.success('创建成功')
     }
     supplierDialogVisible.value = false
     await loadData()
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.message || '����ʧ��')
+    ElMessage.error(e?.response?.data?.message || '操作失败')
   } finally {
     supplierSubmitLoading.value = false
   }
@@ -782,7 +744,7 @@ function resetSupplierForm() {
   supplierFormRef.value?.resetFields()
 }
 
-// ���뵼��
+// 导入导出
 function handleImport() {
   importDialogVisible.value = true
 }
@@ -792,10 +754,10 @@ function handleImportCategories() {
 }
 
 async function handleImportSubmit(data: any[]) {
-  // ת����������Ϊ����ID
+  // 转换分类名称为分类ID
   const categoryMap = new Map<string, string>()
 
-  // �����������Ƶ�ID��ӳ��
+  // 构建分类名称到ID的映射
   const buildCategoryMap = (categories: CategoryNode[]) => {
     categories.forEach(cat => {
       categoryMap.set(cat.name, cat.id)
@@ -806,16 +768,16 @@ async function handleImportSubmit(data: any[]) {
   }
   buildCategoryMap(categoryTree.value)
 
-  // ת����������
+  // 转换导入数据
   const processedData = data.map(item => {
     const newItem: any = { ...item }
 
-    // ת����������ΪID
+    // 转换分类名称为ID
     if (item.category && categoryMap.has(item.category)) {
       newItem.categoryId = categoryMap.get(item.category)
       delete newItem.category
     } else if (item.category) {
-      newItem.categoryError = `��Ӧ�̷��� "${item.category}" ������`
+      newItem.categoryError = `供应商分类 "${item.category}" 不存在`
     }
 
     return newItem
@@ -830,10 +792,10 @@ function handleImportSuccess() {
 
 function handleExport() {
   if (typeof XLSX === 'undefined') {
-    ElMessage.error('Excel ������δ���أ���ˢ��ҳ������')
+    ElMessage.error('Excel 库未加载，请刷新页面重试')
     return
   }
-  const headers = ['��Ӧ�̱���', '��Ӧ������', '��ϵ��', '�绰', '����', '��ַ', '������', '�����˺�', '����', '״̬']
+  const headers = ['供应商编码', '供应商名称', '联系人', '电话', '邮箱', '地址', '开户行', '银行账号', '分类', '状态']
   const data = allSuppliers.value.map(s => [
     s.code,
     s.name,
@@ -844,24 +806,24 @@ function handleExport() {
     s.bankName || '',
     s.bankAccount || '',
     s.category?.name || '',
-    s.status === 'active' ? '����' : '����'
+    s.status === 'active' ? '启用' : '禁用'
   ])
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, '��Ӧ���б�')
-  XLSX.writeFile(wb, `��Ӧ���б�_${new Date().toLocaleDateString()}.xlsx`)
-  ElMessage.success('�����ɹ�')
+  XLSX.utils.book_append_sheet(wb, ws, '供应商列表')
+  XLSX.writeFile(wb, `供应商列表_${new Date().toLocaleDateString()}.xlsx`)
+  ElMessage.success('导出成功')
 }
 
 function handleExportCategories() {
   if (typeof XLSX === 'undefined') {
-    ElMessage.error('Excel ������δ���أ���ˢ��ҳ������')
+    ElMessage.error('Excel 库未加载，请刷新页面重试')
     return
   }
-  const headers = ['��������', '�ϼ�����', '����', '״̬']
+  const headers = ['分类名称', '上级分类', '排序', '状态']
   const flattenCategories = (nodes: CategoryNode[], parentName = '', result: any[] = []) => {
     nodes.forEach(node => {
-      result.push([node.name, parentName, node.sortOrder || 0, node.status === 'active' ? '����' : '����'])
+      result.push([node.name, parentName, node.sortOrder || 0, node.status === 'active' ? '启用' : '禁用'])
       if (node.children?.length) flattenCategories(node.children, node.name, result)
     })
     return result
@@ -869,9 +831,9 @@ function handleExportCategories() {
   const data = flattenCategories(categoryTree.value)
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, '�����б�')
-  XLSX.writeFile(wb, `��Ӧ�̷���_${new Date().toLocaleDateString()}.xlsx`)
-  ElMessage.success('�����ɹ�')
+  XLSX.utils.book_append_sheet(wb, ws, '分类列表')
+  XLSX.writeFile(wb, `供应商分类_${new Date().toLocaleDateString()}.xlsx`)
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => loadData())

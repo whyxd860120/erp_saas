@@ -55,13 +55,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+销售订单的管理界面销售管理里面，销售订单界面，嗯，下边搜索条件有客户还有状态。这两个搜索条件，它的后边的太窄了，放不开放不下那些字儿        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" @click="handleEdit(row)">
               编辑
-            </el-button>
-            <el-button type="warning" size="small" @click="handleAdjustBalance(row)">
-              调整余额
             </el-button>
             <el-button type="danger" size="small" @click="handleDelete(row)">
               删除
@@ -134,30 +131,6 @@
         </el-button>
       </template>
     </el-dialog>
-    
-    <!-- 调整余额对话框 -->
-    <el-dialog
-      v-model="adjustDialogVisible"
-      title="调整余额"
-      width="400px"
-    >
-      <el-form :model="adjustForm" label-width="100px">
-        <el-form-item label="调整金额" prop="amount">
-          <el-input-number v-model="adjustForm.amount" :precision="2" :step="100" />
-          <div class="form-tip">正数为增加，负数为减少</div>
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="adjustForm.remark" type="textarea" :rows="3" placeholder="请输入调整原因" />
-        </el-form-item>
-      </el-form>
-      
-      <template #footer>
-        <el-button @click="adjustDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="adjustLoading" @click="submitBalanceAdjustment">
-          确定
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -165,7 +138,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, View, Hide } from '@element-plus/icons-vue'
-import { getAccounts, getAccountById, createAccount, updateAccount, deleteAccount, adjustBalance } from '@/api/account'
+import { getAccounts, getAccountById, createAccount, updateAccount, deleteAccount } from '@/api/account'
 import type { FormInstance, FormRules } from 'element-plus'
 
 // 数据列表
@@ -194,11 +167,6 @@ const isEdit = ref(false)
 const submitLoading = ref(false)
 const formRef = ref<FormInstance>()
 
-// 调整余额对话框
-const adjustDialogVisible = ref(false)
-const adjustLoading = ref(false)
-const currentAccountId = ref('')
-
 // 表单数据
 const formData = reactive({
   id: '',
@@ -209,12 +177,6 @@ const formData = reactive({
   accountNo: '',
   balance: 0,
   status: 'active'
-})
-
-// 调整余额表单
-const adjustForm = reactive({
-  amount: 0,
-  remark: ''
 })
 
 // 表单验证规则
@@ -229,8 +191,6 @@ const formRules: FormRules = {
     { required: true, message: '请选择类型', trigger: 'change' }
   ]
 }
-
-// 获取账户列表
 const fetchAccounts = async () => {
   try {
     loading.value = true
@@ -302,34 +262,6 @@ const handleEdit = async (row: any) => {
     }
   } catch (error) {
     console.error('获取账户详情失败:', error)
-  }
-}
-
-// 调整余额
-const handleAdjustBalance = (row: any) => {
-  currentAccountId.value = row.id
-  adjustForm.amount = 0
-  adjustForm.remark = ''
-  adjustDialogVisible.value = true
-}
-
-// 提交余额调整
-const submitBalanceAdjustment = async () => {
-  try {
-    adjustLoading.value = true
-    
-    await adjustBalance(currentAccountId.value, {
-      amount: adjustForm.amount,
-      remark: adjustForm.remark
-    })
-    
-    ElMessage.success('余额调整成功')
-    adjustDialogVisible.value = false
-    fetchAccounts()
-  } catch (error) {
-    console.error('余额调整失败:', error)
-  } finally {
-    adjustLoading.value = false
   }
 }
 
