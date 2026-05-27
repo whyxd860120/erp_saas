@@ -561,11 +561,32 @@
         <button class="btn btn-primary" onclick="checkEnvironment()">开始检测</button>
         
         <div id="detect-results" style="display: none; margin-top: 20px;">
-          <div class="env-item">
+          <div class="env-item" id="node-item">
             <span class="name">Node.js</span>
             <span class="status">
               <span id="node-status" class="status-badge">检测中...</span>
               <span id="node-version"></span>
+            </span>
+          </div>
+          <div class="env-item" id="mysql-item">
+            <span class="name">MySQL</span>
+            <span class="status">
+              <span id="mysql-status" class="status-badge">检测中...</span>
+              <span id="mysql-version"></span>
+            </span>
+          </div>
+          <div class="env-item" id="redis-item">
+            <span class="name">Redis</span>
+            <span class="status">
+              <span id="redis-status" class="status-badge">检测中...</span>
+              <span id="redis-version"></span>
+            </span>
+          </div>
+          <div class="env-item" id="git-item">
+            <span class="name">Git</span>
+            <span class="status">
+              <span id="git-status" class="status-badge">检测中...</span>
+              <span id="git-version"></span>
             </span>
           </div>
           <div class="env-item">
@@ -573,20 +594,6 @@
             <span class="status">
               <span id="npm-status" class="status-badge">检测中...</span>
               <span id="npm-version"></span>
-            </span>
-          </div>
-          <div class="env-item">
-            <span class="name">MySQL</span>
-            <span class="status">
-              <span id="mysql-status" class="status-badge">检测中...</span>
-              <span id="mysql-version"></span>
-            </span>
-          </div>
-          <div class="env-item">
-            <span class="name">Redis</span>
-            <span class="status">
-              <span id="redis-status" class="status-badge">检测中...</span>
-              <span id="redis-version"></span>
             </span>
           </div>
           <div class="env-item">
@@ -614,6 +621,12 @@
               <span id="env-status" class="status-badge">检测中...</span>
             </span>
           </div>
+        </div>
+
+        <div style="margin-top: 15px;">
+          <button class="btn btn-secondary" onclick="openInstallersFolder()">
+            📁 打开安装程序目录
+          </button>
         </div>
 
         <div id="detect-summary" style="display: none; margin-top: 20px;">
@@ -838,10 +851,11 @@
 
       const results = await ipcRenderer.invoke('check-environment');
 
-      updateStatus('node', results.node);
+      updateStatus('node', results.node, true);
+      updateStatus('mysql', results.mysql, true);
+      updateStatus('redis', results.redis, true);
+      updateStatus('git', results.git, true);
       updateStatus('npm', results.npm);
-      updateStatus('mysql', results.mysql);
-      updateStatus('redis', results.redis);
       updateStatus('prisma', results.prisma);
       updateStatus('backend', { installed: results.backendPackageExists, status: results.backendPackageExists ? 'ok' : 'missing' });
       updateStatus('frontend', { installed: results.frontendExists, status: results.frontendExists ? 'ok' : 'missing' });
@@ -849,6 +863,7 @@
 
       const allOk = results.node.installed && results.npm.installed && 
                    results.mysql.installed && results.redis.installed && 
+                   results.git.installed &&
                    results.backendPackageExists && results.frontendExists;
       const alert = document.getElementById('detect-alert');
       
@@ -861,9 +876,10 @@
         
         const missingItems = [];
         if (!results.node.installed) missingItems.push('Node.js');
-        if (!results.npm.installed) missingItems.push('npm');
         if (!results.mysql.installed) missingItems.push('MySQL');
         if (!results.redis.installed) missingItems.push('Redis');
+        if (!results.git.installed) missingItems.push('Git');
+        if (!results.npm.installed) missingItems.push('npm');
         if (!results.backendPackageExists) missingItems.push('后端项目文件');
         if (!results.frontendExists) missingItems.push('前端项目文件');
         
@@ -874,7 +890,7 @@
       document.getElementById('detect-summary').style.display = 'block';
     }
 
-    function updateStatus(key, result) {
+    function updateStatus(key, result, hasInstall = false) {
       const statusEl = document.getElementById(`${key}-status`);
       const versionEl = document.getElementById(`${key}-version`);
       
@@ -884,6 +900,72 @@
       if (versionEl && result.version) {
         versionEl.textContent = result.version;
       }
+
+      // 如果可以安装，添加安装按钮
+      if (hasInstall && result.status === 'missing') {
+        const itemEl = document.getElementById(`${key}-item`);
+        if (itemEl) {
+          const statusSpan = itemEl.querySelector('.status');
+          const existingBtn = statusSpan.querySelector('.btn.install-btn');
+          if (!existingBtn) {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-primary install-btn';
+            btn.style.cssText = 'padding: 4px 12px; font-size: 12px; margin-left: 10px;';
+            btn.textContent = result.installerExists ? '安装' : '下载';
+            btn.onclick = () => installSoftware(key, result.installerExists);
+            statusSpan.appendChild(btn);
+          }
+        }
+      } else if (hasInstall && result.status === 'ok') {
+        // 已安装，移除安装按钮
+        const itemEl = document.getElementById(`${key}-item`);
+        if (itemEl) {
+          const btn = itemEl.querySelector('.install-btn');
+          if (btn) btn.remove();
+        }
+      }
+    }
+
+    async function installSoftware(key, hasInstaller) {
+      if (!hasInstaller) {
+        // 没有安装程序，打开下载链接
+        const urls = {
+          node: 'https://nodejs.org/dist/v24.15.0/node-v24.15.0-x64.msi',
+          mysql: 'https://dev.mysql.com/downloads/installer/',
+          redis: 'https://github.com/microsoftarchive/redis/releases',
+          git: 'https://git-scm.com/download/win'
+        };
+        if (urls[key]) {
+          await ipcRenderer.invoke('open-external', urls[key]);
+        }
+        return;
+      }
+
+      // 有安装程序，执行安装
+      document.getElementById('install-progress').style.display = 'block';
+      document.getElementById('install-log').style.display = 'block';
+      document.getElementById('install-result').style.display = 'none';
+      document.getElementById('log-content').textContent = '';
+
+      try {
+        const result = await ipcRenderer.invoke('install-software', key);
+        const resultEl = document.getElementById('install-result');
+        
+        if (result.success) {
+          resultEl.innerHTML = `<div class="alert success"><strong>✓ 安装成功</strong><br>${result.message}</div>`;
+        } else {
+          resultEl.innerHTML = `<div class="alert error"><strong>✗ 安装失败</strong><br>${result.message}</div>`;
+        }
+        resultEl.style.display = 'block';
+      } catch (error) {
+        const resultEl = document.getElementById('install-result');
+        resultEl.innerHTML = `<div class="alert error"><strong>✗ 安装失败</strong><br>${error.message}</div>`;
+        resultEl.style.display = 'block';
+      }
+    }
+
+    async function openInstallersFolder() {
+      await ipcRenderer.invoke('open-installers-folder');
     }
 
     async function saveConfig() {
