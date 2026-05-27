@@ -18,6 +18,12 @@ export default defineConfig({
     port: 8088,
     strictPort: true,
     host: true,
+    allowedHosts: [
+      'sdyel001.gnway.org',
+      '.gnway.org',
+      'localhost',
+      '127.0.0.1'
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
