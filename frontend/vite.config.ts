@@ -15,7 +15,7 @@ export default defineConfig({
   
   // 开发服务器配置
   server: {
-    port: 8088,
+    port: 8080,
     strictPort: true,
     host: true,
     proxy: {
