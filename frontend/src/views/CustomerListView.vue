@@ -289,8 +289,7 @@ import {
 } from '@/api/customer'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CustomerCategoryImportDialog from './CustomerCategoryImportDialog.vue'
-import { getUsers },
-  toggleCustomerStatus from '@/api/user'
+import { getUsers, toggleCustomerStatus } from '@/api/user'
 
 declare const XLSX: any
 

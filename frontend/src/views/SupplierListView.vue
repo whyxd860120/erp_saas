@@ -281,7 +281,7 @@ import {
   updateSupplier,
   deleteSupplier,
   importSuppliers,
-  toggleSupplierStatus,\n  toggleSupplierStatus
+  toggleSupplierStatus
 } from '@/api/supplier'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import SupplierCategoryImportDialog from './SupplierCategoryImportDialog.vue'
