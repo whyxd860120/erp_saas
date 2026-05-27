@@ -5,19 +5,19 @@
         <div class="card-header">
           <span>物料管理</span>
           <div class="header-actions">
-            <el-button v-if="hasPermission('product:create')" type="primary" plain @click="handleAddRootCategory">
+            <el-button type="primary" plain @click="handleAddRootCategory">
               <el-icon><FolderAdd /></el-icon>
               新增物料分类
             </el-button>
-            <el-button v-if="hasPermission('product:create')" type="primary" plain :disabled="!selectedCategoryId" @click="handleAddChildCategory">
+            <el-button type="primary" plain :disabled="!selectedCategoryId" @click="handleAddChildCategory">
               <el-icon><FolderAdd /></el-icon>
               新增子分类
             </el-button>
-            <el-button v-if="hasPermission('product:create')" type="primary" :disabled="!selectedCategoryId" @click="handleCreateProduct">
+            <el-button type="primary" :disabled="!selectedCategoryId" @click="handleCreateProduct">
               <el-icon><Plus /></el-icon>
               新增物料
             </el-button>
-            <el-button @click="loadTreeData">
+            <el-button @click="loadData">
               <el-icon><Refresh /></el-icon>
               刷新
             </el-button>
@@ -25,28 +25,24 @@
               <el-icon><View v-if="!showInactive" /><Hide v-else /></el-icon>
               {{ showInactive ? '隐藏禁用' : '显示禁用' }}
             </el-button>
-            <el-dropdown v-if="hasPermission('product:create')" split-button type="success" plain @click="handleImport">
+            <el-dropdown split-button type="success" plain @click="handleImport">
               <el-icon><Upload /></el-icon>
               导入物料
               <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="handleImportCategories">
-                    <el-icon><FolderAdd /></el-icon>
-                    导入分类
-                  </el-dropdown-item>
-                </el-dropdown-menu>
+                <el-dropdown-item @click="handleImportCategories">
+                  <el-icon><FolderAdd /></el-icon>
+                  导入分类
+                </el-dropdown-item>
               </template>
             </el-dropdown>
-            <el-dropdown v-if="hasPermission('product:read')" split-button type="info" plain @click="handleExport">
+            <el-dropdown split-button type="info" plain @click="handleExport">
               <el-icon><Download /></el-icon>
               导出物料
               <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="handleExportCategories">
-                    <el-icon><Download /></el-icon>
-                    导出分类
-                  </el-dropdown-item>
-                </el-dropdown-menu>
+                <el-dropdown-item @click="handleExportCategories">
+                  <el-icon><Download /></el-icon>
+                  导出分类
+                </el-dropdown-item>
               </template>
             </el-dropdown>
           </div>
@@ -63,7 +59,7 @@
               type="primary"
               size="small"
               :class="{ 'is-active': !selectedCategoryId }"
-              @click="handleShowAllCategories"
+              @click="handleShowAll"
             >
               全部
             </el-button>
@@ -97,8 +93,8 @@
             </el-tree>
           </el-scrollbar>
           <div class="category-actions" v-if="selectedCategoryId">
-            <el-button v-if="hasPermission('product:update')" link type="primary" @click="handleEditCategory">编辑分类</el-button>
-            <el-button v-if="hasPermission('product:delete')" link type="danger" @click="handleDeleteCategory">删除分类</el-button>
+            <el-button link type="primary" @click="handleEditCategory">编辑分类</el-button>
+            <el-button link type="danger" @click="handleDeleteCategory">删除分类</el-button>
           </div>
         </div>
 
@@ -108,7 +104,7 @@
             <el-form-item label="关键词">
               <el-input
                 v-model="searchForm.keyword"
-                placeholder="编码 / 名称"
+                placeholder="编码 / 名称 / 规格"
                 clearable
                 @input="handleSearch"
                 @keyup.enter="handleSearch"
@@ -128,7 +124,7 @@
             stripe
             style="width: 100%"
           >
-            <el-table-column prop="name" label="名称" min-width="220">
+            <el-table-column prop="name" label="物料名称" min-width="220">
               <template #default="{ row }">
                 <span v-if="row.category?.name" class="product-name-with-category">
                   <span class="category-prefix">[{{ row.category.name }}]</span>
@@ -137,7 +133,7 @@
                 <span v-else>{{ row.name }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="code" label="编码" width="130" />
+            <el-table-column prop="code" label="物料编码" width="130" />
             <el-table-column prop="spec" label="规格" width="120">
               <template #default="{ row }">
                 {{ row.spec || '—' }}
@@ -170,15 +166,18 @@
                 <el-tag v-if="row.enableBatch" size="small" type="warning" style="margin-right: 4px">批次</el-tag>
                 <el-tag v-if="row.enableExpiry" size="small" type="warning" style="margin-right: 4px">保质期</el-tag>
                 <el-tag v-if="row.enableSN" size="small" type="warning">SN码</el-tag>
-                <span v-if="!row.enableBatch && !row.enableExpiry && !row.enableSN" style="color: #909399;">-</span>
+                <span v-if="!row.enableBatch && !row.enableExpiry && !row.enableSN" style="color: #909399">—</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="160" fixed="right">
+            <el-table-column label="操作" width="200" fixed="right">
               <template #default="{ row }">
-                <el-button v-if="hasPermission('product:update')" link type="primary" size="small" @click.stop="handleEditProduct(row)">
+                <el-button link type="primary" size="small" @click="handleEditProduct(row)">
                   编辑
                 </el-button>
-                <el-button v-if="hasPermission('product:delete')" link type="danger" size="small" @click.stop="handleDeleteProduct(row)">
+                <el-button link type="warning" size="small" @click="toggleProductStatus(row)">
+                  {{ row.status === 'active' ? '禁用' : '启用' }}
+                </el-button>
+                <el-button link type="danger" size="small" @click="handleDeleteProduct(row)">
                   删除
                 </el-button>
               </template>
@@ -189,12 +188,7 @@
     </el-card>
 
     <!-- 分类对话框 -->
-    <el-dialog
-      v-model="categoryDialogVisible"
-      :title="categoryDialogTitle"
-      width="480px"
-      @close="resetCategoryForm"
-    >
+    <el-dialog v-model="categoryDialogVisible" :title="categoryDialogTitle" width="480px" @close="resetCategoryForm">
       <el-form ref="categoryFormRef" :model="categoryForm" :rules="categoryRules" label-width="90px">
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="categoryForm.name" placeholder="请输入分类名称" />
@@ -223,12 +217,7 @@
     </el-dialog>
 
     <!-- 物料对话框 -->
-    <el-dialog
-      v-model="productDialogVisible"
-      :title="productDialogTitle"
-      width="560px"
-      @close="resetProductForm"
-    >
+    <el-dialog v-model="productDialogVisible" :title="productDialogTitle" width="560px" @close="resetProductForm">
       <el-form ref="productFormRef" :model="productForm" :rules="productRules" label-width="90px">
         <el-form-item label="编码" prop="code">
           <el-input v-model="productForm.code" placeholder="物料编码" />
@@ -297,17 +286,19 @@
     </el-dialog>
 
     <!-- 导入对话框 -->
-    <ProductImportDialog
+    <CommonImportDialog
       v-model="importDialogVisible"
-      :category-tree="categoryTree"
-      :warehouses="warehouses"
+      title="物料"
+      :columns="importColumns"
+      :format-tips="importFormatTips"
+      :import-fn="handleImportSubmit"
       @success="handleImportSuccess"
     />
 
     <!-- 分类导入对话框 -->
     <CategoryImportDialog
       v-model="categoryImportDialogVisible"
-      @success="handleImportSuccess"
+      @success="loadData"
     />
   </div>
 </template>
@@ -317,8 +308,9 @@ import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { ElTree } from 'element-plus'
-import { Plus, Folder, FolderAdd, Goods, Refresh, Upload, Download, ArrowDown, View, Hide } from '@element-plus/icons-vue'
+import { Plus, Folder, FolderAdd, Refresh, Upload, Download, View, Hide } from '@element-plus/icons-vue'
 import {
+  getCategoryTree,
   getCategories,
   createCategory,
   updateCategory,
@@ -327,17 +319,13 @@ import {
   getProductById,
   createProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  importProducts,
+  toggleProductStatus
 } from '@/api/product'
-import { getWarehouses } from '@/api/warehouse'
-import ProductImportDialog from './ProductImportDialog.vue'
+import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CategoryImportDialog from './CategoryImportDialog.vue'
-import { usePermission } from '@/composables/usePermission'
 
-// 权限检查
-const { hasPermission } = usePermission()
-
-// XLSX is loaded from CDN
 declare const XLSX: any
 
 interface CategoryNode {
@@ -349,12 +337,6 @@ interface CategoryNode {
   children?: CategoryNode[]
 }
 
-interface Warehouse {
-  id: string
-  name: string
-  code: string
-}
-
 interface ProductItem {
   id: string
   code: string
@@ -362,24 +344,13 @@ interface ProductItem {
   spec?: string
   unit?: string
   categoryId?: string | null
+  category?: CategoryNode
   costPrice?: number | string
   salePrice?: number | string
   status?: string
-}
-
-interface TreeRow {
-  id: string
-  nodeType: 'category' | 'product'
-  name: string
-  code?: string
-  spec?: string
-  unit?: string
-  status?: string
-  costPrice?: number | string
-  salePrice?: number | string
-  categoryId?: string | null
-  productId?: string
-  children?: TreeRow[]
+  enableBatch?: boolean
+  enableExpiry?: boolean
+  enableSN?: boolean
 }
 
 const treeProps = { label: 'name', children: 'children', value: 'id' }
@@ -394,9 +365,7 @@ const showInactive = ref(false)
 
 const categoryTreeRef = ref<InstanceType<typeof ElTree>>()
 
-const searchForm = reactive({
-  keyword: ''
-})
+const searchForm = reactive({ keyword: '' })
 
 // 分类对话框
 const categoryDialogVisible = ref(false)
@@ -404,15 +373,8 @@ const categoryDialogTitle = ref('新增分类')
 const categoryIsEdit = ref(false)
 const categorySubmitLoading = ref(false)
 const categoryFormRef = ref<FormInstance>()
-const categoryForm = reactive({
-  id: '',
-  name: '',
-  parentId: null as string | null,
-  sortOrder: 0
-})
-const categoryRules: FormRules = {
-  name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }]
-}
+const categoryForm = reactive({ id: '', name: '', parentId: null as string | null, sortOrder: 0 })
+const categoryRules: FormRules = { name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }] }
 
 // 物料对话框
 const productDialogVisible = ref(false)
@@ -440,104 +402,31 @@ const productRules: FormRules = {
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }]
 }
 
-// 导入对话框
+// 导入
 const importDialogVisible = ref(false)
 const categoryImportDialogVisible = ref(false)
-const warehouses = ref<Warehouse[]>([])
+const importColumns = [
+  { prop: 'code', label: '编码', required: true, unique: true },
+  { prop: 'name', label: '名称', required: true },
+  { prop: 'spec', label: '规格' },
+  { prop: 'unit', label: '单位' },
+  { prop: 'category', label: '分类', required: true },
+  { prop: 'costPrice', label: '成本价' },
+  { prop: 'salePrice', label: '销售价' },
+  { prop: 'status', label: '状态' }
+]
+const importFormatTips = [
+  '编码：必填，唯一标识，不可重复',
+  '名称：必填',
+  '规格：选填',
+  '单位：选填，如：个、件、箱等',
+  '分类：必填，填写分类名称，必须先创建分类',
+  '成本价：选填，数字格式',
+  '销售价：选填，数字格式',
+  '状态：选填，填写"启用"或"禁用"，默认为启用'
+]
 
-// 加载仓库列表
-async function loadWarehouses() {
-  try {
-    const res = await getWarehouses({ page: 1, limit: 1000, status: 'active' })
-    if (res.success && res.data?.items) {
-      warehouses.value = res.data.items
-    }
-  } catch (error) {
-    console.error('加载仓库列表失败:', error)
-  }
-}
-
-function handleImport() {
-  importDialogVisible.value = true
-}
-
-function handleImportCategories() {
-  categoryImportDialogVisible.value = true
-}
-
-function handleImportSuccess() {
-  if (selectedCategoryId.value) {
-    loadProductsByCategory(selectedCategoryId.value)
-  } else {
-    loadAllProducts(100)
-  }
-}
-
-function handleExport() {
-  // 导出功能 - 默认导出为 xlsx
-  if (typeof XLSX === 'undefined') {
-    ElMessage.error('Excel 导出库未加载，请刷新页面重试')
-    return
-  }
-
-  const headers = ['物料编码', '物料名称', '规格', '单位', '成本价', '销售价', '分类', '状态']
-  const data = allProducts.value.map(p => [
-    p.code,
-    p.name,
-    p.spec || '',
-    p.unit || '',
-    p.costPrice || 0,
-    p.salePrice || 0,
-    getCategoryName(p.categoryId),
-    p.status === 'active' ? '启用' : '禁用'
-  ])
-
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, '物料列表')
-  XLSX.writeFile(wb, `物料列表_${new Date().toLocaleDateString()}.xlsx`)
-  ElMessage.success('导出成功')
-}
-
-function handleExportCategories() {
-  // 导出分类为 xlsx
-  if (typeof XLSX === 'undefined') {
-    ElMessage.error('Excel 导出库未加载，请刷新页面重试')
-    return
-  }
-
-  const headers = ['分类名称', '上级分类', '排序', '状态']
-  const flattenCategories = (nodes: CategoryNode[], parentName = '', result: any[] = []) => {
-    nodes.forEach(node => {
-      result.push([
-        node.name,
-        parentName,
-        node.sortOrder || 0,
-        node.status === 'active' ? '启用' : '禁用'
-      ])
-      if (node.children?.length) {
-        flattenCategories(node.children, node.name, result)
-      }
-    })
-    return result
-  }
-
-  const data = flattenCategories(categoryTree.value)
-
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, '分类列表')
-  XLSX.writeFile(wb, `物料分类_${new Date().toLocaleDateString()}.xlsx`)
-  ElMessage.success('导出成功')
-}
-
-function getCategoryName(categoryId: string | null | undefined): string {
-  if (!categoryId) return ''
-  const node = findCategoryNode(categoryTree.value, categoryId)
-  return node?.name || ''
-}
-
-/** 树形选择器数据（编辑时排除自身及子孙） */
+// 树形选择器数据（编辑时排除自身及子孙）
 const categoryTreeForSelect = computed(() => {
   if (!categoryIsEdit.value || !categoryForm.id) {
     return categoryTree.value
@@ -550,16 +439,8 @@ function filterCategoryForSelect(nodes: CategoryNode[], excludeId: string): Cate
     .filter((n) => n.id !== excludeId)
     .map((n) => ({
       ...n,
-      children: n.children?.length
-        ? filterCategoryForSelect(n.children, excludeId)
-        : undefined
+      children: n.children?.length ? filterCategoryForSelect(n.children, excludeId) : undefined
     }))
-}
-
-function formatPrice(val: number | string | undefined) {
-  if (val === undefined || val === null || val === '') return '—'
-  const num = Number(val)
-  return Number.isNaN(num) ? '—' : num.toFixed(2)
 }
 
 function filterCategoryNode(value: string, data: CategoryNode) {
@@ -567,29 +448,6 @@ function filterCategoryNode(value: string, data: CategoryNode) {
   return data.name.includes(value)
 }
 
-// 优化：分类筛选防抖
-let categoryFilterTimer: ReturnType<typeof setTimeout> | null = null
-watch(categoryFilterText, (val) => {
-  if (categoryFilterTimer) clearTimeout(categoryFilterTimer)
-  categoryFilterTimer = setTimeout(() => {
-    categoryTreeRef.value?.filter(val)
-  }, 200)
-})
-
-/** 收集分类及其所有子孙 ID */
-function collectCategoryIds(nodes: CategoryNode[]): string[] {
-  const ids: string[] = []
-  const walk = (list: CategoryNode[]) => {
-    for (const n of list) {
-      ids.push(n.id)
-      if (n.children?.length) walk(n.children)
-    }
-  }
-  walk(nodes)
-  return ids
-}
-
-/** 在树中查找节点 */
 function findCategoryNode(nodes: CategoryNode[], id: string): CategoryNode | null {
   for (const n of nodes) {
     if (n.id === id) return n
@@ -601,116 +459,36 @@ function findCategoryNode(nodes: CategoryNode[], id: string): CategoryNode | nul
   return null
 }
 
-/** 获取选中分类子树（含自身） */
-function getSelectedCategorySubtree(): CategoryNode[] {
-  if (!selectedCategoryId.value) return categoryTree.value
-  const node = findCategoryNode(categoryTree.value, selectedCategoryId.value)
-  return node ? [node] : categoryTree.value
+// 优化：分类筛选防抖
+let categoryFilterTimer: ReturnType<typeof setTimeout> | null = null
+watch(categoryFilterText, (val) => {
+  if (categoryFilterTimer) clearTimeout(categoryFilterTimer)
+  categoryFilterTimer = setTimeout(() => {
+    categoryTreeRef.value?.filter(val)
+  }, 200)
+})
+
+function formatPrice(val: number | string | undefined) {
+  if (val === undefined || val === null || val === '') return '—'
+  const num = Number(val)
+  return Number.isNaN(num) ? '—' : num.toFixed(2)
 }
 
-/** 构建展示树：分类 + 其下物料 */
-// 优化：构建展示树，使用更高效的数据结构处理
-function buildDisplayTree(categories: CategoryNode[], products: ProductItem[]): TreeRow[] {
-  // 创建产品映射，提升查找性能
-  const productMap = new Map<string, ProductItem[]>()
-  const uncategorizedProducts: ProductItem[] = []
-
-  products.forEach(product => {
-    if (product.categoryId) {
-      if (!productMap.has(product.categoryId)) {
-        productMap.set(product.categoryId, [])
-      }
-      productMap.get(product.categoryId)!.push(product)
-    } else {
-      uncategorizedProducts.push(product)
-    }
-  })
-
-  const mapProduct = (p: ProductItem): TreeRow => ({
-    id: `product-${p.id}`,
-    nodeType: 'product',
-    productId: p.id,
-    name: p.name,
-    code: p.code,
-    spec: p.spec,
-    unit: p.unit,
-    status: p.status,
-    costPrice: p.costPrice,
-    salePrice: p.salePrice,
-    categoryId: p.categoryId
-  })
-
-  const walk = (cats: CategoryNode[]): TreeRow[] => {
-    return cats.map((cat) => {
-      const subCategories = cat.children?.length ? walk(cat.children) : []
-      const catProducts = (productMap.get(cat.id) || []).map(mapProduct)
-      return {
-        id: `category-${cat.id}`,
-        nodeType: 'category' as const,
-        name: cat.name,
-        status: cat.status,
-        categoryId: cat.id,
-        hasChildren: subCategories.length > 0 || catProducts.length > 0,
-        children: [...subCategories, ...catProducts]
-      }
-    })
-  }
-
-  const tree = walk(categories)
-
-  if (uncategorizedProducts.length) {
-    tree.push({
-      id: 'category-uncategorized',
-      nodeType: 'category',
-      name: '未分类',
-      categoryId: null,
-      hasChildren: uncategorizedProducts.length > 0,
-      children: uncategorizedProducts.map(mapProduct)
-    })
-  }
-
-  return tree
-}
-
-function filterProductsByKeyword(products: ProductItem[], keyword: string) {
-  if (!keyword.trim()) return products
-  const k = keyword.trim().toLowerCase()
-  return products.filter(
-    (p) =>
-      p.code?.toLowerCase().includes(k) ||
-      p.name?.toLowerCase().includes(k) ||
-      p.spec?.toLowerCase().includes(k)
-  )
-}
-
-function rebuildDisplayTree() {
-  const subtree = getSelectedCategorySubtree()
-  const categoryIds = collectCategoryIds(subtree)
-  let products = allProducts.value
-
-  // 如果有搜索关键词，搜索不受分类限制
-  if (searchForm.keyword.trim()) {
-    products = filterProductsByKeyword(allProducts.value, searchForm.keyword)
-    // 搜索时显示所有匹配的产品，不受分类限制
-  } else if (selectedCategoryId.value) {
-    // 没有搜索关键词时，按分类过滤
-    products = products.filter((p) => !p.categoryId || categoryIds.includes(p.categoryId))
-  }
-
-  displayTreeData.value = buildDisplayTree(subtree, products)
-}
-
-async function loadTreeData() {
+async function loadData() {
   try {
     loading.value = true
-    const catRes = await getCategories()
+    const catRes = await getCategoryTree()
     if (catRes.success) {
       categoryTree.value = catRes.data || []
     }
-    // 默认加载前100条物料
-    await loadAllProducts(100)
+    // 如果有选中分类，加载该分类的物料，否则加载前100条
+    if (selectedCategoryId.value) {
+      await loadProductsByCategory(selectedCategoryId.value)
+    } else {
+      await loadAllProducts(100)
+    }
   } catch (e) {
-    console.error('加载物料树失败:', e)
+    console.error('加载数据失败:', e)
   } finally {
     loading.value = false
   }
@@ -719,7 +497,6 @@ async function loadTreeData() {
 // 加载所有物料（限制数量）
 async function loadAllProducts(limit: number = 100) {
   try {
-    loading.value = true
     const res = await getProducts({
       page: 1,
       limit,
@@ -731,15 +508,12 @@ async function loadAllProducts(limit: number = 100) {
     }
   } catch (e) {
     console.error('加载物料列表失败:', e)
-  } finally {
-    loading.value = false
   }
 }
 
 // 按分类加载物料
 async function loadProductsByCategory(categoryId: string) {
   try {
-    loading.value = true
     const res = await getProducts({
       page: 1,
       limit: 100,
@@ -747,25 +521,20 @@ async function loadProductsByCategory(categoryId: string) {
       ...(showInactive.value ? {} : { status: 'active' })
     })
     if (res.success) {
+      allProducts.value = res.data.items || []
       displayProducts.value = res.data.items || []
     }
   } catch (e) {
     console.error('按分类加载物料失败:', e)
-  } finally {
-    loading.value = false
   }
 }
 
 function toggleShowInactive() {
   showInactive.value = !showInactive.value
-  if (selectedCategoryId.value) {
-    loadProductsByCategory(selectedCategoryId.value)
-  } else {
-    loadAllProducts(100)
-  }
+  loadData()
 }
 
-function handleShowAllCategories() {
+function handleShowAll() {
   selectedCategoryId.value = null
   categoryTreeRef.value?.setCurrentKey(undefined as unknown as string)
   loadAllProducts(100)
@@ -774,6 +543,33 @@ function handleShowAllCategories() {
 function handleCategoryNodeClick(data: CategoryNode) {
   selectedCategoryId.value = data.id
   loadProductsByCategory(data.id)
+}
+
+// 优化：使用防抖搜索，避免频繁重建树结构
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+function handleSearch() {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(async () => {
+    try {
+      loading.value = true
+      const res = await getProducts({
+        page: 1,
+        limit: 100,
+        search: searchForm.keyword.trim() || undefined,
+        // 搜索时不限制分类，允许跨分类搜索
+        ...(showInactive.value ? {} : { status: 'active' })
+      })
+      if (res.success) {
+        allProducts.value = res.data.items || []
+        displayProducts.value = res.data.items || []
+      }
+    } catch (e) {
+      console.error('搜索物料失败:', e)
+    } finally {
+      loading.value = false
+    }
+  }, 300)
 }
 
 function handleResetSearch() {
@@ -785,32 +581,7 @@ function handleResetSearch() {
   }
 }
 
-// 优化：使用防抖搜索，避免频繁请求
-let searchTimer: ReturnType<typeof setTimeout> | null = null
-
-function handleSearch() {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(async () => {
-    try {
-      loading.value = true
-      const res = await getProducts({
-        page: 1,
-        limit: 100,
-        search: searchForm.keyword,
-        ...(showInactive.value ? {} : { status: 'active' })
-      })
-      if (res.success) {
-        displayProducts.value = res.data.items || []
-      }
-    } catch (e) {
-      console.error('搜索物料失败:', e)
-    } finally {
-      loading.value = false
-    }
-  }, 300)
-}
-
-// —— 分类操作 ——
+// 分类操作
 function handleAddRootCategory() {
   categoryIsEdit.value = false
   categoryDialogTitle.value = '新增物料分类'
@@ -832,42 +603,46 @@ function handleAddChildCategory() {
   categoryDialogVisible.value = true
 }
 
-function handleAddChildCategoryFromRow(row: TreeRow) {
-  if (!row.categoryId) return
-  selectedCategoryId.value = row.categoryId
-  handleAddChildCategory()
-}
-
-function handleEditCategory() {
+async function handleEditCategory() {
   if (!selectedCategoryId.value) return
-  const node = findCategoryNode(categoryTree.value, selectedCategoryId.value)
-  if (!node) return
-  categoryIsEdit.value = true
-  categoryDialogTitle.value = '编辑分类'
-  categoryForm.id = node.id
-  categoryForm.name = node.name
-  categoryForm.parentId = node.parentId || null
-  categoryForm.sortOrder = node.sortOrder ?? 0
-  categoryDialogVisible.value = true
-}
-
-function handleEditCategoryFromRow(row: TreeRow) {
-  if (!row.categoryId) return
-  selectedCategoryId.value = row.categoryId
-  handleEditCategory()
+  // 从后端获取分类详情
+  getCategories().then(res => {
+    if (res.success) {
+      const categories = res.data || []
+      const flatCategories = flattenCategories(categories)
+      const node = flatCategories.find(c => c.id === selectedCategoryId.value)
+      if (node) {
+        categoryIsEdit.value = true
+        categoryDialogTitle.value = '编辑分类'
+        categoryForm.id = node.id
+        categoryForm.name = node.name
+        categoryForm.parentId = node.parentId || null
+        categoryForm.sortOrder = node.sortOrder ?? 0
+        categoryDialogVisible.value = true
+      }
+    }
+  })
 }
 
 async function handleDeleteCategory() {
   if (!selectedCategoryId.value) return
-  const node = findCategoryNode(categoryTree.value, selectedCategoryId.value)
-  if (!node) return
   try {
-    await ElMessageBox.confirm(`确定删除分类「${node.name}」吗？`, '提示', { type: 'warning' })
+    // 获取分类名称用于确认
+    const categoriesRes = await getCategories()
+    let categoryName = '该分类'
+    if (categoriesRes.success) {
+      const categories = categoriesRes.data || []
+      const flatCategories = flattenCategories(categories)
+      const node = flatCategories.find(c => c.id === selectedCategoryId.value)
+      if (node) categoryName = node.name
+    }
+
+    await ElMessageBox.confirm(`确定删除分类「${categoryName}」吗？`, '提示', { type: 'warning' })
     const res = await deleteCategory(selectedCategoryId.value)
     if (res.success) {
       ElMessage.success('删除成功')
       selectedCategoryId.value = null
-      await loadTreeData()
+      await loadData()
     }
   } catch (e: any) {
     if (e !== 'cancel' && e?.response?.data?.message) {
@@ -876,16 +651,23 @@ async function handleDeleteCategory() {
   }
 }
 
+function flattenCategories(categories: CategoryNode[]): CategoryNode[] {
+  let result: CategoryNode[] = []
+  categories.forEach(cat => {
+    result.push(cat)
+    if (cat.children?.length) {
+      result = result.concat(flattenCategories(cat.children))
+    }
+  })
+  return result
+}
+
 async function handleSubmitCategory() {
   if (!categoryFormRef.value) return
   await categoryFormRef.value.validate()
   categorySubmitLoading.value = true
   try {
-    const payload = {
-      name: categoryForm.name,
-      parentId: categoryForm.parentId || undefined,
-      sortOrder: categoryForm.sortOrder
-    }
+    const payload = { name: categoryForm.name, parentId: categoryForm.parentId || undefined, sortOrder: categoryForm.sortOrder }
     if (categoryIsEdit.value) {
       const res = await updateCategory(categoryForm.id, payload)
       if (res.success) ElMessage.success('更新成功')
@@ -894,7 +676,7 @@ async function handleSubmitCategory() {
       if (res.success) ElMessage.success('创建成功')
     }
     categoryDialogVisible.value = false
-    await loadTreeData()
+    await loadData()
     if (categoryForm.id) {
       nextTick(() => categoryTreeRef.value?.setCurrentKey(categoryForm.id))
     } else if (categoryForm.parentId) {
@@ -911,7 +693,7 @@ function resetCategoryForm() {
   categoryFormRef.value?.resetFields()
 }
 
-// —— 物料操作 ——
+// 物料操作
 function handleCreateProduct() {
   productIsEdit.value = false
   productDialogTitle.value = '新增物料'
@@ -948,20 +730,37 @@ async function handleEditProduct(row: ProductItem) {
   }
 }
 
+async function toggleProductStatus(row: any) {
+  const newStatus = row.status === 'active' ? 'inactive' : 'active'
+  const actionName = newStatus === 'active' ? '启用' : '禁用'
+  try {
+    await ElMessageBox.confirm(`确定${actionName}「${row.name}」吗？`, '提示', { type: 'warning' })
+    const res = await toggleProductStatus(row.id, newStatus)
+    if (res.success) {
+      ElMessage.success(`${actionName}成功`)
+      await loadData()
+    } else {
+      ElMessage.error(res.message || `${actionName}失败`)
+    }
+  } catch (e: any) {
+    if (e !== 'cancel' && e?.response?.data?.message) {
+      ElMessage.error(e.response.data.message)
+    }
+  }
+}
+
 async function handleDeleteProduct(row: ProductItem) {
   try {
     await ElMessageBox.confirm(`确定删除物料「${row.name}」吗？`, '提示', { type: 'warning' })
     const res = await deleteProduct(row.id)
     if (res.success) {
       ElMessage.success('删除成功')
-      if (selectedCategoryId.value) {
-        loadProductsByCategory(selectedCategoryId.value)
-      } else {
-        loadAllProducts(100)
-      }
+      await loadData()
     }
   } catch (e: any) {
-    if (e !== 'cancel') console.error(e)
+    if (e !== 'cancel' && e?.response?.data?.message) {
+      ElMessage.error(e.response.data.message)
+    }
   }
 }
 
@@ -991,11 +790,7 @@ async function handleSubmitProduct() {
       if (res.success) ElMessage.success('创建成功')
     }
     productDialogVisible.value = false
-    if (selectedCategoryId.value) {
-      loadProductsByCategory(selectedCategoryId.value)
-    } else {
-      loadAllProducts(100)
-    }
+    await loadData()
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.message || '操作失败')
   } finally {
@@ -1013,18 +808,122 @@ function resetProductForm() {
   productForm.costPrice = 0
   productForm.salePrice = 0
   productForm.status = 'active'
+  productForm.enableBatch = false
+  productForm.enableExpiry = false
+  productForm.enableSN = false
   productFormRef.value?.resetFields()
 }
 
-onMounted(() => {
-  loadTreeData()
-  loadWarehouses()
-})
+// 导入导出
+function handleImport() {
+  importDialogVisible.value = true
+}
+
+function handleImportCategories() {
+  categoryImportDialogVisible.value = true
+}
+
+async function handleImportSubmit(data: any[]) {
+  // 转换分类名称为分类ID
+  const categoryMap = new Map<string, string>()
+
+  // 构建分类名称到ID的映射
+  const buildCategoryMap = (categories: CategoryNode[]) => {
+    categories.forEach(cat => {
+      categoryMap.set(cat.name, cat.id)
+      if (cat.children?.length) {
+        buildCategoryMap(cat.children)
+      }
+    })
+  }
+  buildCategoryMap(categoryTree.value)
+
+  // 转换导入数据
+  const processedData = data.map(item => {
+    const newItem: any = { ...item }
+
+    // 转换分类名称为ID
+    if (item.category && categoryMap.has(item.category)) {
+      newItem.categoryId = categoryMap.get(item.category)
+      delete newItem.category
+    } else if (item.category) {
+      newItem.categoryError = `分类 "${item.category}" 不存在`
+    }
+
+    return newItem
+  })
+
+  return await importProducts(processedData)
+}
+
+function handleImportSuccess() {
+  loadData()
+}
+
+function handleExport() {
+  if (typeof XLSX === 'undefined') {
+    ElMessage.error('Excel 导出库未加载，请刷新页面重试')
+    return
+  }
+  const headers = ['物料编码', '物料名称', '规格', '单位', '成本价', '销售价', '分类', '状态']
+  const data = allProducts.value.map(p => [
+    p.code,
+    p.name,
+    p.spec || '',
+    p.unit || '',
+    p.costPrice || 0,
+    p.salePrice || 0,
+    p.category?.name || '',
+    p.status === 'active' ? '启用' : '禁用'
+  ])
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '物料列表')
+  XLSX.writeFile(wb, `物料列表_${new Date().toLocaleDateString()}.xlsx`)
+  ElMessage.success('导出成功')
+}
+
+function handleExportCategories() {
+  if (typeof XLSX === 'undefined') {
+    ElMessage.error('Excel 导出库未加载，请刷新页面重试')
+    return
+  }
+  const headers = ['分类名称', '上级分类', '排序', '状态']
+  const flattenCategories = (nodes: CategoryNode[], parentName = '', result: any[] = []) => {
+    nodes.forEach(node => {
+      result.push([node.name, parentName, node.sortOrder || 0, node.status === 'active' ? '启用' : '禁用'])
+      if (node.children?.length) flattenCategories(node.children, node.name, result)
+    })
+    return result
+  }
+  const data = flattenCategories(categoryTree.value)
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '分类列表')
+  XLSX.writeFile(wb, `物料分类_${new Date().toLocaleDateString()}.xlsx`)
+  ElMessage.success('导出成功')
+}
+
+onMounted(() => loadData())
 </script>
 
 <style scoped>
-.product-page {
-  padding: 0;
+.product-page { padding: 0; }
+
+.product-name-with-category {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.category-prefix {
+  color: #909399;
+  font-size: 12px;
+  font-weight: normal;
+  background: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .card-header {
@@ -1104,49 +1003,10 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
-.row-category {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.row-category .el-icon {
-  color: #e6a23c;
-}
-
-.row-product {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #606266;
-}
-
-.row-product .el-icon {
-  color: #409eff;
-}
-
-.text-muted {
-  color: #c0c4cc;
-}
-
 .category-count {
   color: #909399;
   font-size: 12px;
   margin-left: 4px;
-}
-
-.product-name-with-category {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.category-prefix {
-  color: #e6a23c;
-  font-size: 12px;
-  font-weight: normal;
 }
 
 :deep(.el-tree-node__content) {

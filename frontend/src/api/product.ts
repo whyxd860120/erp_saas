@@ -25,11 +25,28 @@ export interface CreateProductParams {
   image?: string
 }
 
+// 获取物料分类树（与客户/供应商保持一致的命名）
+export const getCategoryTree = () => {
+  return request({
+    url: '/api/v1/products/categories/tree',
+    method: 'get'
+  })
+}
+
 // 获取物料分类列表
 export const getCategories = () => {
   return request({
     url: '/api/v1/products/categories',
     method: 'get'
+  })
+}
+
+// 导入物料
+export const importProducts = (data: any[]) => {
+  return request({
+    url: '/api/v1/products/import',
+    method: 'post',
+    data
   })
 }
 
@@ -125,6 +142,15 @@ export const updateProductStock = (id: string, quantity: number, type: 'in' | 'o
     url: `/api/v1/products/${id}/stock`,
     method: 'patch',
     data: { quantity, type }
+  })
+}
+
+// 状态切换
+export const toggleProductStatus = (id: string, status: string) => {
+  return request({
+    url: `/api/v1/products/${id}/status`,
+    method: 'patch',
+    data: { status }
   })
 }
 

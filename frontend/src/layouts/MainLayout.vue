@@ -1306,9 +1306,25 @@ onMounted(async () => {
   line-height: 42px;
   margin: 2px 12px;
   padding: 0 16px !important;
+  padding-left: 40px !important;
   border-radius: 8px;
   color: rgba(255,255,255,0.6);
   transition: all 0.2s;
+}
+
+/* 三级菜单（嵌套更深的子菜单） */
+.sidebar-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-menu .el-menu-item) {
+  padding-left: 64px !important;
+}
+
+/* 子菜单标题样式 */
+.sidebar-menu :deep(.el-sub-menu .el-menu .el-sub-menu__title) {
+  padding-left: 40px !important;
+}
+
+/* 三级子菜单标题 */
+.sidebar-menu :deep(.el-sub-menu .el-menu .el-sub-menu .el-menu .el-sub-menu__title) {
+  padding-left: 64px !important;
 }
 
 .sidebar-menu :deep(.el-sub-menu .el-menu .el-menu-item:hover) {

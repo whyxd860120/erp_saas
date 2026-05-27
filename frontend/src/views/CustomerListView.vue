@@ -157,6 +157,9 @@
                 <el-button link type="primary" size="small" @click="handleEditCustomer(row)">
                   编辑
                 </el-button>
+                <el-button link type="warning" size="small" @click="toggleCustomerStatus(row)">
+                  {{ row.status === 'active' ? '禁用' : '启用' }}
+                </el-button>
                 <el-button link type="danger" size="small" @click="handleDeleteCustomer(row)">
                   删除
                 </el-button>
@@ -286,7 +289,8 @@ import {
 } from '@/api/customer'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CustomerCategoryImportDialog from './CustomerCategoryImportDialog.vue'
-import { getUsers } from '@/api/user'
+import { getUsers },
+  toggleCustomerStatus from '@/api/user'
 
 declare const XLSX: any
 
@@ -668,6 +672,25 @@ async function handleEditCustomer(row: CustomerItem) {
     }
   } catch (e) {
     console.error(e)
+  }
+}
+
+async function toggleCustomerStatus(row: any) {
+  const newStatus = row.status === 'active' ? 'inactive' : 'active'
+  const actionName = newStatus === 'active' ? '启用' : '禁用'
+  try {
+    await ElMessageBox.confirm(`确定${actionName}「${row.name}」吗？`, '提示', { type: 'warning' })
+    const res = await toggleCustomerStatus(row.id, newStatus)
+    if (res.success) {
+      ElMessage.success(`${actionName}成功`)
+      await loadData()
+    } else {
+      ElMessage.error(res.message || `${actionName}失败`)
+    }
+  } catch (e: any) {
+    if (e !== 'cancel' && e?.response?.data?.message) {
+      ElMessage.error(e.response.data.message)
+    }
   }
 }
 
