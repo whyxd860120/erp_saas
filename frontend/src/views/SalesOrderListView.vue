@@ -923,9 +923,9 @@ const handleEdit = async (row: any) => {
         customerId: order.customerId,
         salesmanId: order.salesmanId || '',
         dueDate: order.dueDate || '',
-        discountRate: order.discountRate || 100,
         remark: order.remark || '',
         extraDiscount: order.extraDiscount || 0,
+        logisticsCost: order.logisticsCost || 0,
         details: order.details?.map((d: any) => ({
           id: d.id,
           productId: d.productId,
@@ -1130,11 +1130,6 @@ const handleDetailChange = (index: number) => {
   calculateAmounts()
 }
 
-// 批量导入
-const handleBatchImport = () => {
-  ElMessage.info('批量导入功能开发中')
-}
-
 // 保存草稿
 const handleSaveDraft = async () => {
   await submitOrder(false)
@@ -1200,7 +1195,6 @@ const resetForm = () => {
   formData.customerId = ''
   formData.salesmanId = ''
   formData.dueDate = ''
-  formData.discountRate = 100
   formData.remark = ''
   formData.extraDiscount = 0
   formData.logisticsCost = 0

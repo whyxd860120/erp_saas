@@ -1066,11 +1066,6 @@ const handleDetailChange = (index: number) => {
   calculateAmounts()
 }
 
-// 批量导入
-const handleBatchImport = () => {
-  ElMessage.info('批量导入功能开发中')
-}
-
 // 保存草稿
 const handleSaveDraft = async () => {
   await submitOrder(false)
