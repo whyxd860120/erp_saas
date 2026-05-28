@@ -201,7 +201,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="400" fixed="right">
+        <el-table-column label="操作" width="500" fixed="right">
           <template #default="{ row }">
             <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer; margin-right: 4px;">
               查看
@@ -256,9 +256,18 @@
               type="success"
               size="small"
               @click="handleQuickOutbound(row)"
-              style="cursor: pointer;"
+              style="cursor: pointer; margin-right: 4px;"
             >
               快速出库
+            </el-tag>
+            <el-tag
+              v-if="row.status === 'confirmed'"
+              type="primary"
+              size="small"
+              @click="handlePushToPurchase(row)"
+              style="cursor: pointer;"
+            >
+              下推采购
             </el-tag>
           </template>
         </el-table-column>
@@ -608,6 +617,108 @@
       </template>
     </el-dialog>
 
+    <!-- 下推采购对话框 -->
+    <el-dialog v-model="pushPurchaseDialogVisible" title="下推采购订单" width="1000px">
+      <el-form :model="pushPurchaseForm" label-width="80px">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="销售订单">
+              <el-input v-model="pushPurchaseForm.orderNo" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="供应商" required>
+              <el-select v-model="pushPurchaseForm.supplierId" placeholder="请选择供应商" style="width: 100%;">
+                <el-option
+                  v-for="supplier in suppliers"
+                  :key="supplier.id"
+                  :label="supplier.name"
+                  :value="supplier.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="采购日期">
+              <el-date-picker
+                v-model="pushPurchaseForm.purchaseDate"
+                type="date"
+                placeholder="选择日期"
+                value-format="YYYY-MM-DD"
+                style="width: 100%;"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      
+      <!-- 物料明细 -->
+      <div class="push-purchase-details">
+        <div class="detail-header">
+          <span>物料明细（考虑可用库存）</span>
+          <el-button size="small" @click="handleMaxUseStock">最大限度使用库存</el-button>
+        </div>
+        <el-table :data="pushPurchaseForm.details" border size="small" max-height="400">
+          <el-table-column prop="product.code" label="物料编码" width="120" />
+          <el-table-column prop="product.name" label="物料名称" min-width="150" />
+          <el-table-column prop="product.spec" label="规格" width="100" />
+          <el-table-column prop="product.unit" label="单位" width="60" />
+          <el-table-column prop="orderQuantity" label="销售数量" width="80" align="right" />
+          <el-table-column prop="availableStock" label="可用库存" width="90" align="right">
+            <template #default="{ row }">
+              <span :class="row.availableStock > 0 ? 'stock-normal' : 'stock-low'">
+                {{ formatNumber(row.availableStock) }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="使用库存" width="120" align="right">
+            <template #default="{ row }">
+              <el-input-number
+                v-model="row.useStock"
+                :min="0"
+                :max="Math.min(row.availableStock, row.orderQuantity)"
+                size="small"
+                style="width: 100%;"
+                @change="calculatePurchaseQuantity(row)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="采购数量" width="120" align="right">
+            <template #default="{ row }">
+              <span class="purchase-quantity">{{ formatNumber(row.purchaseQuantity) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="采购单价" width="120" align="right">
+            <template #default="{ row }">
+              <el-input-number
+                v-model="row.purchasePrice"
+                :min="0"
+                :precision="2"
+                size="small"
+                style="width: 100%;"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="采购金额" width="120" align="right">
+            <template #default="{ row }">
+              <span class="amount">¥{{ formatAmount(row.purchaseQuantity * row.purchasePrice) }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div class="purchase-summary">
+          <span>采购物料数：{{ pushPurchaseForm.details.filter(d => d.purchaseQuantity > 0).length }}</span>
+          <span>采购总额：¥{{ formatAmount(pushPurchaseForm.details.reduce((sum, d) => sum + d.purchaseQuantity * d.purchasePrice, 0)) }}</span>
+        </div>
+      </div>
+      
+      <template #footer>
+        <el-button @click="pushPurchaseDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleConfirmPushPurchase" :loading="pushPurchaseLoading">确认生成采购订单</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 查看详情对话框 -->
     <el-drawer v-model="viewDrawer" title="单据详情" size="800px">
       <div class="order-detail" v-if="currentOrder">
@@ -732,10 +843,13 @@ import {
   updateSalesOrder, confirmSalesOrder, unconfirmSalesOrder, deleteSalesOrder, importSalesOrders
 } from '@/api/sales-order'
 import { createSalesOutbound } from '@/api/sales-outbound'
+import { createPurchaseOrder, getPurchaseOrders } from '@/api/purchase-order'
+import { getInventory } from '@/api/inventory'
 import { getWarehouses } from '@/api/warehouse'
 import { getCustomers } from '@/api/customer'
 import { getProducts } from '@/api/product'
 import { getUsers } from '@/api/user'
+import { getSuppliers } from '@/api/supplier'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 
 // 状态
@@ -758,6 +872,7 @@ const customers = ref<any[]>([])
 const products = ref<any[]>([])
 const salesmen = ref<any[]>([])
 const warehouses = ref<any[]>([])
+const suppliers = ref<any[]>([])
 
 // 快速出库
 const quickOutboundDialogVisible = ref(false)
@@ -768,6 +883,17 @@ const quickOutboundForm = reactive({
   warehouseId: '',
   outboundDate: new Date().toISOString().split('T')[0],
   outboundType: 'all',
+  details: [] as any[]
+})
+
+// 下推采购
+const pushPurchaseDialogVisible = ref(false)
+const pushPurchaseLoading = ref(false)
+const pushPurchaseForm = reactive({
+  orderId: '',
+  orderNo: '',
+  supplierId: '',
+  purchaseDate: new Date().toISOString().split('T')[0],
   details: [] as any[]
 })
 
@@ -1017,6 +1143,18 @@ const fetchWarehouses = async () => {
   }
 }
 
+// 获取供应商
+const fetchSuppliers = async () => {
+  try {
+    const response = await getSuppliers({ page: 1, limit: 1000 })
+    if (response.success) {
+      suppliers.value = response.data.items || []
+    }
+  } catch (error) {
+    console.error('获取供应商失败:', error)
+  }
+}
+
 // 获取物料
 const fetchProducts = async () => {
   try {
@@ -1230,6 +1368,112 @@ const handleSelectAllOutbound = () => {
       detail.quantity = detail.canOutbound
     }
   })
+}
+
+// 下推采购订单
+const handlePushToPurchase = async (row: any) => {
+  try {
+    // 获取订单详情
+    const response = await getSalesOrderById(row.id)
+    if (response.success) {
+      const order = response.data
+      pushPurchaseForm.orderId = order.id
+      pushPurchaseForm.orderNo = order.orderNo
+      pushPurchaseForm.supplierId = ''
+      pushPurchaseForm.purchaseDate = new Date().toISOString().split('T')[0]
+      
+      // 获取所有仓库的库存信息
+      const inventoryResponse = await getInventory({ page: 1, limit: 10000 })
+      const inventoryMap = new Map<string, any>()
+      
+      if (inventoryResponse.success && inventoryResponse.data.items) {
+        inventoryResponse.data.items.forEach((inv: any) => {
+          const availableStock = inv.quantity + (inv.purchaseInTransit || 0) - (inv.salesInTransit || 0)
+          inventoryMap.set(inv.productId, availableStock)
+        })
+      }
+      
+      // 构建采购明细
+      pushPurchaseForm.details = order.items.map((item: any) => {
+        const orderQuantity = Number(item.quantity) || 0
+        const availableStock = inventoryMap.get(item.productId) || 0
+        
+        return {
+          id: item.id,
+          productId: item.productId,
+          product: item.product,
+          orderQuantity,
+          availableStock,
+          useStock: 0,
+          purchaseQuantity: orderQuantity,
+          purchasePrice: 0
+        }
+      })
+      
+      pushPurchaseDialogVisible.value = true
+    }
+  } catch (error) {
+    console.error('获取订单详情失败:', error)
+    ElMessage.error('获取订单详情失败')
+  }
+}
+
+// 最大限度使用库存
+const handleMaxUseStock = () => {
+  pushPurchaseForm.details.forEach(detail => {
+    const maxUse = Math.min(detail.availableStock, detail.orderQuantity)
+    detail.useStock = maxUse
+    calculatePurchaseQuantity(detail)
+  })
+}
+
+// 计算采购数量
+const calculatePurchaseQuantity = (row: any) => {
+  row.purchaseQuantity = Math.max(0, row.orderQuantity - row.useStock)
+}
+
+// 确认下推采购
+const handleConfirmPushPurchase = async () => {
+  if (!pushPurchaseForm.supplierId) {
+    ElMessage.warning('请选择供应商')
+    return
+  }
+
+  // 检查是否有采购数量
+  const hasPurchaseQuantity = pushPurchaseForm.details.some(d => d.purchaseQuantity > 0)
+  if (!hasPurchaseQuantity) {
+    ElMessage.warning('请设置采购数量')
+    return
+  }
+
+  try {
+    pushPurchaseLoading.value = true
+
+    // 构建采购订单明细（只包含有采购数量的物料）
+    const details = pushPurchaseForm.details
+      .filter(d => d.purchaseQuantity > 0)
+      .map(item => ({
+        productId: item.productId,
+        quantity: Number(item.purchaseQuantity) || 0,
+        unitPrice: Number(item.purchasePrice) || 0
+      }))
+
+    // 创建采购订单
+    await createPurchaseOrder({
+      supplierId: pushPurchaseForm.supplierId,
+      items: details,
+      remark: `由销售订单 ${pushPurchaseForm.orderNo} 下推生成`
+    })
+
+    ElMessage.success('采购订单生成成功')
+    pushPurchaseDialogVisible.value = false
+    fetchData()
+  } catch (error) {
+    console.error('生成采购订单失败:', error)
+    ElMessage.error('生成采购订单失败')
+  } finally {
+    pushPurchaseLoading.value = false
+  }
 }
 
 // 确认快速出库
@@ -1517,7 +1761,7 @@ const handleCurrentChange = (val: number) => {
 
 // 初始化
 onMounted(async () => {
-  await Promise.all([fetchData(), fetchCustomers(), fetchProducts(), fetchSalesmen(), fetchWarehouses()])
+  await Promise.all([fetchData(), fetchCustomers(), fetchProducts(), fetchSalesmen(), fetchWarehouses(), fetchSuppliers()])
 })
 </script>
 
@@ -1681,6 +1925,9 @@ onMounted(async () => {
 .stock-warning {
   color: #E6A23C;
 }
+.stock-normal {
+  color: #67C23A;
+}
 .quick-outbound-details {
   margin-top: 16px;
   padding: 16px;
@@ -1693,6 +1940,32 @@ onMounted(async () => {
   align-items: center;
   margin-bottom: 12px;
   font-weight: 600;
+}
+.push-purchase-details {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+.push-purchase-details .detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.push-purchase-details .purchase-summary {
+  display: flex;
+  gap: 24px;
+  padding: 12px 16px;
+  background: #fff;
+  border-radius: 4px;
+  margin-top: 12px;
+  font-weight: 600;
+}
+.push-purchase-details .purchase-quantity {
+  font-weight: 600;
+  color: #409EFF;
 }
 :deep(.el-table .cancelled-row) {
   opacity: 0.5;
