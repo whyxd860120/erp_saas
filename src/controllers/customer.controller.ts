@@ -720,6 +720,81 @@ export const deleteCustomer = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * 批量删除客户
+ * DELETE /api/v1/customers/batch
+ */
+export const batchDeleteCustomers = async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+
+    if (!req.user?.tenantId) {
+      return res.status(400).json({ success: false, message: '未关联租户' });
+    }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: '请选择要删除的客户' });
+    }
+
+    const errors: Array<{ id: string; message: string }> = [];
+    const successIds: string[] = [];
+
+    for (const id of ids) {
+      try {
+        const existingCustomer = await prisma.customer.findFirst({
+          where: { id, tenantId: req.user.tenantId },
+        });
+
+        if (!existingCustomer) {
+          errors.push({ id, message: '客户不存在' });
+          continue;
+        }
+
+        const salesOrders = await prisma.salesOrder.findFirst({
+          where: { customerId: id, tenantId: req.user.tenantId },
+        });
+
+        if (salesOrders) {
+          errors.push({ id, message: '该客户有关联的销售订单，无法删除' });
+          continue;
+        }
+
+        await prisma.customer.delete({ where: { id } });
+        successIds.push(id);
+      } catch (error) {
+        errors.push({ id, message: '删除失败' });
+      }
+    }
+
+    await auditLog({
+      tenantId: req.user.tenantId,
+      userId: req.user.id,
+      action: 'batch_delete',
+      module: 'customer',
+      resource: null,
+      detail: JSON.stringify({
+        total: ids.length,
+        success: successIds.length,
+        failed: errors.length
+      }),
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    return res.json({
+      success: true,
+      message: `批量删除完成：成功 ${successIds.length} 条，失败 ${errors.length} 条`,
+      data: {
+        successIds,
+        errors
+      }
+    });
+  } catch (error) {
+    console.error('批量删除客户错误:', error);
+    return res.status(500).json({ success: false, message: '批量删除客户失败' });
+  }
+};
+
 // ==================== 客户分类导入 ====================
 
 /**
@@ -941,5 +1016,6 @@ export default {
   createCustomer,
   updateCustomer,
   deleteCustomer,
+  batchDeleteCustomers,
   importCustomers,
 };

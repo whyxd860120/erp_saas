@@ -772,6 +772,92 @@ export const deletePurchaseOrder = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * 批量删除采购订单（仅草稿状态）
+ * DELETE /api/v1/purchase-orders/batch
+ */
+export const batchDeletePurchaseOrders = async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+
+    if (!req.user?.tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: '未关联租户',
+      });
+    }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '请选择要删除的采购订单',
+      });
+    }
+
+    const errors: Array<{ id: string; message: string }> = [];
+    const successIds: string[] = [];
+
+    for (const id of ids) {
+      try {
+        const existingOrder = await prisma.purchaseOrder.findFirst({
+          where: {
+            id,
+            tenantId: req.user.tenantId,
+          },
+        });
+
+        if (!existingOrder) {
+          errors.push({ id, message: '采购订单不存在' });
+          continue;
+        }
+
+        if (existingOrder.status !== 'draft') {
+          errors.push({ id, message: '只有草稿状态可以删除' });
+          continue;
+        }
+
+        await prisma.purchaseOrder.delete({
+          where: { id },
+        });
+
+        successIds.push(id);
+      } catch (error) {
+        errors.push({ id, message: '删除失败' });
+      }
+    }
+
+    await auditLog({
+      tenantId: req.user.tenantId,
+      userId: req.user.id,
+      action: 'batch_delete',
+      module: 'purchase_order',
+      resource: null,
+      detail: JSON.stringify({
+        total: ids.length,
+        success: successIds.length,
+        failed: errors.length
+      }),
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    return res.json({
+      success: true,
+      message: `批量删除完成：成功 ${successIds.length} 条，失败 ${errors.length} 条`,
+      data: {
+        successIds,
+        errors
+      }
+    });
+  } catch (error) {
+    console.error('批量删除采购订单错误:', error);
+    return res.status(500).json({
+      success: false,
+      message: '批量删除采购订单失败',
+    });
+  }
+};
+
 export default {
   getPurchaseOrders,
   getPurchaseOrderById,
@@ -779,6 +865,7 @@ export default {
   updatePurchaseOrder,
   confirmPurchaseOrder,
   deletePurchaseOrder,
+  batchDeletePurchaseOrders,
   importPurchaseOrders,
 };
 

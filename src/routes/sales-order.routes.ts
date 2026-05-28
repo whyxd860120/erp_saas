@@ -6,6 +6,7 @@ import {
   updateSalesOrder,
   confirmSalesOrder,
   deleteSalesOrder,
+  batchDeleteSalesOrders,
   importSalesOrders,
 } from '../controllers/sales-order.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
@@ -51,6 +52,12 @@ router.post('/:id/confirm', authenticate, authorize(['admin', 'manager']), tenan
  * DELETE /api/v1/sales-orders/:id
  */
 router.delete('/:id', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), deleteSalesOrder);
+
+/**
+ * 批量删除销售订单（仅草稿状态）
+ * DELETE /api/v1/sales-orders/batch
+ */
+router.delete('/batch', authenticate, authorize(['admin', 'manager']), tenantIsolation(), batchDeleteSalesOrders);
 
 /**
  * 导入销售订单

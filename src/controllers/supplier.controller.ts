@@ -735,6 +735,81 @@ export const deleteSupplier = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * 批量删除供应商
+ * DELETE /api/v1/suppliers/batch
+ */
+export const batchDeleteSuppliers = async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+
+    if (!req.user?.tenantId) {
+      return res.status(400).json({ success: false, message: '未关联租户' });
+    }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: '请选择要删除的供应商' });
+    }
+
+    const errors: Array<{ id: string; message: string }> = [];
+    const successIds: string[] = [];
+
+    for (const id of ids) {
+      try {
+        const existingSupplier = await prisma.supplier.findFirst({
+          where: { id, tenantId: req.user.tenantId },
+        });
+
+        if (!existingSupplier) {
+          errors.push({ id, message: '供应商不存在' });
+          continue;
+        }
+
+        const purchaseOrders = await prisma.purchaseOrder.findFirst({
+          where: { supplierId: id, tenantId: req.user.tenantId },
+        });
+
+        if (purchaseOrders) {
+          errors.push({ id, message: '该供应商有关联的采购订单，无法删除' });
+          continue;
+        }
+
+        await prisma.supplier.delete({ where: { id } });
+        successIds.push(id);
+      } catch (error) {
+        errors.push({ id, message: '删除失败' });
+      }
+    }
+
+    await auditLog({
+      tenantId: req.user.tenantId,
+      userId: req.user.id,
+      action: 'batch_delete',
+      module: 'supplier',
+      resource: null,
+      detail: JSON.stringify({
+        total: ids.length,
+        success: successIds.length,
+        failed: errors.length
+      }),
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    return res.json({
+      success: true,
+      message: `批量删除完成：成功 ${successIds.length} 条，失败 ${errors.length} 条`,
+      data: {
+        successIds,
+        errors
+      }
+    });
+  } catch (error) {
+    console.error('批量删除供应商错误:', error);
+    return res.status(500).json({ success: false, message: '批量删除供应商失败' });
+  }
+};
+
 // ==================== 供应商导入 ====================
 
 /**
@@ -857,5 +932,6 @@ export default {
   createSupplier,
   updateSupplier,
   deleteSupplier,
+  batchDeleteSuppliers,
   importSuppliers,
 };

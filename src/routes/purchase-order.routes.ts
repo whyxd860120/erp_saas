@@ -6,6 +6,7 @@ import {
   updatePurchaseOrder,
   confirmPurchaseOrder,
   deletePurchaseOrder,
+  batchDeletePurchaseOrders,
   importPurchaseOrders,
 } from '../controllers/purchase-order.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
@@ -51,6 +52,12 @@ router.post('/:id/confirm', authenticate, authorize(['admin', 'manager']), tenan
  * DELETE /api/v1/purchase-orders/:id
  */
 router.delete('/:id', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), deletePurchaseOrder);
+
+/**
+ * 批量删除采购订单（仅草稿状态）
+ * DELETE /api/v1/purchase-orders/batch
+ */
+router.delete('/batch', authenticate, authorize(['admin', 'manager']), tenantIsolation(), batchDeletePurchaseOrders);
 
 /**
  * 导入采购订单

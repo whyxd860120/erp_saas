@@ -10,6 +10,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  batchDeleteProducts,
   importProducts,
 } from '../controllers/product.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
@@ -30,6 +31,7 @@ router.get('/:id', authenticate, tenantIsolation(true), getProductById);
 router.post('/', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), createProduct);
 router.put('/:id', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), updateProduct);
 router.delete('/:id', authenticate, authorize(['admin']), tenantIsolation(true), deleteProduct);
+router.delete('/batch', authenticate, authorize(['admin']), tenantIsolation(true), batchDeleteProducts);
 router.post('/import', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), importProducts);
 
 export default router;

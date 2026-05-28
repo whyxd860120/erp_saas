@@ -12,6 +12,7 @@ import {
   createCustomer,
   updateCustomer,
   deleteCustomer,
+  batchDeleteCustomers,
   importCustomers,
 } from '../controllers/customer.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
@@ -21,7 +22,8 @@ const router = Router();
 // ==================== 客户分类路由 ====================
 
 /**
- * 获取客户分类�? * GET /api/v1/customer-categories/tree
+ * 获取客户分类树
+ * GET /api/v1/customer-categories/tree
  */
 router.get('/categories/tree', authenticate, tenantIsolation(true), getCustomerCategoryTree);
 
@@ -44,13 +46,13 @@ router.post('/categories', authenticate, authorize(['admin', 'manager']), tenant
 router.put('/categories/:id', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), updateCustomerCategory);
 
 /**
- * ??????
+ * 删除客户分类
  * DELETE /api/v1/customer-categories/:id
  */
 router.delete('/categories/:id', authenticate, authorize(['admin']), tenantIsolation(true), deleteCustomerCategory);
 
 /**
- * ??????
+ * 导入客户分类
  * POST /api/v1/customer-categories/import
  */
 router.post('/categories/import', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), importCustomerCategories);
@@ -58,7 +60,8 @@ router.post('/categories/import', authenticate, authorize(['admin', 'manager']),
 // ==================== 客户路由 ====================
 
 /**
- * 获取客户树形结构（分�?客户�? * GET /api/v1/customers/tree
+ * 获取客户树形结构（包含客户分类和客户）
+ * GET /api/v1/customers/tree
  */
 router.get('/tree', authenticate, tenantIsolation(true), getCustomerTree);
 
@@ -87,13 +90,19 @@ router.post('/', authenticate, authorize(['admin', 'manager']), tenantIsolation(
 router.put('/:id', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), updateCustomer);
 
 /**
- * ????
+ * 删除客户
  * DELETE /api/v1/customers/:id
  */
 router.delete('/:id', authenticate, authorize(['admin']), tenantIsolation(true), deleteCustomer);
 
 /**
- * ????
+ * 批量删除客户
+ * DELETE /api/v1/customers/batch
+ */
+router.delete('/batch', authenticate, authorize(['admin']), tenantIsolation(true), batchDeleteCustomers);
+
+/**
+ * 导入客户
  * POST /api/v1/customers/import
  */
 router.post('/import', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), importCustomers);
