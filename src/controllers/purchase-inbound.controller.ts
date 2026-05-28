@@ -371,8 +371,8 @@ export const createPurchaseInbound = async (req: Request, res: Response) => {
       detail.amount = detail.quantity * detail.unitPrice;
     }
 
-    // 计算总金额
-    const totalAmount = details.reduce((sum: number, detail: any) => sum + detail.amount, 0);
+    // 计算总金额（包含物流费用）
+    const totalAmount = details.reduce((sum: number, detail: any) => sum + detail.amount, 0) + (logisticsCost || 0);
 
     // 创建入库单（事务）
     const inbound = await prisma.$transaction(async (tx) => {

@@ -182,7 +182,7 @@
                 <el-button link type="primary" size="small" @click="handleEditProduct(row)">
                   编辑
                 </el-button>
-                <el-button link type="warning" size="small" @click="toggleProductStatus(row)">
+                <el-button link type="warning" size="small" @click="handleToggleProductStatus(row)">
                   {{ row.status === 'active' ? '禁用' : '启用' }}
                 </el-button>
                 <el-button link type="danger" size="small" @click="handleDeleteProduct(row)">
@@ -952,7 +952,7 @@ async function handleEditProduct(row: ProductItem) {
   }
 }
 
-async function toggleProductStatus(row: any) {
+async function handleToggleProductStatus(row: any) {
   const newStatus = row.status === 'active' ? 'inactive' : 'active'
   const actionName = newStatus === 'active' ? '启用' : '禁用'
   try {

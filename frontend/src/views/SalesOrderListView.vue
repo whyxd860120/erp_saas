@@ -312,18 +312,6 @@
                 />
               </el-form-item>
             </el-col>
-            <el-col :span="8">
-              <el-form-item label="折扣率(%)">
-                <el-input-number
-                  v-model="formData.discountRate"
-                  :min="0"
-                  :max="100"
-                  :precision="0"
-                  style="width: 100%;"
-                  @change="calculateAmounts"
-                />
-              </el-form-item>
-            </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :span="8">
@@ -445,7 +433,6 @@
               <el-icon><Plus /></el-icon>
               添加明细
             </el-button>
-            <el-button size="small" @click="handleBatchImport">批量导入</el-button>
           </div>
         </div>
 
@@ -655,6 +642,7 @@ const importColumns = [
   { prop: 'customerName', label: '客户名称', required: true },
   { prop: 'productCode', label: '物料编码', required: true },
   { prop: 'productName', label: '物料名称', required: true },
+  { prop: 'productSpec', label: '物料规格' },
   { prop: 'quantity', label: '数量', required: true },
   { prop: 'unitPrice', label: '单价' },
   { prop: 'remark', label: '备注' }
@@ -666,6 +654,7 @@ const importFormatTips = [
   '客户名称：必填，填写客户名称',
   '物料编码：必填，填写物料编码',
   '物料名称：必填，填写物料名称',
+  '物料规格：选填，填写物料规格',
   '数量：必填，数字格式',
   '单价：选填，数字格式',
   '备注：选填'
@@ -702,7 +691,6 @@ const formData = reactive({
   customerId: '',
   salesmanId: '',
   dueDate: '',
-  discountRate: 100,
   remark: '',
   extraDiscount: 0,
   logisticsCost: 0,
@@ -852,7 +840,7 @@ const fetchData = async () => {
 // 获取客户
 const fetchCustomers = async () => {
   try {
-    const response = await getCustomers({ page: 1, limit: 1000 })
+    const response = await getCustomers({ page: 1, limit: 1000, status: '' })
     if (response.success) {
       customers.value = response.data.items || []
     }
@@ -864,7 +852,7 @@ const fetchCustomers = async () => {
 // 获取物料
 const fetchProducts = async () => {
   try {
-    const response = await getProducts({ page: 1, limit: 1000 })
+    const response = await getProducts({ page: 1, limit: 1000, status: '' })
     if (response.success) {
       products.value = response.data.items || []
     }
@@ -1175,9 +1163,9 @@ const submitOrder = async (confirmed: boolean) => {
       salesmanId: formData.salesmanId,
       orderDate: formData.orderDate,
       dueDate: formData.dueDate,
-      discountRate: formData.discountRate,
       remark: formData.remark,
       extraDiscount: formData.extraDiscount,
+      logisticsCost: formData.logisticsCost,
       details: formData.details.map(d => ({
         productId: d.productId,
         quantity: d.quantity,

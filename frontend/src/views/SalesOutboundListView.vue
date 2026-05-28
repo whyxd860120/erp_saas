@@ -414,7 +414,7 @@ const fetchSalesOutbounds = async () => {
 // 获取客户列表
 const fetchCustomers = async () => {
   try {
-    const response = await getCustomers({ page: 1, limit: 1000 })
+    const response = await getCustomers({ page: 1, limit: 1000, status: '' })
     if (response.success) {
       customers.value = response.data.items || []
     }

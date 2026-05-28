@@ -304,8 +304,8 @@ export const createSalesOrder = async (req: Request, res: Response) => {
       item.amount = item.quantity * item.unitPrice;
     }
 
-    // 计算总金额
-    const totalAmount = items.reduce((sum: number, item: any) => sum + item.amount, 0);
+    // 计算总金额（包含物流费用）
+    const totalAmount = items.reduce((sum: number, item: any) => sum + item.amount, 0) + (logisticsCost || 0);
 
     // 创建销售订单（事务）
     const order = await prisma.$transaction(async (tx) => {

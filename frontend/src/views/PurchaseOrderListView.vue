@@ -402,7 +402,6 @@
               <el-icon><Plus /></el-icon>
               添加明细
             </el-button>
-            <el-button size="small" @click="handleBatchImport">批量导入</el-button>
           </div>
         </div>
 
@@ -424,8 +423,8 @@
               </el-form-item>
             </el-col>
             <el-col :span="8">
-              <el-form-item label="订单总额">
-                <el-input :value="'¥' + formatAmount(formData.totalAmount)" disabled class="total-amount" />
+              <el-form-item label="物流/快递费用">
+                <el-input :value="'¥' + formatAmount(formData.logisticsCost)" disabled />
               </el-form-item>
             </el-col>
           </el-row>
@@ -441,8 +440,8 @@
               </el-form-item>
             </el-col>
             <el-col :span="8">
-              <el-form-item label="优惠后金额">
-                <el-input :value="'¥' + formatAmount(formData.totalAmount - formData.discountAmount)" disabled />
+              <el-form-item label="订单总额">
+                <el-input :value="'¥' + formatAmount(formData.totalAmount)" disabled class="total-amount" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -789,7 +788,7 @@ const fetchData = async () => {
 // 获取供应商
 const fetchSuppliers = async () => {
   try {
-    const response = await getSuppliers({ page: 1, limit: 1000 })
+    const response = await getSuppliers({ page: 1, limit: 1000, status: '' })
     if (response.success) {
       suppliers.value = response.data.items || []
     }

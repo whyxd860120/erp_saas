@@ -378,7 +378,7 @@ const fetchPurchaseInbounds = async () => {
 // 获取供应商列表
 const fetchSuppliers = async () => {
   try {
-    const response = await getSuppliers({ page: 1, limit: 1000 })
+    const response = await getSuppliers({ page: 1, limit: 1000, status: '' })
     if (response.success) {
       suppliers.value = response.data.items || []
     }
