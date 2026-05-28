@@ -50,8 +50,8 @@
         <el-table-column prop="phone" label="电话" width="150" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'info'">
-              {{ row.status === 'active' ? '启用' : '禁用' }}
+            <el-tag :type="getStatusColor(row.status)">
+              {{ getResourceStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -145,6 +145,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Download, Upload, View, Hide } from '@element-plus/icons-vue'
 import { getWarehouses, getWarehouseById, createWarehouse, updateWarehouse, deleteWarehouse } from '@/api/warehouse'
+import { getStatusColor, getResourceStatusText } from '@/utils/status.util'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 

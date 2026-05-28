@@ -76,7 +76,7 @@
           </el-col>
           <el-col :xs="24" :sm="12" :md="7">
             <el-form-item label="客户" class="search-item">
-              <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable style="width: 220px;" @change="handleSearch">
+              <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable style="width: 100%;" @change="handleSearch">
                 <el-option
                   v-for="customer in customers"
                   :key="customer.id"
@@ -88,7 +88,7 @@
           </el-col>
           <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="单据状态" class="search-item">
-              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 180px;" @change="handleSearch">
+              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 100%;" @change="handleSearch">
                 <el-option label="草稿" value="draft" />
                 <el-option label="已确认" value="confirmed" />
                 <el-option label="部分出库" value="partial" />

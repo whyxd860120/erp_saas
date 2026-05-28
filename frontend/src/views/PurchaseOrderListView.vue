@@ -691,9 +691,11 @@ const getProductAttr = (productId: string, attr: string) => {
 }
 
 // 格式化金额
-const formatAmount = (amount: number) => {
+const formatAmount = (amount: any) => {
   if (amount === undefined || amount === null) return '0.00'
-  return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
+  if (isNaN(numAmount)) return '0.00'
+  return numAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
 // 格式化日期
@@ -768,10 +770,10 @@ const fetchData = async () => {
       pagination.total = response.data.total
       // 模拟统计数据
       stats.value = {
-        total: response.data.total,
-        pending: tableData.value.filter(t => t.status === 'confirmed' || t.status === 'partial').length,
-        amount: tableData.value.reduce((sum: number, t: any) => sum + (t.totalAmount || 0), 0),
-        unpaid: tableData.value.reduce((sum: number, t: any) => sum + ((t.totalAmount || 0) - (t.paidAmount || 0)), 0)
+        total: response.data.total || 0,
+        pending: (tableData.value || []).filter(t => t.status === 'confirmed' || t.status === 'partial').length,
+        amount: (tableData.value || []).reduce((sum: number, t: any) => sum + (Number(t.totalAmount) || 0), 0),
+        unpaid: (tableData.value || []).reduce((sum: number, t: any) => sum + ((Number(t.totalAmount) || 0) - (Number(t.paidAmount) || 0)), 0)
       }
     }
   } catch (error) {
