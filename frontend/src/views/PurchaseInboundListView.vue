@@ -4,10 +4,16 @@
       <template #header>
         <div class="card-header">
           <span>采购入库单</span>
-          <el-button type="primary" @click="handleCreate">
-            <el-icon><Plus /></el-icon>
-            新增入库单
-          </el-button>
+          <div class="header-actions">
+            <el-button @click="handleHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
+            <el-button type="primary" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              新增入库单
+            </el-button>
+          </div>
         </div>
       </template>
       
@@ -281,13 +287,20 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="采购入库单"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled } from '@element-plus/icons-vue'
 import { getPurchaseInbounds, getPurchaseInboundById, createPurchaseInbound, updatePurchaseInbound, confirmPurchaseInbound, deletePurchaseInbound } from '@/api/purchase-inbound'
 import { getPurchaseOrders } from '@/api/purchase-order'
 import { getSuppliers } from '@/api/supplier'
@@ -295,6 +308,7 @@ import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { generateNextNumber } from '@/api/numbering-rule'
 import { getStatusColor, getPurchaseInboundStatusText } from '@/utils/status.util'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 // 数据列表
@@ -327,6 +341,7 @@ const dialogTitle = ref('新增采购入库单')
 const isEdit = ref(false)
 const submitLoading = ref(false)
 const formRef = ref<FormInstance>()
+const helpDialogVisible = ref(false)
 
 // 表单数据
 const formData = reactive({
@@ -722,6 +737,70 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   pagination.page = val
   fetchPurchaseInbounds()
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增采购入库单',
+      steps: [
+        '点击"新增入库单"按钮',
+        '选择供应商',
+        '选择入库仓库',
+        '添加入库明细，选择物料和数量',
+        '设置入库日期和备注',
+        '点击"确定"保存草稿或直接确认'
+      ]
+    },
+    {
+      title: '关联采购订单',
+      steps: [
+        '在新增入库单时选择关联的采购订单',
+        '系统会自动带入订单的物料明细',
+        '修改入库数量',
+        '确认入库'
+      ]
+    },
+    {
+      title: '确认入库单',
+      steps: [
+        '在入库单列表中找到草稿状态的入库单',
+        '点击"确认"按钮',
+        '确认后库存会相应增加'
+      ]
+    }
+  ],
+  notices: [
+    '入库数量必须与采购订单数量一致',
+    '确认入库单会增加库存',
+    '已确认的入库单不能直接修改',
+    '可以关联采购订单自动生成入库单',
+    '支持部分入库'
+  ],
+  tips: [
+    '可以使用采购订单快速入库功能',
+    '支持批量入库操作',
+    '入库单确认后不可撤销',
+    '可以按供应商、状态、日期等条件筛选入库单'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+N', description: '新增入库单' },
+    { key: 'Ctrl+S', description: '保存草稿' },
+    { key: 'F5', description: '刷新列表' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增采购入库单功能',
+    '支持关联采购订单',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 初始化
