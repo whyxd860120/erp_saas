@@ -17,6 +17,10 @@
           <el-icon><Download /></el-icon>
           导出
         </el-button>
+        <el-button @click="handleHelp">
+          <el-icon><QuestionFilled /></el-icon>
+          帮助
+        </el-button>
         <el-button type="primary" @click="handleCreate">
           <el-icon><Plus /></el-icon>
           新增{{ activeTab === 'receipt' ? '收款单' : activeTab === 'payment' ? '付款单' : '账户' }}
@@ -499,6 +503,13 @@
         </div>
       </div>
     </el-drawer>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      :module-name="activeTab === 'receipt' ? '收款单' : '付款单'"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
@@ -506,13 +517,14 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Plus, Download, Money, Wallet, TrendCharts, Clock, ArrowDown
+  Plus, Download, Money, Wallet, TrendCharts, Clock, ArrowDown, QuestionFilled
 } from '@element-plus/icons-vue'
 import { paymentReceiptApi } from '@/api'
 import { getAccounts, updateAccount } from '@/api/account'
 import { getCustomers } from '@/api/customer'
 import { getSuppliers } from '@/api/supplier'
 import { getStatusColor, getPaymentReceiptStatusText, getPaymentPaymentStatusText } from '@/utils/status.util'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 
 // 状态
 const loading = ref(false)
@@ -523,6 +535,7 @@ const selectedRows = ref<any[]>([])
 const dialogVisible = ref(false)
 const accountDialogVisible = ref(false)
 const viewDrawer = ref(false)
+const helpDialogVisible = ref(false)
 const dialogTitle = ref('新增收款单')
 const isEdit = ref(false)
 const currentBill = ref<any>(null)
@@ -978,6 +991,116 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   pagination.page = val
   fetchData()
+}
+
+// 帮助数据
+const helpData = computed(() => {
+  if (activeTab.value === 'receipt') {
+    return {
+      operations: [
+        {
+          title: '新增收款单',
+          steps: [
+            '点击"新增收款单"按钮',
+            '选择客户',
+            '选择收款账户',
+            '输入收款金额',
+            '选择收款方式',
+            '关联销售订单（可选）',
+            '填写备注信息',
+            '点击"确定"保存或确认'
+          ]
+        },
+        {
+          title: '确认收款单',
+          steps: [
+            '在收款单列表中找到草稿状态的收款单',
+            '点击"确认"按钮',
+            '确认后账户余额会增加'
+          ]
+        }
+      ],
+      notices: [
+        '收款单确认后会增加账户余额',
+        '已确认的收款单不能直接修改',
+        '可以关联销售订单自动核销应收账款',
+        '支持多种收款方式：现金、银行转账、支票等'
+      ],
+      tips: [
+        '可以使用销售订单快速收款功能',
+        '支持批量确认收款单',
+        '收款单确认后不可撤销',
+        '可以按客户、状态、日期等条件筛选收款单'
+      ],
+      shortcuts: [
+        { key: 'Ctrl+N', description: '新增收款单' },
+        { key: 'Ctrl+S', description: '保存草稿' },
+        { key: 'F5', description: '刷新列表' }
+      ],
+      version: '1.0.0',
+      lastUpdate: '2025-05-28',
+      changes: [
+        '新增收款单功能',
+        '支持关联销售订单',
+        '新增帮助文档功能'
+      ]
+    }
+  } else {
+    return {
+      operations: [
+        {
+          title: '新增付款单',
+          steps: [
+            '点击"新增付款单"按钮',
+            '选择供应商',
+            '选择付款账户',
+            '输入付款金额',
+            '选择付款方式',
+            '关联采购订单（可选）',
+            '填写备注信息',
+            '点击"确定"保存或确认'
+          ]
+        },
+        {
+          title: '确认付款单',
+          steps: [
+            '在付款单列表中找到草稿状态的付款单',
+            '点击"确认"按钮',
+            '确认后账户余额会减少'
+          ]
+        }
+      ],
+      notices: [
+        '付款单确认后会减少账户余额',
+        '已确认的付款单不能直接修改',
+        '可以关联采购订单自动核销应付账款',
+        '支持多种付款方式：现金、银行转账、支票等'
+      ],
+      tips: [
+        '可以使用采购订单快速付款功能',
+        '支持批量确认付款单',
+        '付款单确认后不可撤销',
+        '可以按供应商、状态、日期等条件筛选付款单'
+      ],
+      shortcuts: [
+        { key: 'Ctrl+N', description: '新增付款单' },
+        { key: 'Ctrl+S', description: '保存草稿' },
+        { key: 'F5', description: '刷新列表' }
+      ],
+      version: '1.0.0',
+      lastUpdate: '2025-05-28',
+      changes: [
+        '新增付款单功能',
+        '支持关联采购订单',
+        '新增帮助文档功能'
+      ]
+    }
+  }
+})
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 初始化
