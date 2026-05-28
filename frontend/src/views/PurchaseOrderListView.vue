@@ -1305,7 +1305,8 @@ const handleHelp = () => {
 
 // 初始化
 onMounted(async () => {
-  await Promise.all([fetchData(), fetchSuppliers(), fetchProducts()])
+  // 只加载列表数据，其他数据按需加载
+  await fetchData()
 })
 </script>
 

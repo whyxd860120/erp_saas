@@ -1777,7 +1777,8 @@ const handleCurrentChange = (val: number) => {
 
 // 初始化
 onMounted(async () => {
-  await Promise.all([fetchData(), fetchCustomers(), fetchProducts(), fetchSalesmen(), fetchWarehouses(), fetchSuppliers()])
+  // 只加载列表数据，其他数据按需加载
+  await fetchData()
 })
 
 // 帮助数据

@@ -188,18 +188,6 @@ export const getSalesOrderById = async (req: Request, res: Response) => {
             name: true,
           },
         },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        updater: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         items: {
           include: {
             product: {

@@ -817,13 +817,8 @@ const handleHelp = () => {
 
 // 初始化
 onMounted(async () => {
-  await Promise.all([
-    fetchPurchaseInbounds(),
-    fetchSuppliers(),
-    fetchPurchaseOrders(),
-    fetchWarehouses(),
-    fetchProducts()
-  ])
+  // 只加载列表数据，其他数据按需加载
+  await fetchPurchaseInbounds()
 })
 </script>
 
