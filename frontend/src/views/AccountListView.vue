@@ -4,10 +4,16 @@
       <template #header>
         <div class="card-header">
           <span>账户管理</span>
-          <el-button type="primary" @click="handleCreate">
-            <el-icon><Plus /></el-icon>
-            新增账户
-          </el-button>
+          <div class="header-actions">
+            <el-button @click="handleHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
+            <el-button type="primary" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              新增账户
+            </el-button>
+          </div>
         </div>
       </template>
       
@@ -131,15 +137,23 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="账户管理"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, View, Hide } from '@element-plus/icons-vue'
+import { Plus, View, Hide, QuestionFilled } from '@element-plus/icons-vue'
 import { getAccounts, getAccountById, createAccount, updateAccount, deleteAccount } from '@/api/account'
 import { getStatusColor, getResourceStatusText } from '@/utils/status.util'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 // 数据列表
@@ -153,6 +167,7 @@ const searchForm = reactive({
 
 // 显示停用数据
 const showInactive = ref(false)
+const helpDialogVisible = ref(false)
 
 // 分页
 const pagination = reactive({
@@ -346,6 +361,80 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   pagination.page = val
   fetchAccounts()
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增账户',
+      steps: [
+        '点击"新增账户"按钮',
+        '填写账户编码、名称等基本信息',
+        '设置账户类型（现金账户、银行账户等）',
+        '填写账户余额',
+        '选择启用或禁用状态',
+        '点击"确定"保存'
+      ]
+    },
+    {
+      title: '编辑账户',
+      steps: [
+        '在账户列表中找到要编辑的账户',
+        '点击"编辑"按钮',
+        '修改需要更新的信息',
+        '点击"确定"保存修改'
+      ]
+    },
+    {
+      title: '删除账户',
+      steps: [
+        '在账户列表中找到要删除的账户',
+        '点击"删除"按钮',
+        '确认删除操作',
+        '注意：有余额的账户无法删除'
+      ]
+    },
+    {
+      title: '查看账户余额',
+      steps: [
+        '在账户列表中查看各账户的当前余额',
+        '余额为负数会用红色显示',
+        '可以按关键词搜索账户'
+      ]
+    }
+  ],
+  notices: [
+    '账户编码必须唯一',
+    '有余额的账户无法删除，请先清零余额',
+    '删除操作不可恢复，请谨慎操作',
+    '账户是资金管理的基础，建议提前规划好账户结构',
+    '禁用的账户不能用于收付款操作'
+  ],
+  tips: [
+    '使用搜索功能可以快速查找账户',
+    '点击"显示禁用"可以查看已禁用的账户',
+    '定期核对账户余额确保账实相符',
+    '账户编码建议使用有意义的编号规则',
+    '可以设置多个账户实现多账户管理'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+F', description: '快速搜索账户' },
+    { key: 'F5', description: '刷新账户列表' },
+    { key: 'Ctrl+N', description: '新增账户' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增账户管理功能',
+    '支持余额显示',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 初始化
