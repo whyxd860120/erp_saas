@@ -430,7 +430,7 @@ const fetchSalesOutbounds = async () => {
 // 获取客户列表
 const fetchCustomers = async () => {
   try {
-    const response: any = await getCustomers({ page: 1, limit: 10000, status: '' })
+    const response: any = await getCustomers({ page: 1, limit: 100, status: '' })
     if (response.success) {
       customers.value = response.data.items || []
     }
@@ -439,10 +439,22 @@ const fetchCustomers = async () => {
   }
 }
 
+// 远程搜索客户
+const searchCustomers = async (keyword: string) => {
+  try {
+    const response: any = await getCustomers({ page: 1, limit: 100, status: '', search: keyword })
+    if (response.success) {
+      customers.value = response.data.items || []
+    }
+  } catch (error) {
+    console.error('搜索客户列表失败:', error)
+  }
+}
+
 // 获取用户列表
 const fetchUsers = async () => {
   try {
-    const response: any = await getUsers({ page: 1, limit: 1000, status: 'active' })
+    const response: any = await getUsers({ page: 1, limit: 100, status: 'active' })
     if (response.success) {
       users.value = response.data.items || []
     }
@@ -454,7 +466,7 @@ const fetchUsers = async () => {
 // 获取销售订单列表
 const fetchSalesOrders = async () => {
   try {
-    const response: any = await getSalesOrders({ page: 1, limit: 1000, status: 'confirmed' })
+    const response: any = await getSalesOrders({ page: 1, limit: 100, status: 'confirmed' })
     if (response.success) {
       salesOrders.value = response.data.items || []
     }
@@ -466,7 +478,7 @@ const fetchSalesOrders = async () => {
 // 获取仓库列表
 const fetchWarehouses = async () => {
   try {
-    const response: any = await getWarehouses({ page: 1, limit: 1000 })
+    const response: any = await getWarehouses({ page: 1, limit: 100 })
     if (response.success) {
       warehouses.value = response.data.items || []
     }
@@ -478,7 +490,7 @@ const fetchWarehouses = async () => {
 // 获取物料列表
 const fetchProducts = async () => {
   try {
-    const response: any = await getProducts({ page: 1, limit: 10000 })
+    const response: any = await getProducts({ page: 1, limit: 100 })
     if (response.success) {
       products.value = response.data.items || []
     }
@@ -487,10 +499,22 @@ const fetchProducts = async () => {
   }
 }
 
+// 远程搜索物料
+const searchProducts = async (keyword: string) => {
+  try {
+    const response: any = await getProducts({ page: 1, limit: 100, search: keyword })
+    if (response.success) {
+      products.value = response.data.items || []
+    }
+  } catch (error) {
+    console.error('搜索物料列表失败:', error)
+  }
+}
+
   // 获取库存数据
   const fetchInventory = async () => {
     try {
-      const response: any = await getInventory({ page: 1, limit: 10000 })
+      const response: any = await getInventory({ page: 1, limit: 100 })
     if (response.success) {
       const map: Record<string, number> = {}
       response.data.items?.forEach((item: any) => {

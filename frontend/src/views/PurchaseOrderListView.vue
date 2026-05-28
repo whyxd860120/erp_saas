@@ -292,7 +292,15 @@
             </el-col>
             <el-col :span="8">
               <el-form-item label="供应商" prop="supplierId">
-                <el-select v-model="formData.supplierId" placeholder="请选择供应商" filterable style="width: 100%;">
+                <el-select 
+                  v-model="formData.supplierId" 
+                  placeholder="请选择供应商" 
+                  filterable 
+                  remote
+                  reserve-keyword
+                  :remote-method="searchSuppliers"
+                  :loading="loading"
+                  style="width: 100%;">
                   <el-option
                     v-for="supplier in suppliers"
                     :key="supplier.id"
@@ -339,6 +347,10 @@
                   v-model="row.productId"
                   placeholder="请选择物料"
                   filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="searchProducts"
+                  :loading="loading"
                   size="small"
                   @change="handleProductSelect($index)"
                   style="width: 100%;"
@@ -799,7 +811,7 @@ const fetchData = async () => {
 // 获取供应商
 const fetchSuppliers = async () => {
   try {
-    const response: any = await getSuppliers({ page: 1, limit: 10000, status: '' })
+    const response: any = await getSuppliers({ page: 1, limit: 100, status: '' })
     if (response.success) {
       suppliers.value = response.data.items || []
     }
@@ -808,15 +820,39 @@ const fetchSuppliers = async () => {
   }
 }
 
+// 远程搜索供应商
+const searchSuppliers = async (keyword: string) => {
+  try {
+    const response: any = await getSuppliers({ page: 1, limit: 100, status: '', search: keyword })
+    if (response.success) {
+      suppliers.value = response.data.items || []
+    }
+  } catch (error) {
+    console.error('搜索供应商失败:', error)
+  }
+}
+
 // 获取物料
 const fetchProducts = async () => {
   try {
-    const response: any = await getProducts({ page: 1, limit: 10000 })
+    const response: any = await getProducts({ page: 1, limit: 100 })
     if (response.success) {
       products.value = response.data.items || []
     }
   } catch (error) {
     console.error('获取物料失败:', error)
+  }
+}
+
+// 远程搜索物料
+const searchProducts = async (keyword: string) => {
+  try {
+    const response: any = await getProducts({ page: 1, limit: 100, search: keyword })
+    if (response.success) {
+      products.value = response.data.items || []
+    }
+  } catch (error) {
+    console.error('搜索物料失败:', error)
   }
 }
 

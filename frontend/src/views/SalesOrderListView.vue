@@ -339,7 +339,15 @@
             </el-col>
             <el-col :span="8">
               <el-form-item label="客户" prop="customerId">
-                <el-select v-model="formData.customerId" placeholder="请选择客户" filterable style="width: 100%;">
+                <el-select 
+                  v-model="formData.customerId" 
+                  placeholder="请选择客户" 
+                  filterable 
+                  remote
+                  reserve-keyword
+                  :remote-method="searchCustomers"
+                  :loading="loading"
+                  style="width: 100%;">
                   <el-option
                     v-for="customer in customers"
                     :key="customer.id"
@@ -410,6 +418,10 @@
                   v-model="row.productId"
                   placeholder="请选择物料"
                   filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="searchProducts"
+                  :loading="loading"
                   size="small"
                   @change="handleProductSelect($index)"
                   style="width: 100%;"
@@ -1130,7 +1142,7 @@ const fetchData = async () => {
 // 获取客户
 const fetchCustomers = async () => {
   try {
-    const response: any = await getCustomers({ page: 1, limit: 10000, status: '' })
+    const response: any = await getCustomers({ page: 1, limit: 100, status: '' })
     if (response.success) {
       customers.value = response.data.items || []
     }
@@ -1139,10 +1151,22 @@ const fetchCustomers = async () => {
   }
 }
 
+// 远程搜索客户
+const searchCustomers = async (keyword: string) => {
+  try {
+    const response: any = await getCustomers({ page: 1, limit: 100, status: '', search: keyword })
+    if (response.success) {
+      customers.value = response.data.items || []
+    }
+  } catch (error) {
+    console.error('搜索客户失败:', error)
+  }
+}
+
 // 获取仓库
 const fetchWarehouses = async () => {
   try {
-    const response: any = await getWarehouses({ page: 1, limit: 1000 })
+    const response: any = await getWarehouses({ page: 1, limit: 100 })
     if (response.success) {
       warehouses.value = response.data.items || []
     }
@@ -1154,7 +1178,7 @@ const fetchWarehouses = async () => {
 // 获取供应商
 const fetchSuppliers = async () => {
   try {
-    const response: any = await getSuppliers({ page: 1, limit: 10000 })
+    const response: any = await getSuppliers({ page: 1, limit: 100, status: '' })
     if (response.success) {
       suppliers.value = response.data.items || []
     }
@@ -1163,15 +1187,39 @@ const fetchSuppliers = async () => {
   }
 }
 
+// 远程搜索供应商
+const searchSuppliers = async (keyword: string) => {
+  try {
+    const response: any = await getSuppliers({ page: 1, limit: 100, status: '', search: keyword })
+    if (response.success) {
+      suppliers.value = response.data.items || []
+    }
+  } catch (error) {
+    console.error('搜索供应商失败:', error)
+  }
+}
+
 // 获取物料
 const fetchProducts = async () => {
   try {
-    const response: any = await getProducts({ page: 1, limit: 10000, status: '' })
+    const response: any = await getProducts({ page: 1, limit: 100, status: '' })
     if (response.success) {
       products.value = response.data.items || []
     }
   } catch (error) {
     console.error('获取物料失败:', error)
+  }
+}
+
+// 远程搜索物料
+const searchProducts = async (keyword: string) => {
+  try {
+    const response: any = await getProducts({ page: 1, limit: 100, status: '', search: keyword })
+    if (response.success) {
+      products.value = response.data.items || []
+    }
+  } catch (error) {
+    console.error('搜索物料失败:', error)
   }
 }
 
