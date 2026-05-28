@@ -4,10 +4,16 @@
       <template #header>
         <div class="card-header">
           <span>销售出库单</span>
-          <el-button type="primary" @click="handleCreate">
-            <el-icon><Plus /></el-icon>
-            新增出库单
-          </el-button>
+          <div class="header-actions">
+            <el-button @click="handleHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
+            <el-button type="primary" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              新增出库单
+            </el-button>
+          </div>
         </div>
       </template>
       
@@ -313,13 +319,20 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="销售出库单"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled } from '@element-plus/icons-vue'
 import { getSalesOutbounds, getSalesOutboundById, createSalesOutbound, updateSalesOutbound, confirmSalesOutbound, deleteSalesOutbound } from '@/api/sales-outbound'
 import { getSalesOrders } from '@/api/sales-order'
 import { getCustomers } from '@/api/customer'
@@ -328,6 +341,7 @@ import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { getInventory } from '@/api/inventory'
 import { getStatusColor, getSalesOutboundStatusText } from '@/utils/status.util'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 // 数据列表
@@ -362,6 +376,7 @@ const dialogTitle = ref('新增销售出库单')
 const isEdit = ref(false)
 const submitLoading = ref(false)
 const formRef = ref<FormInstance>()
+const helpDialogVisible = ref(false)
 
 // 表单数据
 const formData = reactive({
@@ -784,6 +799,70 @@ const handleDialogClose = () => {
   if (formRef.value) {
     formRef.value.resetFields()
   }
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增销售出库单',
+      steps: [
+        '点击"新增出库单"按钮',
+        '选择客户和销售员',
+        '选择出库仓库',
+        '添加出库明细，选择物料和数量',
+        '设置出库日期和备注',
+        '点击"确定"保存草稿或直接确认'
+      ]
+    },
+    {
+      title: '关联销售订单',
+      steps: [
+        '在新增出库单时选择关联的销售订单',
+        '系统会自动带入订单的物料明细',
+        '修改出库数量',
+        '确认出库'
+      ]
+    },
+    {
+      title: '确认出库单',
+      steps: [
+        '在出库单列表中找到草稿状态的出库单',
+        '点击"确认"按钮',
+        '确认后库存会相应减少'
+      ]
+    }
+  ],
+  notices: [
+    '出库数量不能超过可用库存',
+    '确认出库单会扣减库存',
+    '已确认的出库单不能直接修改',
+    '可以关联销售订单自动生成出库单',
+    '支持部分出库'
+  ],
+  tips: [
+    '可以使用销售订单快速出库功能',
+    '支持批量出库操作',
+    '出库单确认后不可撤销',
+    '可以按客户、状态、日期等条件筛选出库单'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+N', description: '新增出库单' },
+    { key: 'Ctrl+S', description: '保存草稿' },
+    { key: 'F5', description: '刷新列表' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增销售出库单功能',
+    '支持关联销售订单',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 分页大小改变
