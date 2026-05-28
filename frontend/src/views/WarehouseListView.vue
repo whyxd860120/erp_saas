@@ -21,6 +21,10 @@
               <el-icon><View v-if="!showInactive" /><Hide v-else /></el-icon>
               {{ showInactive ? '隐藏禁用' : '显示禁用' }}
             </el-button>
+            <el-button @click="handleHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
           </div>
         </div>
       </template>
@@ -137,16 +141,24 @@
       :import-fn="handleImportSubmit"
       @success="handleImportSuccess"
     />
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="仓库管理"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Download, Upload, View, Hide } from '@element-plus/icons-vue'
+import { Plus, Download, Upload, View, Hide, QuestionFilled } from '@element-plus/icons-vue'
 import { getWarehouses, getWarehouseById, createWarehouse, updateWarehouse, deleteWarehouse } from '@/api/warehouse'
 import { getStatusColor, getResourceStatusText } from '@/utils/status.util'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 interface Warehouse {
@@ -189,6 +201,7 @@ const importDialogVisible = ref(false)
 
 // 显示停用数据
 const showInactive = ref(false)
+const helpDialogVisible = ref(false)
 
 // 导入列配置
 const importColumns = [
@@ -489,6 +502,91 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   pagination.page = val
   fetchWarehouses()
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增仓库',
+      steps: [
+        '点击"新增仓库"按钮',
+        '填写仓库编码、名称等基本信息',
+        '设置负责人、联系电话',
+        '填写仓库地址',
+        '选择启用或禁用状态',
+        '点击"确定"保存'
+      ]
+    },
+    {
+      title: '编辑仓库',
+      steps: [
+        '在仓库列表中找到要编辑的仓库',
+        '点击"编辑"按钮',
+        '修改需要更新的信息',
+        '点击"确定"保存修改'
+      ]
+    },
+    {
+      title: '删除仓库',
+      steps: [
+        '在仓库列表中找到要删除的仓库',
+        '点击"删除"按钮',
+        '确认删除操作',
+        '注意：有库存的仓库无法删除'
+      ]
+    },
+    {
+      title: '导入仓库',
+      steps: [
+        '点击"导入"按钮',
+        '下载导入模板',
+        '按照模板格式填写仓库信息',
+        '上传填写好的Excel文件',
+        '系统会自动验证数据格式',
+        '确认导入'
+      ]
+    },
+    {
+      title: '导出仓库',
+      steps: [
+        '点击"导出"按钮',
+        '系统会导出当前列表中的所有仓库',
+        '导出文件为Excel格式，可用于数据备份'
+      ]
+    }
+  ],
+  notices: [
+    '仓库编码必须唯一，重复的编码无法导入',
+    '有库存的仓库无法删除，请先清理库存',
+    '删除操作不可恢复，请谨慎操作',
+    '仓库是库存管理的基础，建议提前规划好仓库结构',
+    '禁用的仓库不能用于出入库操作'
+  ],
+  tips: [
+    '使用搜索功能可以快速查找仓库',
+    '点击"显示禁用"可以查看已禁用的仓库',
+    '定期导出仓库数据进行备份',
+    '仓库编码建议使用有意义的编号规则',
+    '可以设置多个仓库实现多仓库管理'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+F', description: '快速搜索仓库' },
+    { key: 'F5', description: '刷新仓库列表' },
+    { key: 'Ctrl+N', description: '新增仓库' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增仓库管理功能',
+    '支持导入导出',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 初始化
