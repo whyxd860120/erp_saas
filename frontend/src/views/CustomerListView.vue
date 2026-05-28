@@ -711,7 +711,7 @@ async function loadAllCustomers(limit: number = 100) {
     const res = await getCustomers({
       page: 1,
       limit,
-      ...(showInactive.value ? {} : { status: 'active' })
+      ...(showInactive.value ? { status: '' } : { status: 'active' })
     })
     if (res.success) {
       displayCustomers.value = res.data.items || []
@@ -728,7 +728,7 @@ async function loadCustomersByCategory(categoryId: string) {
       page: 1,
       limit: 100,
       categoryId,
-      ...(showInactive.value ? {} : { status: 'active' })
+      ...(showInactive.value ? { status: '' } : { status: 'active' })
     })
     if (res.success) {
       displayCustomers.value = res.data.items || []
@@ -767,7 +767,7 @@ function handleSearch() {
         limit: 100,
         search: searchForm.keyword.trim() || undefined,
         // 搜索时不限制分类，允许跨分类搜索
-        ...(showInactive.value ? {} : { status: 'active' })
+        ...(showInactive.value ? { status: '' } : { status: 'active' })
       })
       if (res.success) {
         displayCustomers.value = res.data.items || []
