@@ -937,38 +937,6 @@ export const batchDeleteProducts = async (req: Request, res: Response) => {
           continue;
         }
 
-        // 检查是否有未完成的采购订单
-        const purchaseOrderDetails = await prisma.purchaseOrderDetail.findFirst({
-          where: {
-            productId: id,
-            purchaseOrder: {
-              tenantId: req.user.tenantId,
-              status: 'draft'
-            }
-          },
-        });
-
-        if (purchaseOrderDetails) {
-          errors.push({ id, message: `商品"${existingProduct.code}"有未完成的采购订单，无法删除` });
-          continue;
-        }
-
-        // 检查是否有未完成的销售订单
-        const salesOrderDetails = await prisma.salesOrderDetail.findFirst({
-          where: {
-            productId: id,
-            salesOrder: {
-              tenantId: req.user.tenantId,
-              status: 'draft'
-            }
-          },
-        });
-
-        if (salesOrderDetails) {
-          errors.push({ id, message: `商品"${existingProduct.code}"有未完成的销售订单，无法删除` });
-          continue;
-        }
-
         await prisma.product.delete({
           where: { id },
         });
