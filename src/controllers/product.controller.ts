@@ -268,7 +268,7 @@ export const getProducts = async (req: Request, res: Response) => {
       page = '1',
       limit = '10',
       categoryId,
-      status = 'active',
+      status,
       search,
     } = req.query;
 
@@ -285,8 +285,9 @@ export const getProducts = async (req: Request, res: Response) => {
       where.categoryId = categoryId;
     }
 
-    if (status) {
-      where.status = status;
+    // 只有当status明确提供且不为空字符串时，才过滤状态
+    if (status !== undefined && status !== '') {
+      where.status = status as string;
     }
 
     if (search) {
