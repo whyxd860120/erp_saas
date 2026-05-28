@@ -302,7 +302,6 @@ export const createSalesOrder = async (req: Request, res: Response) => {
       salesmanId,
       orderDate = new Date(),
       remark,
-      logisticsCost = 0,
       items,
     } = req.body;
 
@@ -311,7 +310,6 @@ export const createSalesOrder = async (req: Request, res: Response) => {
       customerId,
       salesmanId,
       orderDate,
-      logisticsCost,
       itemsCount: items?.length
     });
 
@@ -416,8 +414,8 @@ export const createSalesOrder = async (req: Request, res: Response) => {
       item.amount = item.quantity * item.unitPrice;
     }
 
-    // 计算总金额（包含物流费用）
-    const totalAmount = items.reduce((sum: number, item: any) => sum + item.amount, 0) + (logisticsCost || 0);
+    // 计算总金额
+    const totalAmount = items.reduce((sum: number, item: any) => sum + item.amount, 0);
 
     // 创建销售订单（事务）
     const order = await prisma.$transaction(async (tx) => {
@@ -430,7 +428,6 @@ export const createSalesOrder = async (req: Request, res: Response) => {
           salesmanId,
           orderDate: new Date(orderDate),
           totalAmount,
-          logisticsCost,
           status: 'draft',
           remark,
         },
@@ -520,7 +517,6 @@ export const updateSalesOrder = async (req: Request, res: Response) => {
       salesmanId,
       orderDate,
       remark,
-      logisticsCost,
       items,
     } = req.body;
 
@@ -596,7 +592,6 @@ export const updateSalesOrder = async (req: Request, res: Response) => {
     if (salesmanId !== undefined) updateData.salesmanId = salesmanId;
     if (orderDate !== undefined) updateData.orderDate = new Date(orderDate);
     if (remark !== undefined) updateData.remark = remark;
-    if (logisticsCost !== undefined) updateData.logisticsCost = logisticsCost;
 
     // 如果有明细，更新明细
     if (items && Array.isArray(items)) {
@@ -1089,7 +1084,6 @@ export const importSalesOrders = async (req: Request, res: Response) => {
           remark: item.remark || '',
           status: 'draft',
           totalAmount: (item.quantity || 0) * (item.unitPrice || 0),
-          logisticsCost: item.logisticsCost || 0,
           salesmanId: item.salesmanId,
           items: {
             create: {

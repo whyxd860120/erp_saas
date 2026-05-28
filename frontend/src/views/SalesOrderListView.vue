@@ -384,18 +384,6 @@
             </el-col>
           </el-row>
           <el-row :gutter="16">
-            <el-col :span="8">
-              <el-form-item label="物流/快递费用">
-                <el-input-number
-                  v-model="formData.logisticsCost"
-                  :min="0"
-                  :precision="2"
-                  placeholder="请输入物流费用"
-                  style="width: 100%;"
-                  @change="calculateAmounts"
-                />
-              </el-form-item>
-            </el-col>
             <el-col :span="24">
               <el-form-item label="备注">
                 <el-input v-model="formData.remark" type="textarea" :rows="2" placeholder="请输入备注信息" />
@@ -990,7 +978,6 @@ const formData = reactive({
   dueDate: '',
   remark: '',
   extraDiscount: 0,
-  logisticsCost: 0,
   details: [] as any[],
   goodsAmount: 0,
   taxAmount: 0,
@@ -1011,7 +998,7 @@ const calculateAmounts = () => {
   formData.goodsAmount = Number(goodsAmount)
   formData.taxAmount = Number(taxAmount)
   formData.discountAmount = Number(goodsAmount + taxAmount)
-  formData.totalAmount = Number(formData.discountAmount - formData.extraDiscount + (formData.logisticsCost || 0))
+  formData.totalAmount = Number(formData.discountAmount - formData.extraDiscount)
 }
 
 // 获取物料属性
@@ -1302,7 +1289,6 @@ const handleEdit = async (row: any) => {
         dueDate: order.dueDate || '',
         remark: order.remark || '',
         extraDiscount: order.extraDiscount || 0,
-        logisticsCost: order.logisticsCost || 0,
         details: order.items?.map((d: any) => ({
           id: d.id,
           productId: d.productId,
@@ -1747,7 +1733,6 @@ const submitOrder = async (confirmed: boolean) => {
       dueDate: formData.dueDate,
       remark: formData.remark,
       extraDiscount: Number(formData.extraDiscount) || 0,
-      logisticsCost: Number(formData.logisticsCost) || 0,
       items: formData.details.map(d => ({
         productId: d.productId,
         quantity: Number(d.quantity) || 0,
@@ -1786,7 +1771,6 @@ const resetForm = () => {
   formData.dueDate = ''
   formData.remark = ''
   formData.extraDiscount = 0
-  formData.logisticsCost = 0
   formData.details = []
   formData.goodsAmount = 0
   formData.taxAmount = 0
