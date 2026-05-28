@@ -309,7 +309,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { ElTree } from 'element-plus'
 import { Plus, Folder, FolderAdd, Refresh, Upload, Download, View, Hide, Delete } from '@element-plus/icons-vue'
@@ -912,14 +912,15 @@ async function handleDeleteAll() {
       return
     }
 
-    const loading = ElMessage.loading({
-      message: `正在删除 ${productIds.length} 个物料...`,
-      duration: 0
+    const loadingInstance = ElLoading.service({
+      lock: true,
+      text: `正在删除 ${productIds.length} 个物料...`,
+      background: 'rgba(0, 0, 0, 0.7)',
     })
 
     try {
       const result = await batchDeleteProducts(productIds)
-      loading.close()
+      loadingInstance.close()
 
       if (result.success) {
         const { successIds, errors } = result.data
@@ -936,7 +937,7 @@ async function handleDeleteAll() {
         ElMessage.error(result.message || '删除失败')
       }
     } catch (error) {
-      loading.close()
+      loadingInstance.close()
       ElMessage.error('删除失败，请稍后重试')
     }
   } catch (error) {
