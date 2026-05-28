@@ -276,14 +276,17 @@ router.beforeEach(async (to) => {
     return redirect
   }
 
-  // 账套初始化页面检查：只有已完成的才重定向（系统管理员除外）
+  // 账套初始化页面检查：允许查看，但阻止修改操作
   if (to.path === '/account-init') {
     const initStatus = authStore.tenant?.initializationStatus
     const isSuperAdmin = authStore.user?.role === 'super_admin'
     const isSystemTenant = authStore.tenant?.isSystem === true
     
+    // 允许所有管理员访问初始化页面查看状态
+    // 页面内部会根据状态控制是否允许修改操作
     if (initStatus === 'completed' && !isSuperAdmin && !isSystemTenant) {
-      return { path: '/' }
+      // 不再重定向，允许查看页面
+      // 页面内部会显示只读状态
     }
   }
 
