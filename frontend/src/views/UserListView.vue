@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>人员管理</span>
-          <el-button v-if="hasPermission('user:create')" type="primary" @click="handleCreate">
+          <el-button type="primary" @click="handleCreate">
             <el-icon><Plus /></el-icon>
             新增人员
           </el-button>
