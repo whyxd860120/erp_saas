@@ -426,9 +426,9 @@ const fetchCustomers = async () => {
 // 获取用户列表
 const fetchUsers = async () => {
   try {
-    const response = await getUsers()
+    const response = await getUsers({ page: 1, limit: 1000, status: 'active' })
     if (response.success) {
-      users.value = response.data || []
+      users.value = response.data.items || []
     }
   } catch (error) {
     console.error('获取用户列表失败:', error)

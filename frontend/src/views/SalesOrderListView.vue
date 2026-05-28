@@ -261,7 +261,7 @@
           <el-row :gutter="16">
             <el-col :span="8">
               <el-form-item label="单据编号" prop="orderNo">
-                <el-input v-model="formData.orderNo" placeholder="自动生成" disabled />
+                <el-input v-model="formData.orderNo" placeholder="自动生成或手动输入" clearable />
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -864,9 +864,9 @@ const fetchProducts = async () => {
 // 获取用户
 const fetchSalesmen = async () => {
   try {
-    const response = await getUsers()
+    const response = await getUsers({ page: 1, limit: 1000, status: 'active' })
     if (response.success) {
-      salesmen.value = response.data || []
+      salesmen.value = response.data.items || []
     }
   } catch (error) {
     console.error('获取用户失败:', error)

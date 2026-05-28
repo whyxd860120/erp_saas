@@ -7,6 +7,21 @@ import { applyDataPermissions } from '../utils/data-permission.util';
 const prisma = new PrismaClient();
 
 /**
+ * 格式化日期用于编码规则
+ */
+function formatDateForRule(date: Date, format: string): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return format
+    .replace('YYYY', String(year))
+    .replace('YY', String(year).slice(-2))
+    .replace('MM', month)
+    .replace('DD', day);
+}
+
+/**
  * 获取销售订单列表
  * GET /api/v1/sales-orders
  */
@@ -239,18 +254,53 @@ export const createSalesOrder = async (req: Request, res: Response) => {
     } = req.body;
 
     // 验证参数
-    if (!orderNo || !customerId || !items || !Array.isArray(items) || items.length === 0) {
+    if (!customerId || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: '订单编号、客户和商品明细不能为空',
+        message: '客户和商品明细不能为空',
       });
+    }
+
+    // 如果没有传入订单编号，自动生成
+    let generatedOrderNo = orderNo;
+    if (!generatedOrderNo) {
+      try {
+        // 查找编码规则
+        const rule = await prisma.numberingRule.findFirst({
+          where: {
+            tenantId: req.user.tenantId,
+            businessType: 'sales_order',
+            status: 'active',
+          },
+        });
+
+        if (rule) {
+          // 生成编号
+          const now = new Date();
+          const dateStr = formatDateForRule(now, rule.dateFormat);
+          const sequenceStr = String(rule.currentNumber + 1).padStart(rule.sequenceLength, '0');
+          generatedOrderNo = `${rule.prefix}${rule.separator}${dateStr}${rule.separator}${sequenceStr}`;
+
+          // 更新序号
+          await prisma.numberingRule.update({
+            where: { id: rule.id },
+            data: { currentNumber: rule.currentNumber + 1 },
+          });
+        } else {
+          // 如果没有编码规则，生成默认编号
+          generatedOrderNo = `SO-${Date.now()}`;
+        }
+      } catch (numError) {
+        console.error('生成编号失败:', numError);
+        generatedOrderNo = `SO-${Date.now()}`;
+      }
     }
 
     // 检查订单编号是否已存在（同一租户内）
     const existingOrder = await prisma.salesOrder.findFirst({
       where: {
         tenantId: req.user.tenantId,
-        orderNo,
+        orderNo: generatedOrderNo,
       },
     });
 
@@ -313,7 +363,7 @@ export const createSalesOrder = async (req: Request, res: Response) => {
       const newOrder = await tx.salesOrder.create({
         data: {
           tenantId: req.user!.tenantId!,
-          orderNo,
+          orderNo: generatedOrderNo,
           customerId,
           salesmanId,
           orderDate: new Date(orderDate),
