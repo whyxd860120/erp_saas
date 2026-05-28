@@ -4,9 +4,15 @@
       <template #header>
         <div class="card-header">
           <span>租户管理</span>
-          <el-button type="primary" :icon="Plus" @click="handleCreate">
-            新增租户
-          </el-button>
+          <div class="header-actions">
+            <el-button @click="handleHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
+            <el-button type="primary" :icon="Plus" @click="handleCreate">
+              新增租户
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -345,15 +351,23 @@
         <el-button @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="租户管理"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, Search, View, Edit, Delete, OfficeBuilding, Link, Setting, DataAnalysis, Tools, Key, Document, Monitor } from '@element-plus/icons-vue'
+import { Plus, Refresh, Search, View, Edit, Delete, OfficeBuilding, Link, Setting, DataAnalysis, Tools, Key, Document, Monitor, QuestionFilled } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import * as tenantApi from '@/api/tenant'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 
 interface Tenant {
   id: string
@@ -390,6 +404,7 @@ const searchStatus = ref('')
 const tenants = ref<Tenant[]>([])
 const dialogVisible = ref(false)
 const detailDialogVisible = ref(false)
+const helpDialogVisible = ref(false)
 const isEdit = ref(false)
 const currentTenant = ref<Tenant | null>(null)
 const formRef = ref<FormInstance>()
@@ -662,6 +677,74 @@ const formatDate = (dateString: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增租户',
+      steps: [
+        '点击"新增租户"按钮',
+        '填写租户名称和标识',
+        '设置显示名称',
+        '选择订阅计划',
+        '设置联系方式',
+        '配置功能特性',
+        '设置配额限制',
+        '点击"确定"保存'
+      ]
+    },
+    {
+      title: '编辑租户',
+      steps: [
+        '在租户列表中找到要编辑的租户',
+        '点击"编辑"按钮',
+        '修改需要更新的信息',
+        '点击"确定"保存修改'
+      ]
+    },
+    {
+      title: '查看租户详情',
+      steps: [
+        '在租户列表中找到要查看的租户',
+        '点击"查看"按钮',
+        '查看租户的详细信息',
+        '查看功能特性和配额使用情况'
+      ]
+    }
+  ],
+  notices: [
+    '租户标识必须唯一，建议使用英文字母和数字',
+    '删除租户会删除该租户下的所有数据',
+    '配额设置会影响租户的使用限制',
+    '功能特性决定了租户可以使用的功能',
+    '禁用的租户无法访问系统'
+  ],
+  tips: [
+    '租户标识建议使用公司名称的拼音或英文缩写',
+    '可以按状态、计划等条件筛选租户',
+    '定期检查租户的配额使用情况',
+    '根据租户需求调整功能特性',
+    '建议为每个租户设置合理的配额限制'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+F', description: '快速搜索租户' },
+    { key: 'F5', description: '刷新租户列表' },
+    { key: 'Ctrl+N', description: '新增租户' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增租户管理功能',
+    '支持多租户管理',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 onMounted(() => {
