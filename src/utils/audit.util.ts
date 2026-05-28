@@ -17,10 +17,23 @@ export const auditLog = async (params: {
   userAgent?: string;
 }): Promise<void> => {
   try {
+    // 验证userId是否存在
+    let validUserId = params.userId;
+    if (validUserId) {
+      const user = await prisma.user.findUnique({
+        where: { id: validUserId },
+        select: { id: true }
+      });
+      if (!user) {
+        console.warn(`用户ID ${validUserId} 不存在，跳过审计日志记录`);
+        validUserId = null;
+      }
+    }
+
     await prisma.auditLog.create({
       data: {
         tenantId: params.tenantId || null,
-        userId: params.userId || null,
+        userId: validUserId || null,
         action: params.action,
         module: params.module,
         resource: params.resource || null,
