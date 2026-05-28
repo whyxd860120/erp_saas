@@ -145,7 +145,7 @@
         </el-table-column>
         <el-table-column label="业务员" width="100">
           <template #default="{ row }">
-            {{ row.salesman?.name || '-' }}
+            {{ row.salesman && row.salesman.name ? row.salesman.name : '-' }}
           </template>
         </el-table-column>
         <el-table-column label="单据日期" width="110">
@@ -184,7 +184,7 @@
         </el-table-column>
         <el-table-column label="制单人" width="100">
           <template #default="{ row }">
-            {{ row.creator?.name || '-' }}
+            {{ row.creator && row.creator.name ? row.creator.name : '-' }}
           </template>
         </el-table-column>
         <el-table-column label="关联单据" width="150">
@@ -831,8 +831,15 @@ const fetchData = async () => {
       stats.value = {
         total: response.data.total,
         pending: tableData.value.filter(t => t.status === 'confirmed' || t.status === 'partial').length,
-        amount: tableData.value.reduce((sum: number, t: any) => sum + (t.totalAmount || 0), 0),
-        receivable: tableData.value.reduce((sum: number, t: any) => sum + ((t.totalAmount || 0) - (t.paidAmount || 0)), 0)
+        amount: tableData.value.reduce((sum: number, t: any) => {
+          const amount = t.totalAmount ? parseFloat(t.totalAmount.toString()) : 0
+          return sum + amount
+        }, 0),
+        receivable: tableData.value.reduce((sum: number, t: any) => {
+          const totalAmount = t.totalAmount ? parseFloat(t.totalAmount.toString()) : 0
+          const paidAmount = t.paidAmount ? parseFloat(t.paidAmount.toString()) : 0
+          return sum + (totalAmount - paidAmount)
+        }, 0)
       }
     }
   } catch (error) {
