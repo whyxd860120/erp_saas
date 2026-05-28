@@ -4,10 +4,16 @@
       <template #header>
         <div class="card-header">
           <span>其他入库单</span>
-          <el-button type="primary" @click="handleCreate">
-            <el-icon><Plus /></el-icon>
-            新增其他入库单
-          </el-button>
+          <div class="header-actions">
+            <el-button @click="handleHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
+            <el-button type="primary" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              新增其他入库单
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -250,18 +256,26 @@
         </el-table>
       </div>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="其他入库单"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled } from '@element-plus/icons-vue'
 import { getOtherInbounds, getOtherInboundDetail, confirmOtherInbound, deleteOtherInbound, createOtherInbound } from '@/api/other-inbound'
 import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { generateNextNumber } from '@/api/numbering-rule'
 import { getStatusColor, getOtherInboundStatusText } from '@/utils/status.util'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import type { FormInstance } from 'element-plus'
 
 interface OtherInbound {
@@ -306,6 +320,7 @@ const createDialogVisible = ref(false)
 const createDialogTitle = ref('新增其他入库单')
 const createLoading = ref(false)
 const createFormRef = ref<FormInstance>()
+const helpDialogVisible = ref(false)
 const createForm = reactive({
   inboundNo: '',
   warehouseId: '',
@@ -610,6 +625,63 @@ const getInboundTypeText = (type: string): string => {
     other: '其他入库'
   }
   return map[type] || type
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增其他入库单',
+      steps: [
+        '点击"新增其他入库单"按钮',
+        '选择入库类型（退货入库、调拨入库、生产入库、赠品入库、其他入库）',
+        '选择入库仓库',
+        '设置入库日期',
+        '添加入库明细，选择物料和数量',
+        '填写备注信息',
+        '点击"确定"保存或确认'
+      ]
+    },
+    {
+      title: '确认其他入库单',
+      steps: [
+        '在其他入库单列表中找到草稿状态的入库单',
+        '点击"确认"按钮',
+        '确认后库存会相应增加'
+      ]
+    }
+  ],
+  notices: [
+    '其他入库单用于处理非采购订单的入库业务',
+    '确认入库单会增加库存',
+    '已确认的入库单不能直接修改',
+    '支持多种入库类型：退货、调拨、生产、赠品等',
+    '入库类型会影响库存的会计处理'
+  ],
+  tips: [
+    '退货入库用于客户退货的物料入库',
+    '调拨入库用于仓库间调拨的入库',
+    '生产入库用于生产完成的产品入库',
+    '赠品入库用于收到的赠品入库',
+    '可以按类型、状态、日期等条件筛选入库单'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+N', description: '新增入库单' },
+    { key: 'Ctrl+S', description: '保存草稿' },
+    { key: 'F5', description: '刷新列表' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增其他入库单功能',
+    '支持多种入库类型',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 初始化

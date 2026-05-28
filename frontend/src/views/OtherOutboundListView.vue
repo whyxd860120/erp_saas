@@ -4,10 +4,16 @@
       <template #header>
         <div class="card-header">
           <span>其他出库单</span>
-          <el-button type="primary" @click="handleCreate">
-            <el-icon><Plus /></el-icon>
-            新增其他出库单
-          </el-button>
+          <div class="header-actions">
+            <el-button @click="handleHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
+            <el-button type="primary" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              新增其他出库单
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -250,18 +256,26 @@
         <el-button type="primary" :loading="createLoading" @click="handleCreateSubmit">创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="其他出库单"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled } from '@element-plus/icons-vue'
 import { getOtherOutbounds, getOtherOutboundDetail, confirmOtherOutbound, deleteOtherOutbound, createOtherOutbound } from '@/api/other-outbound'
 import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { generateNextNumber } from '@/api/numbering-rule'
 import { getStatusColor, getOtherOutboundStatusText } from '@/utils/status.util'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 interface OtherOutbound {
@@ -305,6 +319,7 @@ const detailItems = ref<any[]>([])
 const createDialogVisible = ref(false)
 const createDialogTitle = ref('新增其他出库单')
 const createLoading = ref(false)
+const helpDialogVisible = ref(false)
 const createForm = reactive({
   outboundNo: '',
   warehouseId: '',
@@ -604,6 +619,63 @@ const getOutboundTypeText = (type: string): string => {
     other: '其他出库'
   }
   return map[type] || type
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增其他出库单',
+      steps: [
+        '点击"新增其他出库单"按钮',
+        '选择出库类型（退货出库、调拨出库、领用出库、报损出库、其他出库）',
+        '选择出库仓库',
+        '设置出库日期',
+        '添加出库明细，选择物料和数量',
+        '填写备注信息',
+        '点击"确定"保存或确认'
+      ]
+    },
+    {
+      title: '确认其他出库单',
+      steps: [
+        '在其他出库单列表中找到草稿状态的出库单',
+        '点击"确认"按钮',
+        '确认后库存会相应减少'
+      ]
+    }
+  ],
+  notices: [
+    '其他出库单用于处理非销售订单的出库业务',
+    '确认出库单会减少库存',
+    '已确认的出库单不能直接修改',
+    '支持多种出库类型：退货、调拨、领用、报损等',
+    '出库类型会影响库存的会计处理'
+  ],
+  tips: [
+    '退货出库用于向供应商退货的物料出库',
+    '调拨出库用于仓库间调拨的出库',
+    '领用出库用于内部领用的物料出库',
+    '报损出库用于损坏或过期的物料出库',
+    '可以按类型、状态、日期等条件筛选出库单'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+N', description: '新增出库单' },
+    { key: 'Ctrl+S', description: '保存草稿' },
+    { key: 'F5', description: '刷新列表' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增其他出库单功能',
+    '支持多种出库类型',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 初始化
