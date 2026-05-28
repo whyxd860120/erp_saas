@@ -16,6 +16,10 @@
           <el-icon><Download /></el-icon>
           导出
         </el-button>
+        <el-button @click="handleHelp">
+          <el-icon><QuestionFilled /></el-icon>
+          帮助
+        </el-button>
         <el-button type="primary" @click="handleRefresh">
           <el-icon><Refresh /></el-icon>
           刷新
@@ -393,6 +397,13 @@
         <el-button type="primary" @click="handleTransferSubmit" :loading="transferLoading">确认调拨</el-button>
       </template>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      :module-name="activeTab === 'query' ? '库存查询' : '库存操作'"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
@@ -400,11 +411,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Refresh, Download, Box, Warning, Money, OfficeBuilding, Picture
+  Refresh, Download, Box, Warning, Money, OfficeBuilding, Picture, QuestionFilled
 } from '@element-plus/icons-vue'
 import { getInventory, getInventorySummary, adjustInventory, transferInventory } from '@/api/inventory'
 import { getWarehouses } from '@/api/warehouse'
 import { getCategories } from '@/api/product'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 
 // 状态
 const loading = ref(false)
@@ -418,6 +430,7 @@ const adjustDialogVisible = ref(false)
 const detailDrawer = ref(false)
 const transferDialogVisible = ref(false)
 const currentInventory = ref<any>(null)
+const helpDialogVisible = ref(false)
 
 // 数据
 const tableData = ref<any[]>([])
@@ -766,6 +779,118 @@ const handleCurrentChange = (val: number) => {
 onMounted(async () => {
   await Promise.all([fetchData(), fetchWarehouses(), fetchCategories()])
 })
+
+// 帮助数据
+const helpData = computed(() => {
+  if (activeTab.value === 'query') {
+    return {
+      operations: [
+        {
+          title: '查询库存',
+          steps: [
+            '选择查询条件：仓库、物料分类、物料编码/名称',
+            '点击"查询"按钮或按回车键执行查询',
+            '查看库存明细，包括即时库存、采购在途、销售在途、可用库存',
+            '可以按物料编码、名称、仓库等条件进行筛选'
+          ]
+        },
+        {
+          title: '查看库存详情',
+          steps: [
+            '点击物料编码链接查看详细信息',
+            '查看物料的库存变化历史',
+            '查看物料的出入库记录'
+          ]
+        },
+        {
+          title: '导出库存数据',
+          steps: [
+            '设置查询条件筛选需要导出的数据',
+            '点击"导出"按钮',
+            '选择导出格式（Excel）',
+            '下载导出的文件'
+          ]
+        }
+      ],
+      notices: [
+        '即时库存：仓库中实际存在的库存数量',
+        '采购在途：已采购但未入库的物料数量',
+        '销售在途：已销售但未出库的物料数量',
+        '可用库存：即时库存 + 采购在途 - 销售在途',
+        '库存数据实时更新，建议定期刷新'
+      ],
+      tips: [
+        '可以按F5键快速刷新数据',
+        '支持批量选择物料进行操作',
+        '可用库存为负数表示库存不足',
+        '可以设置库存预警，当库存低于安全库存时提醒',
+        '支持导出库存数据用于分析'
+      ],
+      shortcuts: [
+        { key: 'F5', description: '刷新数据' },
+        { key: 'Ctrl+E', description: '导出数据' },
+        { key: 'Enter', description: '执行查询' }
+      ],
+      version: '1.0.0',
+      lastUpdate: '2025-05-28',
+      changes: [
+        '新增可用库存计算',
+        '优化查询性能',
+        '增加库存预警功能'
+      ]
+    }
+  } else {
+    return {
+      operations: [
+        {
+          title: '库存调整',
+          steps: [
+            '选择需要调整的库存记录',
+            '点击"库存调整"按钮',
+            '选择调整类型：盘盈或盘亏',
+            '输入调整数量和原因',
+            '点击"确认"提交调整'
+          ]
+        },
+        {
+          title: '库存调拨',
+          steps: [
+            '选择需要调拨的库存记录',
+            '点击"库存调拨"按钮',
+            '选择目标仓库',
+            '输入调拨数量',
+            '填写调拨原因',
+            '点击"确认"提交调拨'
+          ]
+        }
+      ],
+      notices: [
+        '库存调整会改变实际库存数量',
+        '库存调拨不会改变总库存，只是在不同仓库间转移',
+        '所有库存操作都会记录操作日志',
+        '库存调整需要审核权限',
+        '调拨数量不能超过可用库存'
+      ],
+      tips: [
+        '定期进行库存盘点确保账实相符',
+        '库存调整应该有充分的理由和记录',
+        '调拨操作建议在库存充足时进行',
+        '可以批量选择物料进行批量操作'
+      ],
+      shortcuts: [
+        { key: 'F5', description: '刷新数据' },
+        { key: 'Ctrl+A', description: '全选' }
+      ],
+      version: '1.0.0',
+      lastUpdate: '2025-05-28'
+    }
+  }
+})
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
+}
 </script>
 
 <style scoped>
