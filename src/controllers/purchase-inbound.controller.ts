@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
-import { auditLog } from '../utils/audit.util';
+import { auditLog, getAuditLogs } from '../utils/audit.util';
 import { parseDateStart, parseDateEnd } from '../utils/date.util';
 
 const prisma = new PrismaClient();
@@ -161,6 +161,18 @@ export const getPurchaseInboundById = async (req: Request, res: Response) => {
         tenantId: req.user.tenantId,
       },
       include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        updater: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         order: {
           select: {
             id: true,
@@ -206,9 +218,35 @@ export const getPurchaseInboundById = async (req: Request, res: Response) => {
       });
     }
 
+    // 获取操作记录
+    const auditLogs = await getAuditLogs({
+      tenantId: req.user.tenantId,
+      module: 'purchase_inbound',
+      resource: id,
+      limit: 20,
+    });
+
+    // 格式化操作记录
+    const formattedLogs = auditLogs.items.map((log: any) => ({
+      id: log.id,
+      action: log.action,
+      actionText: getActionText(log.action),
+      operator: log.user ? {
+        id: log.user.id,
+        name: log.user.name,
+      } : null,
+      createdAt: log.createdAt,
+      detail: log.detail,
+    }));
+
+    const inboundWithLogs = {
+      ...inbound,
+      logs: formattedLogs,
+    };
+
     return res.json({
       success: true,
-      data: inbound,
+      data: inboundWithLogs,
     });
   } catch (error) {
     console.error('获取采购入库单详情错误:', error);
@@ -218,6 +256,20 @@ export const getPurchaseInboundById = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * 获取操作文本
+ */
+function getActionText(action: string): string {
+  const actionMap: Record<string, string> = {
+    create: '创建入库单',
+    update: '更新入库单',
+    delete: '删除入库单',
+    confirm: '确认入库单',
+    cancel: '取消入库单',
+  };
+  return actionMap[action] || action;
+}
 
 /**
  * 创建采购入库单

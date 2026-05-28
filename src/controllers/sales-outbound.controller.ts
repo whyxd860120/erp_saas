@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
-import { auditLog } from '../utils/audit.util';
+import { auditLog, getAuditLogs } from '../utils/audit.util';
 
 const prisma = new PrismaClient();
 
@@ -160,6 +160,18 @@ export const getSalesOutboundById = async (req: Request, res: Response) => {
         tenantId: req.user.tenantId,
       },
       include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        updater: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         order: {
           select: {
             id: true,
@@ -205,9 +217,35 @@ export const getSalesOutboundById = async (req: Request, res: Response) => {
       });
     }
 
+    // 获取操作记录
+    const auditLogs = await getAuditLogs({
+      tenantId: req.user.tenantId,
+      module: 'sales_outbound',
+      resource: id,
+      limit: 20,
+    });
+
+    // 格式化操作记录
+    const formattedLogs = auditLogs.items.map((log: any) => ({
+      id: log.id,
+      action: log.action,
+      actionText: getActionText(log.action),
+      operator: log.user ? {
+        id: log.user.id,
+        name: log.user.name,
+      } : null,
+      createdAt: log.createdAt,
+      detail: log.detail,
+    }));
+
+    const outboundWithLogs = {
+      ...outbound,
+      logs: formattedLogs,
+    };
+
     return res.json({
       success: true,
-      data: outbound,
+      data: outboundWithLogs,
     });
   } catch (error) {
     console.error('获取销售出库单详情错误:', error);
@@ -217,6 +255,20 @@ export const getSalesOutboundById = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * 获取操作文本
+ */
+function getActionText(action: string): string {
+  const actionMap: Record<string, string> = {
+    create: '创建出库单',
+    update: '更新出库单',
+    delete: '删除出库单',
+    confirm: '确认出库单',
+    cancel: '取消出库单',
+  };
+  return actionMap[action] || action;
+}
 
 /**
  * 创建销售出库单
