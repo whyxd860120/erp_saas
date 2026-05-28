@@ -847,8 +847,15 @@ async function handleImportSubmit(data: any[]) {
   }
   buildCategoryMap(categoryTree.value)
 
-  // 转换导入数据
-  const processedData = data.map(item => {
+  // 获取现有物料数据用于验证
+  const existingProducts = allProducts.value
+  const existingCodes = new Set(existingProducts.map(p => p.code))
+  const existingCombinations = new Set(
+    existingProducts.map(p => `${p.categoryId}_${p.name}_${p.spec || ''}`)
+  )
+
+  // 转换导入数据并进行验证
+  const processedData = data.map((item, index) => {
     const newItem: any = { ...item }
 
     // 转换分类名称为ID
@@ -857,7 +864,36 @@ async function handleImportSubmit(data: any[]) {
       delete newItem.category
     } else if (item.category) {
       newItem.categoryError = `分类 "${item.category}" 不存在`
+      newItem.valid = false
+      newItem.errorMsg = `分类 "${item.category}" 不存在`
+      return newItem
     }
+
+    // 验证物料编码唯一性
+    if (item.code && existingCodes.has(item.code)) {
+      newItem.codeError = `物料编码 "${item.code}" 已存在`
+      newItem.valid = false
+      newItem.errorMsg = `物料编码 "${item.code}" 已存在`
+      newItem.errors = { code: true }
+      return newItem
+    }
+
+    // 验证物料分类+名称+规格组合唯一性
+    if (item.name && newItem.categoryId) {
+      const combination = `${newItem.categoryId}_${item.name}_${item.spec || ''}`
+      if (existingCombinations.has(combination)) {
+        newItem.combinationError = `相同分类下的物料名称和规格组合已存在`
+        newItem.valid = false
+        newItem.errorMsg = `相同分类下的物料名称和规格组合已存在`
+        newItem.errors = { name: true, spec: true }
+        return newItem
+      }
+    }
+
+    // 标记为有效数据
+    newItem.valid = true
+    newItem.errorMsg = ''
+    newItem.errors = {}
 
     return newItem
   })
