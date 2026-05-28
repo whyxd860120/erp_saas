@@ -254,7 +254,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Document } from '@element-plus/icons-vue'
 
 // XLSX is loaded from CDN
@@ -384,19 +384,36 @@ function exportInvalidData() {
       行号: row,
       错误信息: item.errorMsg
     }
-    Object.entries(item)
-      .filter(([key]) => key !== 'valid' && key !== 'errorMsg')
-      .forEach(([key, value]) => {
-        exportItem[key] = value
-      })
+    
+    // 添加所有列的数据
+    props.columns.forEach(col => {
+      exportItem[col.label] = item[col.prop] || ''
+    })
+    
+    // 标记错误字段
+    props.columns.forEach(col => {
+      if (item.errors?.[col.prop]) {
+        const label = col.label + '(错误)'
+        exportItem[label] = '❌ ' + (item[col.prop] || '')
+      }
+    })
+    
     return exportItem
   })
 
   const worksheet = XLSX.utils.json_to_sheet(invalidItems)
   const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, '无效数据')
-  XLSX.writeFile(workbook, '无效数据.xlsx')
-  ElMessage.success('已导出无效数据')
+  XLSX.utils.book_append_sheet(workbook, worksheet, '错误数据')
+  
+  // 设置列宽
+  const colWidths = props.columns.map(col => ({
+    wch: Math.max(col.label.length + 5, 15)
+  }))
+  worksheet['!cols'] = colWidths
+  
+  const fileName = `${props.title}_错误数据_${new Date().toLocaleDateString()}.xlsx`
+  XLSX.writeFile(workbook, fileName)
+  ElMessage.success(`已导出 ${invalidItems.length} 条错误数据`)
 }
 
 function downloadTemplate(type: 'excel' | 'csv') {
@@ -546,11 +563,37 @@ function validateData(rows: any[]): any[] {
 
 async function confirmImport() {
   const validData = parsedData.value.filter(d => d.valid)
+  const invalidData = parsedData.value.filter(d => !d.valid)
+  
+  if (invalidData.length > 0) {
+    ElMessageBox.confirm(
+      `发现 ${invalidData.length} 条数据不符合要求，是否继续导入有效的 ${validData.length} 条数据？`,
+      '数据验证结果',
+      {
+        confirmButtonText: '继续导入',
+        cancelButtonText: '导出错误数据',
+        distinguishCancelAndClose: true,
+        type: 'warning',
+      }
+    ).then(() => {
+      startImport(validData)
+    }).catch((action) => {
+      if (action === 'cancel') {
+        exportInvalidData()
+      }
+    })
+    return
+  }
+  
   if (validData.length === 0) {
     ElMessage.warning('没有有效的数据可以导入')
     return
   }
 
+  startImport(validData)
+}
+
+async function startImport(validData: any[]) {
   importing.value = true
   currentStep.value = 2
 
