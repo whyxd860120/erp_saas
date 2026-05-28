@@ -70,6 +70,9 @@ export const updateCustomer = (id: string, data: Partial<CreateCustomerParams>) 
 export const deleteCustomer = (id: string) =>
   request({ url: `/api/v1/customers/${id}`, method: 'delete' })
 
+export const batchDeleteCustomers = (ids: string[]) =>
+  request({ url: '/api/v1/customers/batch', method: 'delete', data: { ids } })
+
 export const importCustomers = (data: any[]) =>
   request({ url: '/api/v1/customers/import', method: 'post', data })
 

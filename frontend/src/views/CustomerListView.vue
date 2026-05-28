@@ -49,6 +49,10 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
+            <el-button type="danger" plain @click="handleDeleteAll" v-if="isAdmin">
+              <el-icon><Delete /></el-icon>
+              删除全部
+            </el-button>
             <el-button type="info" plain @click="showHelp">
               <el-icon><QuestionFilled /></el-icon>
               帮助
@@ -261,6 +265,7 @@
       :columns="importColumns"
       :format-tips="importFormatTips"
       :import-fn="handleImportSubmit"
+      :custom-validate-fn="customValidateCustomers"
       @success="handleImportSuccess"
     />
 
@@ -281,10 +286,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { ElTree } from 'element-plus'
-import { Plus, Folder, FolderAdd, User, Refresh, Upload, Download, View, Hide, QuestionFilled } from '@element-plus/icons-vue'
+import { Plus, Folder, FolderAdd, User, Refresh, Upload, Download, View, Hide, QuestionFilled, Delete } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
 import {
   getCustomerCategoryTree,
   getCustomerCategories,
@@ -296,7 +302,8 @@ import {
   createCustomer,
   updateCustomer,
   deleteCustomer,
-  importCustomers
+  importCustomers,
+  batchDeleteCustomers
 } from '@/api/customer'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CustomerCategoryImportDialog from './CustomerCategoryImportDialog.vue'
@@ -353,6 +360,9 @@ const displayCustomers = ref<CustomerItem[]>([])
 const categoryFilterText = ref('')
 const selectedCategoryId = ref<string | null>(null)
 const showInactive = ref(false)
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 const categoryTreeRef = ref<InstanceType<typeof ElTree>>()
 
@@ -415,6 +425,138 @@ const importFormatTips = [
   '专属业务员：选填，填写用户名称，必须是用户管理中存在的用户',
   '状态：选填，填写"启用"或"禁用"，默认为启用'
 ]
+
+// 自定义验证函数
+function customValidateCustomers(data: any[]): any[] {
+  // 转换分类名称为分类ID
+  const categoryMap = new Map<string, string>()
+
+  // 构建分类名称到ID的映射
+  const buildCategoryMap = (categories: CategoryNode[]) => {
+    categories.forEach(cat => {
+      categoryMap.set(cat.name, cat.id)
+      if (cat.children?.length) {
+        buildCategoryMap(cat.children)
+      }
+    })
+  }
+  buildCategoryMap(categoryTree.value)
+
+  // 获取现有客户数据用于验证
+  const existingCustomers = displayCustomers.value
+  const existingCodes = new Set(existingCustomers.map(c => c.code))
+
+  // 转换导入数据并进行验证
+  return data.map((item) => {
+    const newItem: any = { ...item }
+
+    // 转换分类名称为ID
+    if (item.category && categoryMap.has(item.category)) {
+      newItem.categoryId = categoryMap.get(item.category)
+      delete newItem.category
+    } else if (item.category) {
+      newItem.valid = false
+      newItem.errorMsg = `客户分类 "${item.category}" 不存在`
+      newItem.errors = { category: true }
+      return newItem
+    }
+
+    // 验证客户编码唯一性
+    if (item.code && existingCodes.has(item.code)) {
+      newItem.valid = false
+      newItem.errorMsg = `客户编码 "${item.code}" 已存在`
+      newItem.errors = { code: true }
+      return newItem
+    }
+
+    // 标记为有效数据
+    newItem.valid = true
+    newItem.errorMsg = ''
+    newItem.errors = {}
+
+    return newItem
+  })
+}
+
+async function handleImportSubmit(data: any[]) {
+  // 转换分类名称为分类ID
+  const categoryMap = new Map<string, string>()
+
+  // 构建分类名称到ID的映射
+  const buildCategoryMap = (categories: CategoryNode[]) => {
+    categories.forEach(cat => {
+      categoryMap.set(cat.name, cat.id)
+      if (cat.children?.length) {
+        buildCategoryMap(cat.children)
+      }
+    })
+  }
+  buildCategoryMap(categoryTree.value)
+
+  // 转换导入数据
+  const processedData = data.map(item => {
+    const newItem: any = { ...item }
+
+    // 转换分类名称为ID
+    if (item.category && categoryMap.has(item.category)) {
+      newItem.categoryId = categoryMap.get(item.category)
+      delete newItem.category
+    }
+
+    return newItem
+  })
+
+  return await importCustomers(processedData)
+}
+
+async function handleDeleteAll() {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除所有客户吗？此操作不可恢复！',
+      '警告',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    const loadingInstance = ElLoading.service({
+      lock: true,
+      text: '正在删除所有客户...',
+      background: 'rgba(0, 0, 0, 0.7)',
+    })
+
+    try {
+      const allIds = displayCustomers.value.map(c => c.id)
+      const res = await batchDeleteCustomers(allIds)
+      
+      if (res.success) {
+        const { successIds, errors } = res.data
+        
+        if (errors.length > 0) {
+          const errorMessages = errors.map(err => err.message).join('；')
+          ElMessage.warning(
+            `删除完成：成功 ${successIds.length} 个，失败 ${errors.length} 个。失败原因：${errorMessages}`
+          )
+        } else {
+          ElMessage.success(`删除完成：成功 ${successIds.length} 个`)
+        }
+
+        await loadData()
+      } else {
+        ElMessage.error(res.message || '删除失败')
+      }
+    } finally {
+      loadingInstance.close()
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('删除全部客户失败:', error)
+      ElMessage.error(error?.response?.data?.message || '删除失败，请稍后重试')
+    }
+  }
+}
 
 const helpData = {
   operations: [
@@ -860,39 +1002,6 @@ function handleImport() {
 
 function handleImportCategories() {
   categoryImportDialogVisible.value = true
-}
-
-async function handleImportSubmit(data: any[]) {
-  // 转换分类名称为分类ID
-  const categoryMap = new Map<string, string>()
-
-  // 构建分类名称到ID的映射
-  const buildCategoryMap = (categories: CategoryNode[]) => {
-    categories.forEach(cat => {
-      categoryMap.set(cat.name, cat.id)
-      if (cat.children?.length) {
-        buildCategoryMap(cat.children)
-      }
-    })
-  }
-  buildCategoryMap(categoryTree.value)
-
-  // 转换导入数据
-  const processedData = data.map(item => {
-    const newItem: any = { ...item }
-
-    // 转换分类名称为ID
-    if (item.category && categoryMap.has(item.category)) {
-      newItem.categoryId = categoryMap.get(item.category)
-      delete newItem.category
-    } else if (item.category) {
-      newItem.categoryError = `客户分类 "${item.category}" 不存在`
-    }
-
-    return newItem
-  })
-
-  return await importCustomers(processedData)
 }
 
 function handleImportSuccess() {

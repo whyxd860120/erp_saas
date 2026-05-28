@@ -750,15 +750,6 @@ export const batchDeleteCustomers = async (req: Request, res: Response) => {
           continue;
         }
 
-        const salesOrders = await prisma.salesOrder.findFirst({
-          where: { customerId: id, tenantId: req.user.tenantId },
-        });
-
-        if (salesOrders) {
-          errors.push({ id, message: '该客户有关联的销售订单，无法删除' });
-          continue;
-        }
-
         await prisma.customer.delete({ where: { id } });
         successIds.push(id);
       } catch (error) {
