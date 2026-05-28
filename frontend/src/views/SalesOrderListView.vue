@@ -18,6 +18,10 @@
           <el-icon><Download /></el-icon>
           导出
         </el-button>
+        <el-button @click="handleHelp">
+          <el-icon><QuestionFilled /></el-icon>
+          帮助
+        </el-button>
         <el-button type="primary" @click="handleCreate">
           <el-icon><Plus /></el-icon>
           新增{{ activeTab === 'order' ? '销售订单' : '销售出库' }}
@@ -828,6 +832,13 @@
       :import-fn="handleImportSubmit"
       @success="handleImportSuccess"
     />
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      :module-name="activeTab === 'order' ? '销售订单' : '销售出库'"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
@@ -851,6 +862,7 @@ import { getUsers } from '@/api/user'
 import { getSuppliers } from '@/api/supplier'
 import { getStatusColor, getSalesOrderStatusText } from '@/utils/status.util'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 
 // 状态
 const loading = ref(false)
@@ -865,6 +877,7 @@ const dialogTitle = ref('新增销售订单')
 const isEdit = ref(false)
 const currentOrder = ref<any>(null)
 const importDialogVisible = ref(false)
+const helpDialogVisible = ref(false)
 
 // 数据
 const tableData = ref<any[]>([])
@@ -1741,6 +1754,133 @@ const handleCurrentChange = (val: number) => {
 onMounted(async () => {
   await Promise.all([fetchData(), fetchCustomers(), fetchProducts(), fetchSalesmen(), fetchWarehouses(), fetchSuppliers()])
 })
+
+// 帮助数据
+const helpData = computed(() => {
+  if (activeTab.value === 'order') {
+    return {
+      operations: [
+        {
+          title: '新增销售订单',
+          steps: [
+            '点击"新增销售订单"按钮',
+            '选择客户和销售员',
+            '添加物料明细，选择物料、输入数量和单价',
+            '设置订单日期、到期日期等基本信息',
+            '点击"保存草稿"保存订单，或点击"提交"直接确认订单'
+          ]
+        },
+        {
+          title: '确认订单',
+          steps: [
+            '在订单列表中找到草稿状态的订单',
+            '点击操作列中的"确认"按钮',
+            '确认后订单状态变为"已确认"，可以进行出库操作'
+          ]
+        },
+        {
+          title: '快速出库',
+          steps: [
+            '在已确认的订单上点击"快速出库"按钮',
+            '选择出库仓库和出库方式（整单出库或部分出库）',
+            '如果是部分出库，选择需要出库的物料明细',
+            '点击"确认出库"生成销售出库单'
+          ]
+        },
+        {
+          title: '下推采购订单',
+          steps: [
+            '在已确认的订单上点击"下推采购"按钮',
+            '选择供应商和采购日期',
+            '查看可用库存，设置使用库存数量',
+            '设置采购单价',
+            '点击"确认生成采购订单"'
+          ]
+        },
+        {
+          title: '复制订单',
+          steps: [
+            '在订单上点击"复制"按钮',
+            '系统自动复制订单信息',
+            '修改需要调整的内容',
+            '保存或提交新订单'
+          ]
+        }
+      ],
+      notices: [
+        '只有草稿状态的订单可以编辑和删除',
+        '已确认的订单不能直接修改，需要先反确认',
+        '订单确认后才能进行出库操作',
+        '下推采购订单会考虑可用库存，避免重复采购',
+        '删除订单会同时删除相关的出库单和收款单'
+      ],
+      tips: [
+        '可以使用快捷键 Ctrl+N 快速新增订单',
+        '支持批量操作：批量确认、批量删除',
+        '订单编号系统自动生成，支持自定义编号规则',
+        '可以导入Excel批量创建订单',
+        '支持按客户、状态、日期等条件筛选订单'
+      ],
+      shortcuts: [
+        { key: 'Ctrl+N', description: '新增订单' },
+        { key: 'Ctrl+S', description: '保存草稿' },
+        { key: 'Ctrl+Enter', description: '提交订单' },
+        { key: 'F5', description: '刷新列表' }
+      ],
+      version: '1.0.0',
+      lastUpdate: '2025-05-28',
+      changes: [
+        '新增下推采购订单功能',
+        '优化库存计算逻辑',
+        '增加复制订单功能'
+      ]
+    }
+  } else {
+    return {
+      operations: [
+        {
+          title: '新增销售出库单',
+          steps: [
+            '点击"新增销售出库"按钮',
+            '选择出库仓库和客户',
+            '添加出库明细，选择物料和数量',
+            '设置出库日期和备注',
+            '点击"保存草稿"或"提交"'
+          ]
+        },
+        {
+          title: '确认出库单',
+          steps: [
+            '在出库单列表中找到草稿状态的出库单',
+            '点击"确认"按钮',
+            '确认后库存会相应减少'
+          ]
+        }
+      ],
+      notices: [
+        '出库数量不能超过可用库存',
+        '确认出库单会扣减库存',
+        '已确认的出库单不能直接修改'
+      ],
+      tips: [
+        '可以关联销售订单自动生成出库单',
+        '支持部分出库',
+        '出库单确认后不可撤销'
+      ],
+      shortcuts: [
+        { key: 'Ctrl+N', description: '新增出库单' },
+        { key: 'Ctrl+S', description: '保存草稿' }
+      ],
+      version: '1.0.0',
+      lastUpdate: '2025-05-28'
+    }
+  }
+})
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
+}
 </script>
 
 <style scoped>

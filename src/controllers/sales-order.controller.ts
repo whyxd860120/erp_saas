@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
-import { auditLog } from '../utils/audit.util';
+import { auditLog, getAuditLogs } from '../utils/audit.util';
 import { applyDataPermissions } from '../utils/data-permission.util';
 
 const prisma = new PrismaClient();
@@ -188,6 +188,18 @@ export const getSalesOrderById = async (req: Request, res: Response) => {
             name: true,
           },
         },
+        creator: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        updater: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         items: {
           include: {
             product: {
@@ -229,9 +241,35 @@ export const getSalesOrderById = async (req: Request, res: Response) => {
       });
     }
 
+    // 获取操作记录
+    const auditLogs = await getAuditLogs({
+      tenantId: req.user.tenantId,
+      module: 'sales_order',
+      resource: id,
+      limit: 20,
+    });
+
+    // 格式化操作记录
+    const formattedLogs = auditLogs.items.map((log: any) => ({
+      id: log.id,
+      action: log.action,
+      actionText: getActionText(log.action),
+      operator: log.user ? {
+        id: log.user.id,
+        name: log.user.name,
+      } : null,
+      createdAt: log.createdAt,
+      detail: log.detail,
+    }));
+
+    const orderWithLogs = {
+      ...order,
+      logs: formattedLogs,
+    };
+
     return res.json({
       success: true,
-      data: order,
+      data: orderWithLogs,
     });
   } catch (error) {
     console.error('获取销售订单详情错误:', error);
@@ -241,6 +279,21 @@ export const getSalesOrderById = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * 获取操作文本
+ */
+function getActionText(action: string): string {
+  const actionMap: Record<string, string> = {
+    create: '创建订单',
+    update: '更新订单',
+    delete: '删除订单',
+    confirm: '确认订单',
+    unconfirm: '反确认订单',
+    cancel: '取消订单',
+  };
+  return actionMap[action] || action;
+}
 
 /**
  * 创建销售订单
