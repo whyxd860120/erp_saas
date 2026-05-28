@@ -326,6 +326,18 @@
             </el-col>
           </el-row>
           <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item label="物流/快递费用">
+                <el-input-number
+                  v-model="formData.logisticsCost"
+                  :min="0"
+                  :precision="2"
+                  placeholder="请输入物流费用"
+                  style="width: 100%;"
+                  @change="calculateAmounts"
+                />
+              </el-form-item>
+            </el-col>
             <el-col :span="24">
               <el-form-item label="备注">
                 <el-input v-model="formData.remark" type="textarea" :rows="2" placeholder="请输入备注信息" />
@@ -601,7 +613,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus, Download, Document, Clock, Money, Wallet, Goods, Delete,
@@ -638,6 +650,8 @@ const salesmen = ref<any[]>([])
 
 // 导入配置
 const importColumns = [
+  { prop: 'orderNo', label: '订单单号', required: true },
+  { prop: 'orderDate', label: '订单日期', required: true },
   { prop: 'customerName', label: '客户名称', required: true },
   { prop: 'productCode', label: '物料编码', required: true },
   { prop: 'productName', label: '物料名称', required: true },
@@ -647,6 +661,8 @@ const importColumns = [
 ]
 
 const importFormatTips = [
+  '订单单号：必填，唯一标识，不可重复',
+  '订单日期：必填，格式：YYYY-MM-DD',
   '客户名称：必填，填写客户名称',
   '物料编码：必填，填写物料编码',
   '物料名称：必填，填写物料名称',
@@ -689,6 +705,7 @@ const formData = reactive({
   discountRate: 100,
   remark: '',
   extraDiscount: 0,
+  logisticsCost: 0,
   details: [] as any[],
   goodsAmount: 0,
   taxAmount: 0,
@@ -709,7 +726,7 @@ const calculateAmounts = () => {
   formData.goodsAmount = goodsAmount
   formData.taxAmount = taxAmount
   formData.discountAmount = goodsAmount + taxAmount
-  formData.totalAmount = formData.discountAmount - formData.extraDiscount
+  formData.totalAmount = formData.discountAmount - formData.extraDiscount + (formData.logisticsCost || 0)
 }
 
 // 获取物料属性
@@ -1198,12 +1215,23 @@ const resetForm = () => {
   formData.discountRate = 100
   formData.remark = ''
   formData.extraDiscount = 0
+  formData.logisticsCost = 0
   formData.details = []
   formData.goodsAmount = 0
   formData.taxAmount = 0
   formData.discountAmount = 0
   formData.totalAmount = 0
 }
+
+// 监听客户选择，自动带入专属业务员
+watch(() => formData.customerId, (newCustomerId) => {
+  if (newCustomerId) {
+    const selectedCustomer = customers.value.find(c => c.id === newCustomerId)
+    if (selectedCustomer?.employeeId) {
+      formData.salesmanId = selectedCustomer.employeeId
+    }
+  }
+})
 
 // 关闭对话框
 const handleDialogClose = () => {

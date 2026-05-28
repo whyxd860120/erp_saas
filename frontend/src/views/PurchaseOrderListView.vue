@@ -289,6 +289,18 @@
             </el-col>
           </el-row>
           <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item label="物流/快递费用">
+                <el-input-number
+                  v-model="formData.logisticsCost"
+                  :min="0"
+                  :precision="2"
+                  placeholder="请输入物流费用"
+                  style="width: 100%;"
+                  @change="calculateAmounts"
+                />
+              </el-form-item>
+            </el-col>
             <el-col :span="24">
               <el-form-item label="备注">
                 <el-input v-model="formData.remark" type="textarea" :rows="2" placeholder="请输入备注信息" />
@@ -639,6 +651,7 @@ const formData = reactive({
   supplierId: '',
   remark: '',
   discountAmount: 0,
+  logisticsCost: 0,
   details: [] as any[],
   goodsAmount: 0,
   taxAmount: 0,
@@ -657,7 +670,7 @@ const calculateAmounts = () => {
   })
   formData.goodsAmount = goodsAmount
   formData.taxAmount = taxAmount
-  formData.totalAmount = goodsAmount + taxAmount
+  formData.totalAmount = goodsAmount + taxAmount + (formData.logisticsCost || 0)
 }
 
 // 获取物料属性

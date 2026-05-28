@@ -419,6 +419,7 @@ model User {
   userRoles               UserRole[]
   customers               Customer[] // 管理的客户（作为业务员）
   salesOrders             SalesOrder[] // 管理的销售订单（作为业务员）
+  salesOutbounds          SalesOutbound[] // 管理的销售出库单（作为业务员）
   createdStockTakes       StockTake[]     @relation("StockTakeCreator")
   confirmedStockTakes     StockTake[]     @relation("StockTakeConfirmer")
   createdOtherInbounds    OtherInbound[]  @relation("OtherInboundCreator")
@@ -922,6 +923,7 @@ model PurchaseOrder {
   orderDate      DateTime  @default(now()) // 订单日期
   expectDate     DateTime? // 预计到货日期
   totalAmount    Decimal   @default(0) // 总金额
+  logisticsCost  Decimal   @default(0) // 物流/快递费用
   status         String    @default("draft") // draft, pending, approved, partial, completed, cancelled, rejected
   approvalStatus String    @default("pending") // 审批状态: pending, approved, rejected
   approvedAt     DateTime? // 审批时间
@@ -980,6 +982,7 @@ model SalesOrder {
   orderDate      DateTime  @default(now()) // 订单日期
   expectDate     DateTime? // 预计交货日期
   totalAmount    Decimal   @default(0) // 总金额
+  logisticsCost  Decimal   @default(0) // 物流/快递费用
   discountRate   Decimal   @default(0) // 整单折扣率
   discountAmount Decimal   @default(0) // 折扣金额
   finalAmount    Decimal   @default(0) // 实际金额
@@ -1041,6 +1044,7 @@ model PurchaseInbound {
   warehouseId String // 仓库ID
   inboundDate DateTime @default(now()) // 入库日期
   totalAmount Decimal  @default(0) // 总金额
+  logisticsCost Decimal @default(0) // 物流/快递费用
   type        String   @default("blue") // blue(正常入库), red(退货入库)
   qcStatus    String   @default("pending") // 待质检: pending, qualified, unqualified, partial
   status      String   @default("draft") // draft, confirmed, cancelled
@@ -1101,6 +1105,7 @@ model SalesOutbound {
   salesmanId   String? // 业务员ID
   outboundDate DateTime @default(now()) // 出库日期
   totalAmount  Decimal  @default(0) // 总金额
+  logisticsCost Decimal @default(0) // 物流/快递费用
   type         String   @default("blue") // blue(正常出库), red(退货出库)
   status       String   @default("draft") // draft, confirmed, cancelled
   remark       String? // 备注
@@ -1110,6 +1115,7 @@ model SalesOutbound {
   tenant    Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   order     SalesOrder?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
   warehouse Warehouse             @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  salesman  User?                 @relation(fields: [salesmanId], references: [id], onDelete: SetNull)
   details   SalesOutboundDetail[]
 
   @@unique([tenantId, outboundNo])

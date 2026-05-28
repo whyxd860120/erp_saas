@@ -171,6 +171,47 @@
           </el-col>
         </el-row>
         
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="客户" prop="customerId">
+              <el-select v-model="formData.customerId" placeholder="请选择客户" filterable>
+                <el-option
+                  v-for="customer in customers"
+                  :key="customer.id"
+                  :label="customer.name"
+                  :value="customer.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="销售员">
+              <el-select v-model="formData.salesmanId" placeholder="请选择销售员" filterable clearable>
+                <el-option
+                  v-for="user in users"
+                  :key="user.id"
+                  :label="user.name"
+                  :value="user.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="物流/快递费用">
+              <el-input-number
+                v-model="formData.logisticsCost"
+                :min="0"
+                :precision="2"
+                placeholder="请输入物流费用"
+                style="width: 100%;"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
         <el-form-item label="备注" prop="remark">
           <el-input v-model="formData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
         </el-form-item>
@@ -276,7 +317,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getSalesOutbounds, getSalesOutboundById, createSalesOutbound, updateSalesOutbound, confirmSalesOutbound, deleteSalesOutbound } from '@/api/sales-outbound'
@@ -325,9 +366,11 @@ const formData = reactive({
   orderNo: '',
   salesOrderId: '',
   customerId: '',
+  salesmanId: '',
   outboundDate: new Date(),
   warehouseId: '',
   remark: '',
+  logisticsCost: 0,
   details: [] as any[]
 })
 
@@ -661,9 +704,12 @@ const handleSubmit = async () => {
     
     // 构建提交数据
     const submitData: any = {
+      customerId: formData.customerId,
+      salesmanId: formData.salesmanId,
       outboundDate: formData.outboundDate,
       warehouseId: formData.warehouseId,
       remark: formData.remark,
+      logisticsCost: formData.logisticsCost,
       details: formData.details.map(detail => ({
         productId: detail.productId,
         quantity: detail.quantity,
@@ -709,11 +755,23 @@ const resetForm = () => {
   formData.orderNo = ''
   formData.salesOrderId = ''
   formData.customerId = ''
+  formData.salesmanId = ''
   formData.outboundDate = new Date()
   formData.warehouseId = ''
   formData.remark = ''
+  formData.logisticsCost = 0
   formData.details = []
 }
+
+// 监听客户选择，自动带入专属业务员
+watch(() => formData.customerId, (newCustomerId) => {
+  if (newCustomerId) {
+    const selectedCustomer = customers.value.find(c => c.id === newCustomerId)
+    if (selectedCustomer?.employeeId) {
+      formData.salesmanId = selectedCustomer.employeeId
+    }
+  }
+})
 
 // 关闭对话框
 const handleDialogClose = () => {

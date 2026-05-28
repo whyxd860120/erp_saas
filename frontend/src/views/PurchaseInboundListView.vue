@@ -171,6 +171,20 @@
           </el-col>
         </el-row>
         
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="物流/快递费用">
+              <el-input-number
+                v-model="formData.logisticsCost"
+                :min="0"
+                :precision="2"
+                placeholder="请输入物流费用"
+                style="width: 100%;"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
         <el-form-item label="备注" prop="remark">
           <el-input v-model="formData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
         </el-form-item>
@@ -322,6 +336,7 @@ const formData = reactive({
   inboundDate: new Date(),
   warehouseId: '',
   remark: '',
+  logisticsCost: 0,
   details: [] as any[]
 })
 

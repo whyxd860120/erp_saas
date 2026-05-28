@@ -233,6 +233,7 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
       supplierId,
       orderDate = new Date(),
       remark,
+      logisticsCost = 0,
       items,
     } = req.body;
 
@@ -337,6 +338,7 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
           supplierId,
           orderDate: new Date(orderDate),
           totalAmount,
+          logisticsCost,
           status: 'draft',
           remark,
         },
@@ -425,6 +427,7 @@ export const updatePurchaseOrder = async (req: Request, res: Response) => {
       supplierId,
       orderDate,
       remark,
+      logisticsCost,
       items,
     } = req.body;
 
@@ -499,6 +502,7 @@ export const updatePurchaseOrder = async (req: Request, res: Response) => {
     if (supplierId !== undefined) updateData.supplierId = supplierId;
     if (orderDate !== undefined) updateData.orderDate = new Date(orderDate);
     if (remark !== undefined) updateData.remark = remark;
+    if (logisticsCost !== undefined) updateData.logisticsCost = logisticsCost;
 
     // 如果有明细，更新明细
     if (items && Array.isArray(items)) {

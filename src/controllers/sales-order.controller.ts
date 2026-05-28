@@ -231,8 +231,10 @@ export const createSalesOrder = async (req: Request, res: Response) => {
     const {
       orderNo,
       customerId,
+      salesmanId,
       orderDate = new Date(),
       remark,
+      logisticsCost = 0,
       items,
     } = req.body;
 
@@ -313,8 +315,10 @@ export const createSalesOrder = async (req: Request, res: Response) => {
           tenantId: req.user!.tenantId!,
           orderNo,
           customerId,
+          salesmanId,
           orderDate: new Date(orderDate),
           totalAmount,
+          logisticsCost,
           status: 'draft',
           remark,
         },
@@ -401,8 +405,10 @@ export const updateSalesOrder = async (req: Request, res: Response) => {
     const {
       orderNo,
       customerId,
+      salesmanId,
       orderDate,
       remark,
+      logisticsCost,
       items,
     } = req.body;
 
@@ -475,8 +481,10 @@ export const updateSalesOrder = async (req: Request, res: Response) => {
     const updateData: any = {};
     if (orderNo !== undefined) updateData.orderNo = orderNo;
     if (customerId !== undefined) updateData.customerId = customerId;
+    if (salesmanId !== undefined) updateData.salesmanId = salesmanId;
     if (orderDate !== undefined) updateData.orderDate = new Date(orderDate);
     if (remark !== undefined) updateData.remark = remark;
+    if (logisticsCost !== undefined) updateData.logisticsCost = logisticsCost;
 
     // 如果有明细，更新明细
     if (items && Array.isArray(items)) {

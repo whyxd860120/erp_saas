@@ -234,9 +234,12 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
     const {
       outboundNo,
       orderId,
+      customerId,
+      salesmanId,
       warehouseId,
       outboundDate = new Date(),
       remark,
+      logisticsCost = 0,
       details,
     } = req.body;
 
@@ -393,9 +396,12 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
           tenantId: req.user!.tenantId!,
           outboundNo: generatedOutboundNo,
           orderId,
+          customerId,
+          salesmanId,
           warehouseId,
           outboundDate: new Date(outboundDate),
           totalAmount,
+          logisticsCost,
           status: 'draft',
           remark,
         },

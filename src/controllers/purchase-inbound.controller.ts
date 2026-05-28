@@ -238,6 +238,7 @@ export const createPurchaseInbound = async (req: Request, res: Response) => {
       warehouseId,
       inboundDate = new Date(),
       remark,
+      logisticsCost = 0,
       details,
     } = req.body;
 
@@ -384,6 +385,7 @@ export const createPurchaseInbound = async (req: Request, res: Response) => {
           warehouseId,
           inboundDate: new Date(inboundDate),
           totalAmount,
+          logisticsCost,
           status: 'draft',
           remark,
         },
