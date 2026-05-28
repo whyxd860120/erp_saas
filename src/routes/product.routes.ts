@@ -12,6 +12,7 @@ import {
   deleteProduct,
   batchDeleteProducts,
   importProducts,
+  toggleProductStatus,
 } from '../controllers/product.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
 
@@ -33,5 +34,11 @@ router.put('/:id', authenticate, authorize(['admin', 'manager']), tenantIsolatio
 router.delete('/batch', authenticate, authorize(['admin']), tenantIsolation(true), batchDeleteProducts);
 router.delete('/:id', authenticate, authorize(['admin']), tenantIsolation(true), deleteProduct);
 router.post('/import', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), importProducts);
+
+/**
+ * 切换物料状态
+ * PATCH /api/v1/products/:id/status
+ */
+router.patch('/:id/status', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), toggleProductStatus);
 
 export default router;

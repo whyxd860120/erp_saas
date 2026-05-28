@@ -1235,6 +1235,54 @@ export const importProducts = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * 切换物料状态
+ * PATCH /api/v1/products/:id/status
+ */
+export const toggleProductStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!req.user?.tenantId) {
+      return res.status(400).json({ success: false, message: '未关联租户' });
+    }
+
+    if (!status || !['active', 'inactive'].includes(status)) {
+      return res.status(400).json({ success: false, message: '状态值无效' });
+    }
+
+    const existingProduct = await prisma.product.findFirst({
+      where: { id, tenantId: req.user.tenantId },
+    });
+
+    if (!existingProduct) {
+      return res.status(404).json({ success: false, message: '物料不存在' });
+    }
+
+    const updatedProduct = await prisma.product.update({
+      where: { id },
+      data: { status },
+    });
+
+    await auditLog({
+      tenantId: req.user.tenantId,
+      userId: req.user.id,
+      action: 'update',
+      module: 'product',
+      resource: id,
+      detail: JSON.stringify({ status }),
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    return res.json({ success: true, data: updatedProduct, message: '状态更新成功' });
+  } catch (error) {
+    console.error('更新物料状态错误:', error);
+    return res.status(500).json({ success: false, message: '更新物料状态失败' });
+  }
+};
+
 export default {
   getCategories,
   createCategory,
@@ -1248,4 +1296,5 @@ export default {
   deleteProduct,
   batchDeleteProducts,
   importProducts,
+  toggleProductStatus,
 };

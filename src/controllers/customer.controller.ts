@@ -994,6 +994,54 @@ export const importCustomers = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * 切换客户状态
+ * PATCH /api/v1/customers/:id/status
+ */
+export const toggleCustomerStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!req.user?.tenantId) {
+      return res.status(400).json({ success: false, message: '未关联租户' });
+    }
+
+    if (!status || !['active', 'inactive'].includes(status)) {
+      return res.status(400).json({ success: false, message: '状态值无效' });
+    }
+
+    const existingCustomer = await prisma.customer.findFirst({
+      where: { id, tenantId: req.user.tenantId },
+    });
+
+    if (!existingCustomer) {
+      return res.status(404).json({ success: false, message: '客户不存在' });
+    }
+
+    const updatedCustomer = await prisma.customer.update({
+      where: { id },
+      data: { status },
+    });
+
+    await auditLog({
+      tenantId: req.user.tenantId,
+      userId: req.user.id,
+      action: 'update',
+      module: 'customer',
+      resource: id,
+      detail: JSON.stringify({ status }),
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    return res.json({ success: true, data: updatedCustomer, message: '状态更新成功' });
+  } catch (error) {
+    console.error('更新客户状态错误:', error);
+    return res.status(500).json({ success: false, message: '更新客户状态失败' });
+  }
+};
+
 export default {
   getCustomerCategoryTree,
   getCustomerCategories,
@@ -1009,4 +1057,5 @@ export default {
   deleteCustomer,
   batchDeleteCustomers,
   importCustomers,
+  toggleCustomerStatus,
 };

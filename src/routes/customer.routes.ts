@@ -14,6 +14,7 @@ import {
   deleteCustomer,
   batchDeleteCustomers,
   importCustomers,
+  toggleCustomerStatus,
 } from '../controllers/customer.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
 
@@ -100,6 +101,12 @@ router.delete('/batch', authenticate, authorize(['admin']), tenantIsolation(true
  * DELETE /api/v1/customers/:id
  */
 router.delete('/:id', authenticate, authorize(['admin']), tenantIsolation(true), deleteCustomer);
+
+/**
+ * 切换客户状态
+ * PATCH /api/v1/customers/:id/status
+ */
+router.patch('/:id/status', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), toggleCustomerStatus);
 
 /**
  * 导入客户
