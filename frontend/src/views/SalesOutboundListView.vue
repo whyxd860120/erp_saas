@@ -323,6 +323,7 @@ import { Plus } from '@element-plus/icons-vue'
 import { getSalesOutbounds, getSalesOutboundById, createSalesOutbound, updateSalesOutbound, confirmSalesOutbound, deleteSalesOutbound } from '@/api/sales-outbound'
 import { getSalesOrders } from '@/api/sales-order'
 import { getCustomers } from '@/api/customer'
+import { getUsers } from '@/api/user'
 import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { getInventory } from '@/api/inventory'
@@ -341,6 +342,7 @@ const searchForm = reactive({
 
 // 下拉数据
 const customers = ref([])
+const users = ref([])
 const salesOrders = ref([])
 const warehouses = ref([])
 const products = ref([])
@@ -418,6 +420,18 @@ const fetchCustomers = async () => {
     }
   } catch (error) {
     console.error('获取客户列表失败:', error)
+  }
+}
+
+// 获取用户列表
+const fetchUsers = async () => {
+  try {
+    const response = await getUsers()
+    if (response.success) {
+      users.value = response.data || []
+    }
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
   }
 }
 
@@ -767,8 +781,8 @@ const resetForm = () => {
 watch(() => formData.customerId, (newCustomerId) => {
   if (newCustomerId) {
     const selectedCustomer = customers.value.find(c => c.id === newCustomerId)
-    if (selectedCustomer?.employeeId) {
-      formData.salesmanId = selectedCustomer.employeeId
+    if (selectedCustomer?.salesmanId) {
+      formData.salesmanId = selectedCustomer.salesmanId
     }
   }
 })
@@ -799,6 +813,7 @@ onMounted(async () => {
   await Promise.all([
     fetchSalesOutbounds(),
     fetchCustomers(),
+    fetchUsers(),
     fetchSalesOrders(),
     fetchWarehouses(),
     fetchProducts(),

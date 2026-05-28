@@ -875,23 +875,28 @@ export const importSalesOrders = async (req: Request, res: Response) => {
       if (!item.customerId) rowErrors.push('客户不能为空');
       if (!item.productId) rowErrors.push('物料不能为空');
       if (!item.quantity) rowErrors.push('数量不能为空');
+      if (!item.orderNo) rowErrors.push('订单单号不能为空');
+      if (!item.orderDate) rowErrors.push('订单日期不能为空');
 
       if (rowErrors.length > 0) {
         errors.push({ row, message: rowErrors.join('; ') });
         continue;
       }
 
-      const orderNo = `SO${Date.now()}${Math.floor(Math.random() * 1000)}`;
+      const orderNo = item.orderNo || `SO${Date.now()}${Math.floor(Math.random() * 1000)}`;
+      const orderDate = item.orderDate ? new Date(item.orderDate) : new Date();
 
       const order = await prisma.salesOrder.create({
         data: {
           tenantId,
           orderNo,
           customerId: item.customerId,
-          orderDate: new Date(),
+          orderDate,
           remark: item.remark || '',
           status: 'draft',
           totalAmount: (item.quantity || 0) * (item.unitPrice || 0),
+          logisticsCost: item.logisticsCost || 0,
+          salesmanId: item.salesmanId,
           items: {
             create: {
               productId: item.productId,

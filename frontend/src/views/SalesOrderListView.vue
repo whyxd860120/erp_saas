@@ -1227,8 +1227,8 @@ const resetForm = () => {
 watch(() => formData.customerId, (newCustomerId) => {
   if (newCustomerId) {
     const selectedCustomer = customers.value.find(c => c.id === newCustomerId)
-    if (selectedCustomer?.employeeId) {
-      formData.salesmanId = selectedCustomer.employeeId
+    if (selectedCustomer?.salesmanId) {
+      formData.salesmanId = selectedCustomer.salesmanId
     }
   }
 })
