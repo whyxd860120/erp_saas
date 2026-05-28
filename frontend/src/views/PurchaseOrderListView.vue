@@ -590,6 +590,7 @@ import {
 } from '@/api/purchase-order'
 import { getSuppliers } from '@/api/supplier'
 import { getProducts } from '@/api/product'
+import { getStatusColor, getPurchaseOrderStatusText } from '@/utils/status.util'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 
 // 状态
@@ -707,28 +708,12 @@ const formatDateTime = (date: string | Date) => {
   return new Date(date).toLocaleString('zh-CN')
 }
 
-// 获取状态类型
 const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    draft: 'info',
-    confirmed: '',
-    partial: 'warning',
-    completed: 'success',
-    cancelled: 'danger'
-  }
-  return map[status] || 'info'
+  return getStatusColor(status)
 }
 
-// 获取状态文本
 const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    draft: '草稿',
-    confirmed: '已确认',
-    partial: '部分入库',
-    completed: '已完成',
-    cancelled: '已取消'
-  }
-  return map[status] || status
+  return getPurchaseOrderStatusText(status)
 }
 
 // 获取入库进度

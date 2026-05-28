@@ -234,13 +234,13 @@
               确认
             </el-tag>
             <el-tag
-              v-if="row.status === 'draft'"
-              type="danger"
+              v-if="row.status === 'confirmed'"
+              type="info"
               size="small"
-              @click="handleCancel(row)"
+              @click="handleCopy(row)"
               style="cursor: pointer; margin-right: 4px;"
             >
-              取消
+              复制
             </el-tag>
             <el-tag
               v-if="row.status === 'confirmed'"
@@ -838,8 +838,7 @@ import {
   Plus, Download, Document, Clock, Money, Wallet, Goods, Delete,
   ArrowDown, Upload
 } from '@element-plus/icons-vue'
-import {
-  getSalesOrders, getSalesOrderById, createSalesOrder,
+import { getSalesOrders, getSalesOrderById, createSalesOrder,
   updateSalesOrder, confirmSalesOrder, unconfirmSalesOrder, deleteSalesOrder, importSalesOrders
 } from '@/api/sales-order'
 import { createSalesOutbound } from '@/api/sales-outbound'
@@ -850,6 +849,7 @@ import { getCustomers } from '@/api/customer'
 import { getProducts } from '@/api/product'
 import { getUsers } from '@/api/user'
 import { getSuppliers } from '@/api/supplier'
+import { getStatusColor, getSalesOrderStatusText } from '@/utils/status.util'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 
 // 状态
@@ -1024,26 +1024,12 @@ const formatDateTime = (date: string | Date) => {
 
 // 获取状态类型
 const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    draft: 'info',
-    confirmed: '',
-    partial: 'warning',
-    completed: 'success',
-    cancelled: 'danger'
-  }
-  return map[status] || 'info'
+  return getStatusColor(status)
 }
 
 // 获取状态文本
 const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    draft: '草稿',
-    confirmed: '已确认',
-    partial: '部分出库',
-    completed: '已完成',
-    cancelled: '已取消'
-  }
-  return map[status] || status
+  return getSalesOrderStatusText(status)
 }
 
 // 获取出库进度
@@ -1281,19 +1267,6 @@ const handleConfirm = async (row: any) => {
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error('确认失败')
-    }
-  }
-}
-
-// 取消
-const handleCancel = async (row: any) => {
-  try {
-    await ElMessageBox.confirm(`确定要取消销售订单 "${row.orderNo}" 吗？`, '确认取消', { type: 'warning' })
-    ElMessage.success('取消成功')
-    fetchData()
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error('取消失败')
     }
   }
 }

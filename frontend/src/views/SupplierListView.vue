@@ -148,8 +148,8 @@
             <el-table-column prop="bankAccount" label="银行账号" width="180" />
             <el-table-column label="状态" width="90" align="center">
               <template #default="{ row }">
-                <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
-                  {{ row.status === 'active' ? '启用' : '禁用' }}
+                <el-tag :type="getStatusColor(row.status)" size="small">
+                  {{ getResourceStatusText(row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -294,6 +294,7 @@ import {
   importSuppliers,
   toggleSupplierStatus
 } from '@/api/supplier'
+import { getStatusColor, getResourceStatusText } from '@/utils/status.util'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import SupplierCategoryImportDialog from './SupplierCategoryImportDialog.vue'
 import CommonHelpDialog from '@/components/CommonHelpDialog.vue'

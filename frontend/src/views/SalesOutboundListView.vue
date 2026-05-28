@@ -327,6 +327,7 @@ import { getUsers } from '@/api/user'
 import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { getInventory } from '@/api/inventory'
+import { getStatusColor, getSalesOutboundStatusText } from '@/utils/status.util'
 import type { FormInstance, FormRules } from 'element-plus'
 
 // 数据列表
@@ -659,24 +660,12 @@ const getProductUnit = (productId: string) => {
   return product?.unit || '-'
 }
 
-// 获取状态类型
 const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    'draft': 'info',
-    'confirmed': 'success',
-    'cancelled': 'danger'
-  }
-  return map[status] || 'info'
+  return getStatusColor(status)
 }
 
-// 获取状态文本
 const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    'draft': '草稿',
-    'confirmed': '已确认',
-    'cancelled': '已取消'
-  }
-  return map[status] || status
+  return getSalesOutboundStatusText(status)
 }
 
 // 格式化日期
