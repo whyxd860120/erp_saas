@@ -5,6 +5,10 @@
         <h2 class="page-title">角色权限管理</h2>
       </div>
       <div class="header-right">
+        <el-button @click="handleHelp">
+          <el-icon><QuestionFilled /></el-icon>
+          帮助
+        </el-button>
         <el-button type="primary" @click="handleCreate">
           <el-icon><Plus /></el-icon>
           新增角色
@@ -178,13 +182,20 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="角色权限管理"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { getRoles, createRole, updateRole, deleteRole, getRolePermissions, updateRolePermissions } from '@/api/role'
 import { getPermissions } from '@/api/permission'
@@ -193,12 +204,14 @@ import {
   batchSetDataPermissionRules
 } from '@/api/data-permission'
 import { getStatusColor, getResourceStatusText } from '@/utils/status.util'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 
 const loading = ref(false)
 const submitLoading = ref(false)
 const permissionLoading = ref(false)
 const dialogVisible = ref(false)
 const permissionDialogVisible = ref(false)
+const helpDialogVisible = ref(false)
 const dialogTitle = ref('新增角色')
 const isEdit = ref(false)
 const formRef = ref<FormInstance>()
@@ -443,6 +456,72 @@ const handleSaveDataPermissions = async () => {
   } finally {
     dataPermissionLoading.value = false
   }
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增角色',
+      steps: [
+        '点击"新增角色"按钮',
+        '填写角色名称和编码',
+        '填写角色描述',
+        '选择启用或禁用状态',
+        '点击"确定"保存'
+      ]
+    },
+    {
+      title: '配置权限',
+      steps: [
+        '在角色列表中找到要配置权限的角色',
+        '点击"权限"按钮',
+        '勾选需要分配的功能权限',
+        '点击"保存"完成权限配置'
+      ]
+    },
+    {
+      title: '配置数据权限',
+      steps: [
+        '在角色列表中找到要配置数据权限的角色',
+        '点击"数据权限"按钮',
+        '添加数据权限规则',
+        '设置资源类型、权限类型和值',
+        '点击"保存"完成数据权限配置'
+      ]
+    }
+  ],
+  notices: [
+    '角色编码必须唯一',
+    '权限配置决定了角色可以访问的功能',
+    '数据权限决定了角色可以访问的数据范围',
+    '删除角色会影响关联的用户权限',
+    '禁用的角色无法分配给用户'
+  ],
+  tips: [
+    '角色是权限管理的基础单元',
+    '可以按部门、职位等维度设计角色',
+    '功能权限控制菜单和按钮的访问',
+    '数据权限控制数据的可见范围',
+    '建议定期审查角色权限配置'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+F', description: '快速搜索角色' },
+    { key: 'F5', description: '刷新角色列表' },
+    { key: 'Ctrl+N', description: '新增角色' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增角色权限管理功能',
+    '支持功能权限和数据权限',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 onMounted(() => {
