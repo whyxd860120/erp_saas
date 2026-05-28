@@ -48,16 +48,16 @@ router.put('/:id', authenticate, authorize(['admin', 'manager', 'staff']), tenan
 router.post('/:id/confirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), confirmPurchaseOrder);
 
 /**
- * 删除采购订单（仅草稿状态）
- * DELETE /api/v1/purchase-orders/:id
- */
-router.delete('/:id', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), deletePurchaseOrder);
-
-/**
  * 批量删除采购订单（仅草稿状态）
  * DELETE /api/v1/purchase-orders/batch
  */
 router.delete('/batch', authenticate, authorize(['admin', 'manager']), tenantIsolation(), batchDeletePurchaseOrders);
+
+/**
+ * 删除采购订单（仅草稿状态）
+ * DELETE /api/v1/purchase-orders/:id
+ */
+router.delete('/:id', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), deletePurchaseOrder);
 
 /**
  * 导入采购订单

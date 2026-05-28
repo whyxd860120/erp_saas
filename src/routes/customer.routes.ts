@@ -90,16 +90,16 @@ router.post('/', authenticate, authorize(['admin', 'manager']), tenantIsolation(
 router.put('/:id', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), updateCustomer);
 
 /**
- * 删除客户
- * DELETE /api/v1/customers/:id
- */
-router.delete('/:id', authenticate, authorize(['admin']), tenantIsolation(true), deleteCustomer);
-
-/**
  * 批量删除客户
  * DELETE /api/v1/customers/batch
  */
 router.delete('/batch', authenticate, authorize(['admin']), tenantIsolation(true), batchDeleteCustomers);
+
+/**
+ * 删除客户
+ * DELETE /api/v1/customers/:id
+ */
+router.delete('/:id', authenticate, authorize(['admin']), tenantIsolation(true), deleteCustomer);
 
 /**
  * 导入客户
