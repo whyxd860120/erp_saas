@@ -343,10 +343,6 @@
                   v-model="formData.customerId" 
                   placeholder="请选择客户" 
                   filterable 
-                  remote
-                  reserve-keyword
-                  :remote-method="searchCustomers"
-                  :loading="loading"
                   style="width: 100%;">
                   <el-option
                     v-for="customer in customers"
@@ -418,10 +414,6 @@
                   v-model="row.productId"
                   placeholder="请选择物料"
                   filterable
-                  remote
-                  reserve-keyword
-                  :remote-method="searchProducts"
-                  :loading="loading"
                   size="small"
                   @change="handleProductSelect($index)"
                   style="width: 100%;"

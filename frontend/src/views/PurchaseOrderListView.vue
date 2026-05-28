@@ -296,10 +296,6 @@
                   v-model="formData.supplierId" 
                   placeholder="请选择供应商" 
                   filterable 
-                  remote
-                  reserve-keyword
-                  :remote-method="searchSuppliers"
-                  :loading="loading"
                   style="width: 100%;">
                   <el-option
                     v-for="supplier in suppliers"
@@ -347,10 +343,6 @@
                   v-model="row.productId"
                   placeholder="请选择物料"
                   filterable
-                  remote
-                  reserve-keyword
-                  :remote-method="searchProducts"
-                  :loading="loading"
                   size="small"
                   @change="handleProductSelect($index)"
                   style="width: 100%;"
