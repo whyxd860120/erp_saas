@@ -49,6 +49,10 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
+            <el-button type="info" plain @click="showHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
           </div>
         </div>
       </template>
@@ -260,6 +264,13 @@
       v-model="categoryImportDialogVisible"
       @success="loadData"
     />
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="供应商管理"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
@@ -268,7 +279,7 @@ import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { ElTree } from 'element-plus'
-import { Plus, Folder, FolderAdd, Refresh, Upload, Download, View, Hide } from '@element-plus/icons-vue'
+import { Plus, Folder, FolderAdd, Refresh, Upload, Download, View, Hide, QuestionFilled } from '@element-plus/icons-vue'
 import {
   getSupplierCategoryTree,
   getSupplierCategories,
@@ -285,6 +296,7 @@ import {
 } from '@/api/supplier'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import SupplierCategoryImportDialog from './SupplierCategoryImportDialog.vue'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 
 declare const XLSX: any
 
@@ -363,6 +375,8 @@ const supplierRules: FormRules = {
 // 导入
 const importDialogVisible = ref(false)
 const categoryImportDialogVisible = ref(false)
+const helpDialogVisible = ref(false)
+
 const importColumns = [
   { prop: 'code', label: '编码', required: true, unique: true },
   { prop: 'name', label: '名称', required: true },
@@ -383,6 +397,92 @@ const importFormatTips = [
   '开户行、银行账号：选填',
   '状态：选填，填写"启用"或"禁用"，默认为启用'
 ]
+
+const helpData = {
+  operations: [
+    {
+      title: '新增供应商',
+      steps: [
+        '点击左侧供应商分类树，选择要添加供应商的分类',
+        '点击"新增供应商"按钮',
+        '填写供应商编码、名称、联系人、电话等基本信息',
+        '填写银行账户信息（可选）',
+        '选择启用或禁用状态',
+        '点击"确定"保存'
+      ]
+    },
+    {
+      title: '编辑供应商',
+      steps: [
+        '在供应商列表中找到要编辑的供应商',
+        '点击"编辑"按钮',
+        '修改需要更新的信息',
+        '点击"确定"保存修改'
+      ]
+    },
+    {
+      title: '删除供应商',
+      steps: [
+        '在供应商列表中找到要删除的供应商',
+        '点击"删除"按钮',
+        '确认删除操作',
+        '注意：有业务往来的供应商无法删除'
+      ]
+    },
+    {
+      title: '导入供应商',
+      steps: [
+        '点击"导入供应商"按钮',
+        '下载导入模板',
+        '按照模板格式填写供应商信息',
+        '上传填写好的Excel文件',
+        '系统会自动验证数据格式和唯一性',
+        '查看验证结果，如有错误可导出错误数据',
+        '确认导入有效数据'
+      ]
+    },
+    {
+      title: '导出供应商',
+      steps: [
+        '点击"导出供应商"按钮',
+        '系统会导出当前列表中的所有供应商',
+        '导出文件为Excel格式，可用于数据备份或迁移'
+      ]
+    }
+  ],
+  notices: [
+    '供应商编码必须唯一，重复的编码无法导入',
+    '有业务往来的供应商无法删除，请谨慎操作',
+    '删除操作不可恢复，请谨慎操作',
+    '供应商信息变更后，相关的订单和单据会自动更新',
+    '银行账户信息用于财务结算，请确保准确性'
+  ],
+  tips: [
+    '使用搜索功能可以快速查找供应商',
+    '点击"显示禁用"可以查看已禁用的供应商',
+    '定期导出供应商数据进行备份',
+    '使用分类管理可以更好地组织供应商',
+    '导入前先验证数据，避免导入错误',
+    '为重要供应商维护完整的银行账户信息'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+F', description: '快速搜索供应商' },
+    { key: 'F5', description: '刷新供应商列表' },
+    { key: 'Ctrl+A', description: '全选当前页供应商' }
+  ],
+  version: '1.1.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增供应商编码唯一性验证',
+    '改进导入功能，支持查看和导出错误数据',
+    '新增帮助文档功能',
+    '优化供应商分类管理'
+  ]
+}
+
+function showHelp() {
+  helpDialogVisible.value = true
+}
 
 // 树形选择器数据
 const categoryTreeForSelect = computed(() => {

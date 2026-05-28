@@ -49,6 +49,10 @@
               <el-icon><Delete /></el-icon>
               删除全部
             </el-button>
+            <el-button type="info" plain @click="showHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
           </div>
         </div>
       </template>
@@ -304,6 +308,13 @@
       v-model="categoryImportDialogVisible"
       @success="loadData"
     />
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="物料管理"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
@@ -312,7 +323,7 @@ import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { ElTree } from 'element-plus'
-import { Plus, Folder, FolderAdd, Refresh, Upload, Download, View, Hide, Delete } from '@element-plus/icons-vue'
+import { Plus, Folder, FolderAdd, Refresh, Upload, Download, View, Hide, Delete, QuestionFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import {
   getCategoryTree,
@@ -331,6 +342,7 @@ import {
 } from '@/api/product'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CategoryImportDialog from './CategoryImportDialog.vue'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 
 declare const XLSX: any
 
@@ -414,6 +426,8 @@ const productRules: FormRules = {
 // 导入
 const importDialogVisible = ref(false)
 const categoryImportDialogVisible = ref(false)
+const helpDialogVisible = ref(false)
+
 const importColumns = [
   { prop: 'code', label: '编码', required: true, unique: true },
   { prop: 'name', label: '名称', required: true },
@@ -434,6 +448,107 @@ const importFormatTips = [
   '销售价：选填，数字格式',
   '状态：选填，填写"启用"或"禁用"，默认为启用'
 ]
+
+const helpData = {
+  operations: [
+    {
+      title: '新增物料',
+      steps: [
+        '点击左侧物料分类树，选择要添加物料的分类',
+        '点击"新增物料"按钮',
+        '填写物料编码、名称、规格、单位等基本信息',
+        '设置成本价、销售价',
+        '选择启用或禁用状态',
+        '根据需要启用批次管理、保质期管理或序列号管理',
+        '点击"确定"保存'
+      ]
+    },
+    {
+      title: '编辑物料',
+      steps: [
+        '在物料列表中找到要编辑的物料',
+        '点击"编辑"按钮',
+        '修改需要更新的信息',
+        '点击"确定"保存修改'
+      ]
+    },
+    {
+      title: '删除物料',
+      steps: [
+        '在物料列表中找到要删除的物料',
+        '点击"删除"按钮',
+        '确认删除操作',
+        '注意：有库存的物料无法删除'
+      ]
+    },
+    {
+      title: '批量删除物料',
+      steps: [
+        '在物料列表中勾选要删除的物料',
+        '点击"批量删除"按钮',
+        '确认批量删除操作',
+        '注意：此操作不可恢复，请谨慎操作'
+      ]
+    },
+    {
+      title: '导入物料',
+      steps: [
+        '点击"导入物料"按钮',
+        '下载导入模板',
+        '按照模板格式填写物料信息',
+        '上传填写好的Excel文件',
+        '系统会自动验证数据格式和唯一性',
+        '查看验证结果，如有错误可导出错误数据',
+        '确认导入有效数据'
+      ]
+    },
+    {
+      title: '导出物料',
+      steps: [
+        '点击"导出物料"按钮',
+        '系统会导出当前列表中的所有物料',
+        '导出文件为Excel格式，可用于数据备份或迁移'
+      ]
+    }
+  ],
+  notices: [
+    '物料编码必须唯一，重复的编码无法导入',
+    '物料分类+物料名称+物料规格组合必须唯一',
+    '有库存的物料无法删除，请先清理库存',
+    '删除操作不可恢复，请谨慎操作',
+    '导入前请确保分类已创建，否则会导致导入失败',
+    '批次管理启用后，出入库必须输入批次号',
+    '保质期管理启用后，出入库必须输入生产日期和有效期',
+    '序列号管理启用后，每个产品都需要唯一的序列号'
+  ],
+  tips: [
+    '使用搜索功能可以快速查找物料',
+    '点击"显示禁用"可以查看已禁用的物料',
+    '批量操作可以提高工作效率',
+    '定期导出物料数据进行备份',
+    '使用分类管理可以更好地组织物料',
+    '导入前先验证数据，避免导入错误',
+    '删除全部物料功能仅管理员可用，请谨慎使用'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+F', description: '快速搜索物料' },
+    { key: 'F5', description: '刷新物料列表' },
+    { key: 'Ctrl+A', description: '全选当前页物料' }
+  ],
+  version: '1.2.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增物料编码唯一性验证',
+    '新增物料分类+名称+规格组合唯一性验证',
+    '改进导入功能，支持查看和导出错误数据',
+    '新增批量删除功能',
+    '新增帮助文档功能'
+  ]
+}
+
+function showHelp() {
+  helpDialogVisible.value = true
+}
 
 // 树形选择器数据（编辑时排除自身及子孙）
 const categoryTreeForSelect = computed(() => {

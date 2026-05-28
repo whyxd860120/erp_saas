@@ -49,6 +49,10 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
+            <el-button type="info" plain @click="showHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
           </div>
         </div>
       </template>
@@ -265,6 +269,13 @@
       v-model="categoryImportDialogVisible"
       @success="loadData"
     />
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="客户管理"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
@@ -273,7 +284,7 @@ import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { ElTree } from 'element-plus'
-import { Plus, Folder, FolderAdd, User, Refresh, Upload, Download, View, Hide } from '@element-plus/icons-vue'
+import { Plus, Folder, FolderAdd, User, Refresh, Upload, Download, View, Hide, QuestionFilled } from '@element-plus/icons-vue'
 import {
   getCustomerCategoryTree,
   getCustomerCategories,
@@ -289,6 +300,7 @@ import {
 } from '@/api/customer'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CustomerCategoryImportDialog from './CustomerCategoryImportDialog.vue'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import { getUsers, toggleCustomerStatus } from '@/api/user'
 
 declare const XLSX: any
@@ -382,6 +394,8 @@ const customerRules: FormRules = {
 // 导入
 const importDialogVisible = ref(false)
 const categoryImportDialogVisible = ref(false)
+const helpDialogVisible = ref(false)
+
 const importColumns = [
   { prop: 'code', label: '编码', required: true, unique: true },
   { prop: 'name', label: '名称', required: true },
@@ -401,6 +415,93 @@ const importFormatTips = [
   '专属业务员：选填，填写用户名称，必须是用户管理中存在的用户',
   '状态：选填，填写"启用"或"禁用"，默认为启用'
 ]
+
+const helpData = {
+  operations: [
+    {
+      title: '新增客户',
+      steps: [
+        '点击左侧客户分类树，选择要添加客户的分类',
+        '点击"新增客户"按钮',
+        '填写客户编码、名称、联系人、电话等基本信息',
+        '选择专属业务员（可选）',
+        '选择启用或禁用状态',
+        '点击"确定"保存'
+      ]
+    },
+    {
+      title: '编辑客户',
+      steps: [
+        '在客户列表中找到要编辑的客户',
+        '点击"编辑"按钮',
+        '修改需要更新的信息',
+        '点击"确定"保存修改'
+      ]
+    },
+    {
+      title: '删除客户',
+      steps: [
+        '在客户列表中找到要删除的客户',
+        '点击"删除"按钮',
+        '确认删除操作',
+        '注意：有业务往来的客户无法删除'
+      ]
+    },
+    {
+      title: '导入客户',
+      steps: [
+        '点击"导入客户"按钮',
+        '下载导入模板',
+        '按照模板格式填写客户信息',
+        '上传填写好的Excel文件',
+        '系统会自动验证数据格式和唯一性',
+        '查看验证结果，如有错误可导出错误数据',
+        '确认导入有效数据'
+      ]
+    },
+    {
+      title: '导出客户',
+      steps: [
+        '点击"导出客户"按钮',
+        '系统会导出当前列表中的所有客户',
+        '导出文件为Excel格式，可用于数据备份或迁移'
+      ]
+    }
+  ],
+  notices: [
+    '客户编码必须唯一，重复的编码无法导入',
+    '导入前请确保分类已创建，否则会导致导入失败',
+    '有业务往来的客户无法删除，请谨慎操作',
+    '专属业务员必须是用户管理中存在的用户',
+    '删除操作不可恢复，请谨慎操作',
+    '客户信息变更后，相关的订单和单据会自动更新'
+  ],
+  tips: [
+    '使用搜索功能可以快速查找客户',
+    '点击"显示禁用"可以查看已禁用的客户',
+    '为重要客户指定专属业务员可以更好地管理客户关系',
+    '定期导出客户数据进行备份',
+    '使用分类管理可以更好地组织客户',
+    '导入前先验证数据，避免导入错误'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+F', description: '快速搜索客户' },
+    { key: 'F5', description: '刷新客户列表' },
+    { key: 'Ctrl+A', description: '全选当前页客户' }
+  ],
+  version: '1.1.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增客户编码唯一性验证',
+    '改进导入功能，支持查看和导出错误数据',
+    '新增帮助文档功能',
+    '优化客户分类管理'
+  ]
+}
+
+function showHelp() {
+  helpDialogVisible.value = true
+}
 
 // 树形选择器数据
 const categoryTreeForSelect = computed(() => {
