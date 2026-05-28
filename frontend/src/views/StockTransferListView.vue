@@ -4,10 +4,16 @@
       <template #header>
         <div class="card-header">
           <span>调拨单</span>
-          <el-button type="primary" @click="handleCreate">
-            <el-icon><Plus /></el-icon>
-            新增调拨单
-          </el-button>
+          <div class="header-actions">
+            <el-button @click="handleHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
+            <el-button type="primary" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              新增调拨单
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -240,19 +246,27 @@
         </el-table>
       </div>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="调拨单"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled } from '@element-plus/icons-vue'
 import { getStockTransfers, getStockTransferById, createStockTransfer, confirmStockTransfer, deleteStockTransfer } from '@/api/stock-transfer'
 import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { getInventory } from '@/api/inventory'
 import { generateNextNumber } from '@/api/numbering-rule'
 import { getStatusColor, getStockTransferStatusText } from '@/utils/status.util'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 interface StockTransfer {
@@ -298,6 +312,7 @@ const detailItems = ref<any[]>([])
 const createDialogVisible = ref(false)
 const createDialogTitle = ref('新增调拨单')
 const createLoading = ref(false)
+const helpDialogVisible = ref(false)
 const createForm = reactive({
   transferNo: '',
   fromWarehouseId: '',
@@ -589,6 +604,64 @@ const getStatusType = (status: string): string => {
 
 const getStatusText = (status: string): string => {
   return getStockTransferStatusText(status)
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增调拨单',
+      steps: [
+        '点击"新增调拨单"按钮',
+        '选择调出仓库',
+        '选择调入仓库',
+        '设置调拨日期',
+        '添加调拨明细，选择物料和数量',
+        '系统自动检查调出仓库的可用库存',
+        '填写备注信息',
+        '点击"确定"保存或确认'
+      ]
+    },
+    {
+      title: '确认调拨单',
+      steps: [
+        '在调拨单列表中找到草稿状态的调拨单',
+        '点击"确认"按钮',
+        '确认后调出仓库库存减少，调入仓库库存增加'
+      ]
+    }
+  ],
+  notices: [
+    '调拨单用于仓库之间的物料调拨',
+    '确认调拨单会同时调整两个仓库的库存',
+    '已确认的调拨单不能直接修改',
+    '调拨数量不能超过调出仓库的可用库存',
+    '调拨单确认后不可撤销'
+  ],
+  tips: [
+    '调拨前请确保调出仓库有足够的库存',
+    '可以按仓库、物料等条件进行调拨',
+    '调拨单确认后会自动生成出入库记录',
+    '建议定期进行仓库间调拨以平衡库存',
+    '可以按状态、日期等条件筛选调拨单'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+N', description: '新增调拨单' },
+    { key: 'Ctrl+S', description: '保存草稿' },
+    { key: 'F5', description: '刷新列表' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增调拨单功能',
+    '支持仓库间物料调拨',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 初始化

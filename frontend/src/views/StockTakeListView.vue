@@ -4,10 +4,16 @@
       <template #header>
         <div class="card-header">
           <span>盘点单</span>
-          <el-button type="primary" @click="handleCreate">
-            <el-icon><Plus /></el-icon>
-            新增盘点单
-          </el-button>
+          <div class="header-actions">
+            <el-button @click="handleHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
+            <el-button type="primary" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              新增盘点单
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -268,18 +274,26 @@
         <el-button type="primary" :loading="createLoading" @click="handleCreateSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="盘点单"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Delete } from '@element-plus/icons-vue'
+import { Plus, Delete, QuestionFilled } from '@element-plus/icons-vue'
 import { getStockTakes, getStockTakeDetail, createStockTake, confirmStockTake, deleteStockTake } from '@/api/stock-take'
 import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { generateNextNumber } from '@/api/numbering-rule'
 import { getStatusColor, getStockTakeStatusText } from '@/utils/status.util'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 interface StockTake {
@@ -322,6 +336,7 @@ const detailItems = ref<any[]>([])
 const createDialogVisible = ref(false)
 const createDialogTitle = ref('新增盘点单')
 const createLoading = ref(false)
+const helpDialogVisible = ref(false)
 const createForm = reactive({
   takeNo: '',
   warehouseId: '',
@@ -617,6 +632,64 @@ const getStatusType = (status: string): string => {
 
 const getStatusText = (status: string): string => {
   return getStockTakeStatusText(status)
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增盘点单',
+      steps: [
+        '点击"新增盘点单"按钮',
+        '选择盘点仓库',
+        '设置盘点日期',
+        '添加盘点明细，选择物料',
+        '输入账面数量和实际数量',
+        '系统自动计算差异数量',
+        '填写备注信息',
+        '点击"确定"保存或确认'
+      ]
+    },
+    {
+      title: '确认盘点单',
+      steps: [
+        '在盘点单列表中找到草稿状态的盘点单',
+        '点击"确认"按钮',
+        '确认后库存会根据盘点结果进行调整'
+      ]
+    }
+  ],
+  notices: [
+    '盘点单用于定期或不定期的库存盘点',
+    '确认盘点单会根据盘点结果调整库存',
+    '已确认的盘点单不能直接修改',
+    '盘点差异会影响库存数量和成本',
+    '建议定期进行库存盘点确保账实相符'
+  ],
+  tips: [
+    '盘点前建议先暂停相关仓库的出入库操作',
+    '可以按仓库、物料类别等条件进行盘点',
+    '盘点差异需要及时查明原因',
+    '盘点单确认后会自动生成库存调整记录',
+    '可以按状态、日期等条件筛选盘点单'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+N', description: '新增盘点单' },
+    { key: 'Ctrl+S', description: '保存草稿' },
+    { key: 'F5', description: '刷新列表' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增盘点单功能',
+    '支持库存盘点和调整',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 初始化
