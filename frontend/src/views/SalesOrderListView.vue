@@ -201,25 +201,47 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="400" fixed="right">
           <template #default="{ row }">
             <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer; margin-right: 4px;">
               查看
             </el-tag>
-            <el-dropdown v-if="row.status === 'draft'" trigger="click">
-              <el-tag type="info" size="small" style="cursor: pointer; margin-right: 4px;">
-                更多
-                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </el-tag>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="handleEdit(row)">编辑</el-dropdown-item>
-                  <el-dropdown-item @click="handleCopy(row)">复制</el-dropdown-item>
-                  <el-dropdown-item @click="handleConfirm(row)" divided>确认</el-dropdown-item>
-                  <el-dropdown-item @click="handleCancel(row)" style="color: #F56C6C;">取消</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <el-tag
+              v-if="row.status === 'draft'"
+              type="info"
+              size="small"
+              @click="handleEdit(row)"
+              style="cursor: pointer; margin-right: 4px;"
+            >
+              编辑
+            </el-tag>
+            <el-tag
+              v-if="row.status === 'draft'"
+              type="info"
+              size="small"
+              @click="handleCopy(row)"
+              style="cursor: pointer; margin-right: 4px;"
+            >
+              复制
+            </el-tag>
+            <el-tag
+              v-if="row.status === 'draft'"
+              type="success"
+              size="small"
+              @click="handleConfirm(row)"
+              style="cursor: pointer; margin-right: 4px;"
+            >
+              确认
+            </el-tag>
+            <el-tag
+              v-if="row.status === 'draft'"
+              type="danger"
+              size="small"
+              @click="handleCancel(row)"
+              style="cursor: pointer; margin-right: 4px;"
+            >
+              取消
+            </el-tag>
             <el-tag
               v-if="row.status === 'confirmed'"
               type="warning"
@@ -561,7 +583,7 @@
         <!-- 物料明细 -->
         <div class="detail-section">
           <h4>物料明细</h4>
-          <el-table :data="currentOrder.details" border size="small">
+          <el-table :data="currentOrder.items" border size="small">
             <el-table-column type="index" label="序号" width="60" />
             <el-table-column prop="product.code" label="物料编码" width="120" />
             <el-table-column prop="product.name" label="物料名称" min-width="150" />
@@ -1009,7 +1031,7 @@ const handleEdit = async (row: any) => {
   try {
     const response = await getSalesOrderById(row.id)
     if (response.success) {
-      const order = response.data.data
+      const order = response.data
       Object.assign(formData, {
         id: order.id,
         orderNo: order.orderNo,
@@ -1020,7 +1042,7 @@ const handleEdit = async (row: any) => {
         remark: order.remark || '',
         extraDiscount: order.extraDiscount || 0,
         logisticsCost: order.logisticsCost || 0,
-        details: order.details?.map((d: any) => ({
+        details: order.items?.map((d: any) => ({
           id: d.id,
           productId: d.productId,
           quantity: Number(d.quantity) || 0,
