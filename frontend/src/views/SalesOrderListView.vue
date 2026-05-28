@@ -1211,6 +1211,8 @@ watch(() => formData.customerId, (newCustomerId) => {
     const selectedCustomer = customers.value.find(c => c.id === newCustomerId)
     if (selectedCustomer?.salesmanId) {
       formData.salesmanId = selectedCustomer.salesmanId
+    } else if (selectedCustomer?.user?.id) {
+      formData.salesmanId = selectedCustomer.user.id
     }
   }
 })
