@@ -512,6 +512,7 @@ import { paymentReceiptApi } from '@/api'
 import { getAccounts, updateAccount } from '@/api/account'
 import { getCustomers } from '@/api/customer'
 import { getSuppliers } from '@/api/supplier'
+import { getStatusColor, getPaymentReceiptStatusText, getPaymentPaymentStatusText } from '@/utils/status.util'
 
 // 状态
 const loading = ref(false)
@@ -600,22 +601,11 @@ const formatDate = (date: string | Date) => {
 
 // 获取状态类型
 const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    draft: 'info',
-    confirmed: 'success',
-    cancelled: 'danger'
-  }
-  return map[status] || 'info'
+  return getStatusColor(status)
 }
 
-// 获取状态文本
 const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    draft: '草稿',
-    confirmed: '已确认',
-    cancelled: '已取消'
-  }
-  return map[status] || status
+  return activeTab.value === 'receipt' ? getPaymentReceiptStatusText(status) : getPaymentPaymentStatusText(status)
 }
 
 // 获取账户类型文本

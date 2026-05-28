@@ -261,6 +261,7 @@ import { getOtherInbounds, getOtherInboundDetail, confirmOtherInbound, deleteOth
 import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { generateNextNumber } from '@/api/numbering-rule'
+import { getStatusColor, getOtherInboundStatusText } from '@/utils/status.util'
 import type { FormInstance } from 'element-plus'
 
 interface OtherInbound {
@@ -592,22 +593,11 @@ const formatCurrency = (value: number): string => {
 
 // 获取状态标签类型
 const getStatusType = (status: string): string => {
-  const map: Record<string, string> = {
-    draft: 'info',
-    confirmed: 'success',
-    cancelled: 'danger'
-  }
-  return map[status] || 'info'
+  return getStatusColor(status)
 }
 
-// 获取状态文本
 const getStatusText = (status: string): string => {
-  const map: Record<string, string> = {
-    draft: '草稿',
-    confirmed: '已确认',
-    cancelled: '已取消'
-  }
-  return map[status] || status
+  return getOtherInboundStatusText(status)
 }
 
 // 获取入库类型文本

@@ -65,6 +65,60 @@ export const PURCHASE_INBOUND_STATUS_TEXT: Record<string, string> = {
 }
 
 /**
+ * 调拨单状态文本映射
+ */
+export const STOCK_TRANSFER_STATUS_TEXT: Record<string, string> = {
+  draft: '草稿',
+  confirmed: '已确认',
+  cancelled: '已取消'
+}
+
+/**
+ * 盘点单状态文本映射
+ */
+export const STOCK_TAKE_STATUS_TEXT: Record<string, string> = {
+  draft: '草稿',
+  confirmed: '已确认',
+  cancelled: '已取消'
+}
+
+/**
+ * 其他出库单状态文本映射
+ */
+export const OTHER_OUTBOUND_STATUS_TEXT: Record<string, string> = {
+  draft: '草稿',
+  confirmed: '已确认',
+  cancelled: '已取消'
+}
+
+/**
+ * 其他入库单状态文本映射
+ */
+export const OTHER_INBOUND_STATUS_TEXT: Record<string, string> = {
+  draft: '草稿',
+  confirmed: '已确认',
+  cancelled: '已取消'
+}
+
+/**
+ * 收款单状态文本映射
+ */
+export const PAYMENT_RECEIPT_STATUS_TEXT: Record<string, string> = {
+  draft: '草稿',
+  confirmed: '已确认',
+  cancelled: '已取消'
+}
+
+/**
+ * 付款单状态文本映射
+ */
+export const PAYMENT_PAYMENT_STATUS_TEXT: Record<string, string> = {
+  draft: '草稿',
+  confirmed: '已确认',
+  cancelled: '已取消'
+}
+
+/**
  * 资料状态文本映射（供应商、客户、物料等）
  */
 export const RESOURCE_STATUS_TEXT: Record<string, string> = {
@@ -116,6 +170,60 @@ export const getSalesOutboundStatusText = (status: string): string => {
  */
 export const getPurchaseInboundStatusText = (status: string): string => {
   return PURCHASE_INBOUND_STATUS_TEXT[status] || status
+}
+
+/**
+ * 获取调拨单状态文本
+ * @param status 状态值
+ * @returns 状态文本
+ */
+export const getStockTransferStatusText = (status: string): string => {
+  return STOCK_TRANSFER_STATUS_TEXT[status] || status
+}
+
+/**
+ * 获取盘点单状态文本
+ * @param status 状态值
+ * @returns 状态文本
+ */
+export const getStockTakeStatusText = (status: string): string => {
+  return STOCK_TAKE_STATUS_TEXT[status] || status
+}
+
+/**
+ * 获取其他出库单状态文本
+ * @param status 状态值
+ * @returns 状态文本
+ */
+export const getOtherOutboundStatusText = (status: string): string => {
+  return OTHER_OUTBOUND_STATUS_TEXT[status] || status
+}
+
+/**
+ * 获取其他入库单状态文本
+ * @param status 状态值
+ * @returns 状态文本
+ */
+export const getOtherInboundStatusText = (status: string): string => {
+  return OTHER_INBOUND_STATUS_TEXT[status] || status
+}
+
+/**
+ * 获取收款单状态文本
+ * @param status 状态值
+ * @returns 状态文本
+ */
+export const getPaymentReceiptStatusText = (status: string): string => {
+  return PAYMENT_RECEIPT_STATUS_TEXT[status] || status
+}
+
+/**
+ * 获取付款单状态文本
+ * @param status 状态值
+ * @returns 状态文本
+ */
+export const getPaymentPaymentStatusText = (status: string): string => {
+  return PAYMENT_PAYMENT_STATUS_TEXT[status] || status
 }
 
 /**
