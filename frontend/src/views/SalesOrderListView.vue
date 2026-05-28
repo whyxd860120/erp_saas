@@ -10,6 +10,10 @@
         </el-tabs>
       </div>
       <div class="header-right">
+        <el-button @click="handleImport" v-if="activeTab === 'order'">
+          <el-icon><Upload /></el-icon>
+          导入
+        </el-button>
         <el-button @click="handleExport">
           <el-icon><Download /></el-icon>
           导出
@@ -583,6 +587,16 @@
         </div>
       </div>
     </el-drawer>
+
+    <!-- 导入对话框 -->
+    <CommonImportDialog
+      v-model="importDialogVisible"
+      title="销售订单"
+      :columns="importColumns"
+      :format-tips="importFormatTips"
+      :import-fn="handleImportSubmit"
+      @success="handleImportSuccess"
+    />
   </div>
 </template>
 
@@ -591,15 +605,16 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus, Download, Document, Clock, Money, Wallet, Goods, Delete,
-  ArrowDown
+  ArrowDown, Upload
 } from '@element-plus/icons-vue'
 import {
   getSalesOrders, getSalesOrderById, createSalesOrder,
-  updateSalesOrder, confirmSalesOrder, deleteSalesOrder
+  updateSalesOrder, confirmSalesOrder, deleteSalesOrder, importSalesOrders
 } from '@/api/sales-order'
 import { getCustomers } from '@/api/customer'
 import { getProducts } from '@/api/product'
 import { getUsers } from '@/api/user'
+import CommonImportDialog from '@/components/CommonImportDialog.vue'
 
 // 状态
 const loading = ref(false)
@@ -613,12 +628,31 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('新增销售订单')
 const isEdit = ref(false)
 const currentOrder = ref<any>(null)
+const importDialogVisible = ref(false)
 
 // 数据
 const tableData = ref<any[]>([])
 const customers = ref<any[]>([])
 const products = ref<any[]>([])
 const salesmen = ref<any[]>([])
+
+// 导入配置
+const importColumns = [
+  { prop: 'customerName', label: '客户名称', required: true },
+  { prop: 'productCode', label: '物料编码', required: true },
+  { prop: 'productName', label: '物料名称', required: true },
+  { prop: 'quantity', label: '数量', required: true },
+  { prop: 'unitPrice', label: '单价' },
+  { prop: 'remark', label: '备注' }
+]
+
+const importFormatTips = [
+  '客户名称：必填，填写客户名称',
+  '物料编码：必填，填写物料编码',
+  '物料名称：必填，填写物料名称',
+  '数量：必填，数字格式',
+  '单价：选填，数字格式',
+  '备注：选填'
 
 // 统计
 const stats = ref({
@@ -1010,6 +1044,45 @@ const handleBatchDelete = async () => {
 // 导出
 const handleExport = () => {
   ElMessage.info('导出功能开发中')
+}
+
+// 导入
+const handleImport = () => {
+  importDialogVisible.value = true
+}
+
+const handleImportSubmit = async (data: any[]) => {
+  const customerMap = new Map<string, string>()
+  const productMap = new Map<string, string>()
+
+  customers.value.forEach(c => customerMap.set(c.name, c.id))
+  products.value.forEach(p => productMap.set(p.code, p.id))
+
+  const processedData = data.map(item => {
+    const newItem: any = { ...item }
+
+    if (item.customerName && customerMap.has(item.customerName)) {
+      newItem.customerId = customerMap.get(item.customerName)
+      delete newItem.customerName
+    } else if (item.customerName) {
+      newItem.customerError = `客户 "${item.customerName}" 不存在`
+    }
+
+    if (item.productCode && productMap.has(item.productCode)) {
+      newItem.productId = productMap.get(item.productCode)
+      delete newItem.productCode
+    } else if (item.productCode) {
+      newItem.productError = `物料编码 "${item.productCode}" 不存在`
+    }
+
+    return newItem
+  })
+
+  return await importSalesOrders(processedData)
+}
+
+const handleImportSuccess = () => {
+  loadData()
 }
 
 // 添加明细

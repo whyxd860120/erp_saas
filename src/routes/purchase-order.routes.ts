@@ -6,6 +6,7 @@ import {
   updatePurchaseOrder,
   confirmPurchaseOrder,
   deletePurchaseOrder,
+  importPurchaseOrders,
 } from '../controllers/purchase-order.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
 import { checkFiscalPeriod } from '../middlewares/fiscal-period.middleware';
@@ -40,7 +41,7 @@ router.post('/', authenticate, authorize(['admin', 'manager', 'staff']), tenantI
 router.put('/:id', authenticate, authorize(['admin', 'manager', 'staff']), tenantIsolation(), checkFiscalPeriod('orderDate'), updatePurchaseOrder);
 
 /**
- * 确认采购订单（草�?�?已确认）
+ * 确认采购订单（草稿 → 已确认）
  * POST /api/v1/purchase-orders/:id/confirm
  */
 router.post('/:id/confirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), confirmPurchaseOrder);
@@ -50,5 +51,11 @@ router.post('/:id/confirm', authenticate, authorize(['admin', 'manager']), tenan
  * DELETE /api/v1/purchase-orders/:id
  */
 router.delete('/:id', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), deletePurchaseOrder);
+
+/**
+ * 导入采购订单
+ * POST /api/v1/purchase-orders/import
+ */
+router.post('/import', authenticate, authorize(['admin', 'manager']), tenantIsolation(), importPurchaseOrders);
 
 export default router;

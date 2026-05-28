@@ -72,3 +72,12 @@ export const deletePurchaseOrder = (id: string) => {
     method: 'delete'
   })
 }
+
+// 导入采购订单
+export const importPurchaseOrders = (data: any[]) => {
+  return request({
+    url: '/api/v1/purchase-orders/import',
+    method: 'post',
+    data
+  })
+}

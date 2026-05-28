@@ -750,6 +750,101 @@ export const deleteSalesOrder = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * 导入销售订单
+ * POST /api/v1/sales-orders/import
+ */
+export const importSalesOrders = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      return res.status(400).json({ success: false, message: '未关联租户' });
+    }
+
+    const items = req.body as any[];
+    const errors: Array<{ row: number; message: string }> = [];
+    const successItems: any[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const row = i + 1;
+      const rowErrors: string[] = [];
+
+      if (item.customerError) rowErrors.push(item.customerError);
+      if (item.productError) rowErrors.push(item.productError);
+
+      if (rowErrors.length > 0) {
+        errors.push({ row, message: rowErrors.join('; ') });
+        continue;
+      }
+
+      if (!item.customerId) rowErrors.push('客户不能为空');
+      if (!item.productId) rowErrors.push('物料不能为空');
+      if (!item.quantity) rowErrors.push('数量不能为空');
+
+      if (rowErrors.length > 0) {
+        errors.push({ row, message: rowErrors.join('; ') });
+        continue;
+      }
+
+      const orderNo = `SO${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+      const order = await prisma.salesOrder.create({
+        data: {
+          tenantId,
+          orderNo,
+          customerId: item.customerId,
+          orderDate: new Date(),
+          remark: item.remark || '',
+          status: 'draft',
+          totalAmount: (item.quantity || 0) * (item.unitPrice || 0),
+          items: {
+            create: {
+              productId: item.productId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice || 0,
+              amount: (item.quantity || 0) * (item.unitPrice || 0),
+            }
+          }
+        }
+      });
+
+      successItems.push(order);
+    }
+
+    await auditLog({
+      tenantId: req.user.tenantId,
+      userId: req.user.id,
+      action: 'import',
+      module: 'sales_order',
+      resource: null,
+      detail: JSON.stringify({
+        total: items.length,
+        success: successItems.length,
+        failed: errors.length
+      }),
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    res.json({
+      success: true,
+      message: `导入完成：成功 ${successItems.length} 条，失败 ${errors.length} 条`,
+      data: {
+        success: successItems,
+        errors
+      }
+    });
+  } catch (error) {
+    console.error('导入销售订单失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '导入销售订单失败',
+      error: error instanceof Error ? error.message : '未知错误'
+    });
+  }
+};
+
 export default {
   getSalesOrders,
   getSalesOrderById,
@@ -757,4 +852,5 @@ export default {
   updateSalesOrder,
   confirmSalesOrder,
   deleteSalesOrder,
+  importSalesOrders,
 };

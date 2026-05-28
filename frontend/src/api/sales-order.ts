@@ -81,3 +81,12 @@ export const getSalesStats = (params?: { startDate?: string; endDate?: string })
     params
   })
 }
+
+// 导入销售订单
+export const importSalesOrders = (data: any[]) => {
+  return request({
+    url: '/api/v1/sales-orders/import',
+    method: 'post',
+    data
+  })
+}
