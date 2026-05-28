@@ -114,6 +114,12 @@ export const getSalesOrders = async (req: Request, res: Response) => {
               name: true,
             },
           },
+          salesman: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           _count: {
             select: {
               items: true,
@@ -174,6 +180,12 @@ export const getSalesOrderById = async (req: Request, res: Response) => {
             name: true,
             contact: true,
             phone: true,
+          },
+        },
+        salesman: {
+          select: {
+            id: true,
+            name: true,
           },
         },
         items: {
@@ -252,6 +264,15 @@ export const createSalesOrder = async (req: Request, res: Response) => {
       logisticsCost = 0,
       items,
     } = req.body;
+
+    console.log('创建销售订单 - 请求数据:', {
+      orderNo,
+      customerId,
+      salesmanId,
+      orderDate,
+      logisticsCost,
+      itemsCount: items?.length
+    });
 
     // 验证参数
     if (!customerId || !items || !Array.isArray(items) || items.length === 0) {

@@ -143,6 +143,11 @@
             </div>
           </template>
         </el-table-column>
+        <el-table-column label="业务员" width="100">
+          <template #default="{ row }">
+            {{ row.salesman?.name || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column label="单据日期" width="110">
           <template #default="{ row }">
             {{ formatDate(row.orderDate) }}
@@ -1153,6 +1158,7 @@ const submitOrder = async (confirmed: boolean) => {
 
   try {
     submitLoading.value = true
+    console.log('提交数据:', formData)
     const submitData = {
       customerId: formData.customerId,
       salesmanId: formData.salesmanId,
@@ -1169,6 +1175,7 @@ const submitOrder = async (confirmed: boolean) => {
         amount: Number(d.amount) || 0
       }))
     }
+    console.log('提交到后端的数据:', submitData)
 
     if (isEdit.value) {
       await updateSalesOrder(formData.id, submitData)
@@ -1181,7 +1188,8 @@ const submitOrder = async (confirmed: boolean) => {
     fetchData()
   } catch (error) {
     console.error('提交失败:', error)
-    ElMessage.error('提交失败')
+    console.error('错误详情:', (error as any).response?.data || (error as any).message)
+    ElMessage.error((error as any).response?.data?.message || '提交失败')
   } finally {
     submitLoading.value = false
   }
