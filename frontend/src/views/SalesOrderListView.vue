@@ -171,7 +171,9 @@
                 :stroke-width="6"
                 :color="getProgressColor(row)"
               />
-              <span class="progress-text">{{ row.outboundQuantity || 0 }}/{{ row.totalQuantity || 0 }}</span>
+              <span class="progress-text">
+                {{ formatNumber(row.outboundQuantity || 0) }}/{{ formatNumber(row.totalQuantity || 0) }}
+              </span>
             </div>
           </template>
         </el-table-column>
@@ -737,9 +739,19 @@ const getStockClass = (productId: string) => {
 }
 
 // 格式化金额
-const formatAmount = (amount: number) => {
+const formatAmount = (amount: any) => {
   if (amount === undefined || amount === null) return '0.00'
-  return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
+  if (isNaN(numAmount)) return '0.00'
+  return numAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
+// 格式化数字（整数）
+const formatNumber = (num: any) => {
+  if (num === undefined || num === null) return '0'
+  const numValue = typeof num === 'string' ? parseFloat(num) : Number(num)
+  if (isNaN(numValue)) return '0'
+  return numValue.toFixed(0)
 }
 
 // 格式化日期
@@ -780,8 +792,10 @@ const getStatusText = (status: string) => {
 
 // 获取出库进度
 const getOutboundPercent = (row: any) => {
-  if (!row.totalQuantity) return 0
-  return Math.round(((row.outboundQuantity || 0) / row.totalQuantity) * 100)
+  const totalQuantity = row.totalQuantity ? parseFloat(row.totalQuantity.toString()) : 0
+  const outboundQuantity = row.outboundQuantity ? parseFloat(row.outboundQuantity.toString()) : 0
+  if (!totalQuantity || totalQuantity === 0) return 0
+  return Math.round((outboundQuantity / totalQuantity) * 100)
 }
 
 // 获取进度条颜色
