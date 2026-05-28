@@ -136,6 +136,15 @@ export const deleteProduct = (id: string) => {
   })
 }
 
+// 批量删除产品
+export const batchDeleteProducts = (ids: string[]) => {
+  return request({
+    url: '/api/v1/products/batch',
+    method: 'delete',
+    data: { ids }
+  })
+}
+
 // 更新产品库存
 export const updateProductStock = (id: string, quantity: number, type: 'in' | 'out') => {
   return request({

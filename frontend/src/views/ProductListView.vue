@@ -45,6 +45,10 @@
                 </el-dropdown-item>
               </template>
             </el-dropdown>
+            <el-button type="danger" plain @click="handleDeleteAll" v-if="isAdmin">
+              <el-icon><Delete /></el-icon>
+              删除全部
+            </el-button>
           </div>
         </div>
       </template>
@@ -308,7 +312,8 @@ import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { ElTree } from 'element-plus'
-import { Plus, Folder, FolderAdd, Refresh, Upload, Download, View, Hide } from '@element-plus/icons-vue'
+import { Plus, Folder, FolderAdd, Refresh, Upload, Download, View, Hide, Delete } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
 import {
   getCategoryTree,
   getCategories,
@@ -321,7 +326,8 @@ import {
   updateProduct,
   deleteProduct,
   importProducts,
-  toggleProductStatus
+  toggleProductStatus,
+  batchDeleteProducts
 } from '@/api/product'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CategoryImportDialog from './CategoryImportDialog.vue'
@@ -366,6 +372,9 @@ const showInactive = ref(false)
 const categoryTreeRef = ref<InstanceType<typeof ElTree>>()
 
 const searchForm = reactive({ keyword: '' })
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 // 分类对话框
 const categoryDialogVisible = ref(false)
@@ -881,6 +890,60 @@ function handleExport() {
   XLSX.utils.book_append_sheet(wb, ws, '物料列表')
   XLSX.writeFile(wb, `物料列表_${new Date().toLocaleDateString()}.xlsx`)
   ElMessage.success('导出成功')
+}
+
+async function handleDeleteAll() {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除全部物料吗？此操作不可恢复！',
+      '危险操作',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'error',
+        distinguishCancelAndClose: true,
+      }
+    )
+
+    const productIds = allProducts.value.map(p => p.id)
+    
+    if (productIds.length === 0) {
+      ElMessage.info('没有物料需要删除')
+      return
+    }
+
+    const loading = ElMessage.loading({
+      message: `正在删除 ${productIds.length} 个物料...`,
+      duration: 0
+    })
+
+    try {
+      const result = await batchDeleteProducts(productIds)
+      loading.close()
+
+      if (result.success) {
+        const { successIds, errors } = result.data
+        ElMessage.success(
+          `删除完成：成功 ${successIds.length} 个，失败 ${errors.length} 个`
+        )
+        
+        if (errors.length > 0) {
+          console.error('删除失败的物料:', errors)
+        }
+
+        await loadData()
+      } else {
+        ElMessage.error(result.message || '删除失败')
+      }
+    } catch (error) {
+      loading.close()
+      ElMessage.error('删除失败，请稍后重试')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除全部物料失败:', error)
+    }
+  }
 }
 
 function handleExportCategories() {
