@@ -180,7 +180,14 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="客户" prop="customerId">
-              <el-select v-model="formData.customerId" placeholder="请选择客户" filterable>
+              <el-select 
+                v-model="formData.customerId" 
+                placeholder="请选择客户" 
+                filterable
+                remote
+                reserve-keyword
+                :remote-method="searchCustomers"
+                :loading="loading">
                 <el-option
                   v-for="customer in customers"
                   :key="customer.id"
@@ -235,6 +242,10 @@
                   v-model="formData.details[$index].productId"
                   placeholder="请选择物料"
                   filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="searchProducts"
+                  :loading="loading"
                   style="width: 100%"
                   @change="(val: string) => handleProductChange(val, $index)"
                 >
