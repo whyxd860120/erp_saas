@@ -4,10 +4,16 @@
       <template #header>
         <div class="card-header">
           <span>人员管理</span>
-          <el-button type="primary" @click="handleCreate">
-            <el-icon><Plus /></el-icon>
-            新增人员
-          </el-button>
+          <div class="header-actions">
+            <el-button @click="handleHelp">
+              <el-icon><QuestionFilled /></el-icon>
+              帮助
+            </el-button>
+            <el-button type="primary" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              新增人员
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -324,19 +330,27 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 帮助对话框 -->
+    <CommonHelpDialog
+      v-model="helpDialogVisible"
+      module-name="人员管理"
+      :help-data="helpData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled } from '@element-plus/icons-vue'
 import { getUsers, getUserDetail, createUser, updateUser, deleteUser, resetPassword } from '@/api/user'
 import { getRoles } from '@/api/role'
 import { getUserRoles, updateUserRoles } from '@/api/user-role'
 import { useAuthStore } from '@/stores/auth'
 import { usePermission } from '@/composables/usePermission'
 import { getStatusColor, getUserStatusText } from '@/utils/status.util'
+import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 // 当前用户ID和权限检查
@@ -381,6 +395,7 @@ const dialogTitle = ref('新增人员')
 const isEdit = ref(false)
 const submitLoading = ref(false)
 const formRef = ref<FormInstance>()
+const helpDialogVisible = ref(false)
 
 // 表单数据
 const formData = reactive({
@@ -691,6 +706,82 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   pagination.page = val
   fetchUsers()
+}
+
+// 帮助数据
+const helpData = {
+  operations: [
+    {
+      title: '新增人员',
+      steps: [
+        '点击"新增人员"按钮',
+        '填写人员编码、姓名等基本信息',
+        '设置用户名和密码（系统用户必填）',
+        '选择部门和职位',
+        '设置联系方式',
+        '选择启用或禁用状态',
+        '点击"确定"保存'
+      ]
+    },
+    {
+      title: '编辑人员',
+      steps: [
+        '在人员列表中找到要编辑的人员',
+        '点击"编辑"按钮',
+        '修改需要更新的信息',
+        '点击"确定"保存修改'
+      ]
+    },
+    {
+      title: '分配角色',
+      steps: [
+        '在人员列表中找到要分配角色的人员',
+        '点击"角色"按钮',
+        '勾选需要分配的角色',
+        '点击"保存"完成角色分配'
+      ]
+    },
+    {
+      title: '重置密码',
+      steps: [
+        '在人员列表中找到要重置密码的人员',
+        '点击"重置密码"按钮',
+        '确认重置操作',
+        '系统会生成新密码并显示'
+      ]
+    }
+  ],
+  notices: [
+    '人员编码必须唯一',
+    '系统用户必须设置用户名和密码',
+    '删除操作不可恢复，请谨慎操作',
+    '人员是系统权限管理的基础',
+    '禁用的人员无法登录系统'
+  ],
+  tips: [
+    '使用搜索功能可以快速查找人员',
+    '可以按部门、状态等条件筛选人员',
+    '角色决定了人员的系统权限',
+    '建议定期更新密码确保安全',
+    '可以设置多个角色实现权限组合'
+  ],
+  shortcuts: [
+    { key: 'Ctrl+F', description: '快速搜索人员' },
+    { key: 'F5', description: '刷新人员列表' },
+    { key: 'Ctrl+N', description: '新增人员' }
+  ],
+  version: '1.0.0',
+  lastUpdate: '2025-05-28',
+  changes: [
+    '新增人员管理功能',
+    '支持角色分配',
+    '新增帮助文档功能'
+  ]
+}
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 初始化
