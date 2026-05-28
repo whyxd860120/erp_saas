@@ -303,12 +303,13 @@ import {
   updateCustomer,
   deleteCustomer,
   importCustomers,
-  batchDeleteCustomers
+  batchDeleteCustomers,
+  toggleCustomerStatus
 } from '@/api/customer'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CustomerCategoryImportDialog from './CustomerCategoryImportDialog.vue'
 import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
-import { getUsers, toggleCustomerStatus } from '@/api/user'
+import { getUsers } from '@/api/user'
 
 declare const XLSX: any
 
