@@ -1161,7 +1161,7 @@ const submitOrder = async (confirmed: boolean) => {
       remark: formData.remark,
       extraDiscount: formData.extraDiscount,
       logisticsCost: formData.logisticsCost,
-      details: formData.details.map(d => ({
+      items: formData.details.map(d => ({
         productId: d.productId,
         quantity: d.quantity,
         unitPrice: d.unitPrice,
