@@ -929,10 +929,10 @@ const handleEdit = async (row: any) => {
         details: order.details?.map((d: any) => ({
           id: d.id,
           productId: d.productId,
-          quantity: d.quantity,
-          unitPrice: d.unitPrice,
-          taxRate: d.taxRate || 0,
-          amount: d.amount
+          quantity: Number(d.quantity) || 0,
+          unitPrice: Number(d.unitPrice) || 0,
+          taxRate: Number(d.taxRate) || 0,
+          amount: Number(d.amount) || 0
         })) || []
       })
       calculateAmounts()
@@ -1159,14 +1159,14 @@ const submitOrder = async (confirmed: boolean) => {
       orderDate: formData.orderDate,
       dueDate: formData.dueDate,
       remark: formData.remark,
-      extraDiscount: formData.extraDiscount,
-      logisticsCost: formData.logisticsCost,
+      extraDiscount: Number(formData.extraDiscount) || 0,
+      logisticsCost: Number(formData.logisticsCost) || 0,
       items: formData.details.map(d => ({
         productId: d.productId,
-        quantity: d.quantity,
-        unitPrice: d.unitPrice,
-        taxRate: d.taxRate,
-        amount: d.amount
+        quantity: Number(d.quantity) || 0,
+        unitPrice: Number(d.unitPrice) || 0,
+        taxRate: Number(d.taxRate) || 0,
+        amount: Number(d.amount) || 0
       }))
     }
 
