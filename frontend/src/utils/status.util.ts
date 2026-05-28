@@ -6,7 +6,7 @@
 /**
  * 状态类型定义
  */
-export type StatusType = 'draft' | 'confirmed' | 'partial' | 'completed' | 'cancelled' | 'active' | 'inactive' | 'locked' | 'pending'
+export type StatusType = 'draft' | 'confirmed' | 'partial' | 'completed' | 'cancelled' | 'active' | 'inactive' | 'locked' | 'pending' | 'resigned'
 
 /**
  * 状态颜色映射
@@ -18,10 +18,11 @@ export const STATUS_COLOR_MAP: Record<StatusType, string> = {
   partial: 'warning',      // 部分 - 橙色
   completed: 'success',    // 已完成 - 绿色
   cancelled: 'danger',     // 已取消 - 红色
-  active: 'success',       // 启用 - 绿色
-  inactive: 'info',        // 禁用 - 灰色
+  active: 'success',       // 启用/在职 - 绿色
+  inactive: 'info',        // 禁用/离职 - 灰色
   locked: 'warning',       // 锁定 - 橙色
-  pending: 'warning'       // 待处理 - 橙色
+  pending: 'warning',      // 待处理 - 橙色
+  resigned: 'info'         // 已辞职 - 灰色
 }
 
 /**
@@ -125,6 +126,15 @@ export const RESOURCE_STATUS_TEXT: Record<string, string> = {
   active: '启用',
   inactive: '禁用',
   locked: '锁定'
+}
+
+/**
+ * 用户状态文本映射
+ */
+export const USER_STATUS_TEXT: Record<string, string> = {
+  active: '在职',
+  inactive: '离职',
+  resigned: '已辞职'
 }
 
 /**
@@ -233,6 +243,15 @@ export const getPaymentPaymentStatusText = (status: string): string => {
  */
 export const getResourceStatusText = (status: string): string => {
   return RESOURCE_STATUS_TEXT[status] || status
+}
+
+/**
+ * 获取用户状态文本
+ * @param status 状态值
+ * @returns 状态文本
+ */
+export const getUserStatusText = (status: string): string => {
+  return USER_STATUS_TEXT[status] || status
 }
 
 /**

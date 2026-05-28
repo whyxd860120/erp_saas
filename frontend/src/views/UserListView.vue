@@ -336,6 +336,7 @@ import { getRoles } from '@/api/role'
 import { getUserRoles, updateUserRoles } from '@/api/user-role'
 import { useAuthStore } from '@/stores/auth'
 import { usePermission } from '@/composables/usePermission'
+import { getStatusColor, getUserStatusText } from '@/utils/status.util'
 import type { FormInstance, FormRules } from 'element-plus'
 
 // 当前用户ID和权限检查
@@ -613,22 +614,11 @@ const formatDate = (date: string | Date) => {
 
 // 获取状态标签类型
 const getStatusTagType = (status: string) => {
-  const map: Record<string, any> = {
-    active: 'success',
-    inactive: 'warning',
-    resigned: 'info',
-  }
-  return map[status] || 'info'
+  return getStatusColor(status)
 }
 
-// 获取状态文本
 const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    active: '在职',
-    inactive: '离职',
-    resigned: '已辞职',
-  }
-  return map[status] || status
+  return getUserStatusText(status)
 }
 
 // 提交表单
