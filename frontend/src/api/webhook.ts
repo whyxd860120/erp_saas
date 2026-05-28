@@ -9,6 +9,7 @@ export interface Webhook {
   secret?: string;
   contentType: string;
   isActive: boolean;
+  description?: string;
   lastDeliveredAt?: string;
   lastSuccessAt?: string;
   lastErrorAt?: string;

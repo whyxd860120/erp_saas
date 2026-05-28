@@ -148,10 +148,20 @@ import { getWarehouses, getWarehouseById, createWarehouse, updateWarehouse, dele
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
+interface Warehouse {
+  id: string
+  code: string
+  name: string
+  address?: string
+  manager?: string
+  phone?: string
+  status: string
+}
+
 declare const XLSX: any
 
 // 数据列表
-const tableData = ref([])
+const tableData = ref<Warehouse[]>([])
 const loading = ref(false)
 
 // 搜索表单

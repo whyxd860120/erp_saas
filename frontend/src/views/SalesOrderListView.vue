@@ -653,6 +653,7 @@ const importFormatTips = [
   '数量：必填，数字格式',
   '单价：选填，数字格式',
   '备注：选填'
+]
 
 // 统计
 const stats = ref({

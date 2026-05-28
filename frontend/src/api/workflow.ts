@@ -1,4 +1,4 @@
-import request from './http';
+import { request } from './http';
 
 export const getWorkflowDefinitions = (params?: any) =>
   request({ url: '/api/v1/workflows', method: 'get', params });
