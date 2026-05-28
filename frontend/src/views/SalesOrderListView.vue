@@ -71,12 +71,12 @@
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12" :md="5">
             <el-form-item label="单据编号" class="search-item">
-              <el-input v-model="searchForm.keyword" placeholder="订单号/客户" clearable style="width: 100%;" />
+              <el-input v-model="searchForm.keyword" placeholder="订单号/客户" clearable style="width: 100%;" @keyup.enter="handleSearch" />
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="7">
             <el-form-item label="客户" class="search-item">
-              <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable style="width: 220px;">
+              <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable style="width: 220px;" @change="handleSearch">
                 <el-option
                   v-for="customer in customers"
                   :key="customer.id"
@@ -88,7 +88,7 @@
           </el-col>
           <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="单据状态" class="search-item">
-              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 180px;">
+              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 180px;" @change="handleSearch">
                 <el-option label="草稿" value="draft" />
                 <el-option label="已确认" value="confirmed" />
                 <el-option label="部分出库" value="partial" />
@@ -528,31 +528,80 @@
     </el-dialog>
 
     <!-- 快速出库对话框 -->
-    <el-dialog v-model="quickOutboundDialogVisible" title="快速出库" width="500px">
+    <el-dialog v-model="quickOutboundDialogVisible" title="快速出库" width="900px">
       <el-form :model="quickOutboundForm" label-width="80px">
-        <el-form-item label="订单编号">
-          <el-input v-model="quickOutboundForm.orderNo" disabled />
-        </el-form-item>
-        <el-form-item label="出库仓库" required>
-          <el-select v-model="quickOutboundForm.warehouseId" placeholder="请选择仓库" style="width: 100%;">
-            <el-option
-              v-for="warehouse in warehouses"
-              :key="warehouse.id"
-              :label="warehouse.name"
-              :value="warehouse.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="出库日期">
-          <el-date-picker
-            v-model="quickOutboundForm.outboundDate"
-            type="date"
-            placeholder="选择日期"
-            value-format="YYYY-MM-DD"
-            style="width: 100%;"
-          />
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="订单编号">
+              <el-input v-model="quickOutboundForm.orderNo" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="出库仓库" required>
+              <el-select v-model="quickOutboundForm.warehouseId" placeholder="请选择仓库" style="width: 100%;">
+                <el-option
+                  v-for="warehouse in warehouses"
+                  :key="warehouse.id"
+                  :label="warehouse.name"
+                  :value="warehouse.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="出库日期">
+              <el-date-picker
+                v-model="quickOutboundForm.outboundDate"
+                type="date"
+                placeholder="选择日期"
+                value-format="YYYY-MM-DD"
+                style="width: 100%;"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="出库方式">
+              <el-radio-group v-model="quickOutboundForm.outboundType">
+                <el-radio value="all">整单出库</el-radio>
+                <el-radio value="partial">部分出库</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
+      
+      <!-- 物料明细 -->
+      <div class="quick-outbound-details">
+        <div class="detail-header">
+          <span>物料明细</span>
+          <el-button size="small" @click="handleSelectAllOutbound">全选</el-button>
+        </div>
+        <el-table :data="quickOutboundForm.details" border size="small" max-height="300">
+          <el-table-column type="selection" width="50" :selectable="row => row.canOutbound > 0" />
+          <el-table-column prop="product.code" label="物料编码" width="120" />
+          <el-table-column prop="product.name" label="物料名称" min-width="150" />
+          <el-table-column prop="product.spec" label="规格" width="100" />
+          <el-table-column prop="product.unit" label="单位" width="60" />
+          <el-table-column prop="orderQuantity" label="订单数量" width="80" align="right" />
+          <el-table-column prop="outboundQuantity" label="已出库数量" width="90" align="right" />
+          <el-table-column prop="canOutbound" label="可出库数量" width="90" align="right" />
+          <el-table-column label="本次出库数量" width="120" align="right">
+            <template #default="{ row }">
+              <el-input-number
+                v-model="row.quantity"
+                :min="0"
+                :max="row.canOutbound"
+                :disabled="quickOutboundForm.outboundType === 'all'"
+                size="small"
+                style="width: 100%;"
+              />
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      
       <template #footer>
         <el-button @click="quickOutboundDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleConfirmQuickOutbound" :loading="quickOutboundLoading">确认出库</el-button>
@@ -717,7 +766,9 @@ const quickOutboundForm = reactive({
   orderId: '',
   orderNo: '',
   warehouseId: '',
-  outboundDate: new Date().toISOString().split('T')[0]
+  outboundDate: new Date().toISOString().split('T')[0],
+  outboundType: 'all',
+  details: [] as any[]
 })
 
 // 导入配置
@@ -725,6 +776,7 @@ const importColumns = [
   { prop: 'orderNo', label: '订单单号', required: true },
   { prop: 'orderDate', label: '订单日期', required: true },
   { prop: 'customerName', label: '客户名称', required: true },
+  { prop: 'salesmanName', label: '业务员' },
   { prop: 'productCode', label: '物料编码', required: true },
   { prop: 'productName', label: '物料名称', required: true },
   { prop: 'productSpec', label: '物料规格' },
@@ -1146,7 +1198,36 @@ const handleQuickOutbound = (row: any) => {
       quickOutboundForm.orderNo = order.orderNo
       quickOutboundForm.warehouseId = ''
       quickOutboundForm.outboundDate = new Date().toISOString().split('T')[0]
+      quickOutboundForm.outboundType = 'all'
+      
+      // 构建出库明细
+      quickOutboundForm.details = order.items.map((item: any) => {
+        const orderQuantity = Number(item.quantity) || 0
+        const outboundQuantity = Number(item.outboundQuantity) || 0
+        const canOutbound = orderQuantity - outboundQuantity
+        
+        return {
+          id: item.id,
+          productId: item.productId,
+          product: item.product,
+          orderQuantity,
+          outboundQuantity,
+          canOutbound,
+          quantity: canOutbound > 0 ? canOutbound : 0,
+          unitPrice: Number(item.unitPrice) || 0
+        }
+      })
+      
       quickOutboundDialogVisible.value = true
+    }
+  })
+}
+
+// 全选出库明细
+const handleSelectAllOutbound = () => {
+  quickOutboundForm.details.forEach(detail => {
+    if (detail.canOutbound > 0) {
+      detail.quantity = detail.canOutbound
     }
   })
 }
@@ -1158,31 +1239,33 @@ const handleConfirmQuickOutbound = async () => {
     return
   }
 
+  // 检查是否有出库数量
+  const hasOutboundQuantity = quickOutboundForm.details.some(d => d.quantity > 0)
+  if (!hasOutboundQuantity) {
+    ElMessage.warning('请设置出库数量')
+    return
+  }
+
   try {
     quickOutboundLoading.value = true
 
-    // 获取订单详情
-    const orderResponse = await getSalesOrderById(quickOutboundForm.orderId)
-    if (!orderResponse.success) {
-      ElMessage.error('获取订单详情失败')
-      return
-    }
-
-    const order = orderResponse.data
-
-    // 构建出库单明细（从订单明细复制）
-    const details = order.items.map((item: any) => ({
-      productId: item.productId,
-      quantity: Number(item.quantity) || 0,
-      unitPrice: Number(item.unitPrice) || 0
-    }))
+    // 构建出库单明细（只包含有出库数量的物料）
+    const details = quickOutboundForm.details
+      .filter(d => d.quantity > 0)
+      .map(item => ({
+        productId: item.productId,
+        quantity: Number(item.quantity) || 0,
+        unitPrice: Number(item.unitPrice) || 0
+      }))
 
     // 创建出库单
     await createSalesOutbound({
       orderId: quickOutboundForm.orderId,
       warehouseId: quickOutboundForm.warehouseId,
       outboundDate: quickOutboundForm.outboundDate,
-      remark: `由订单 ${quickOutboundForm.orderNo} 快速出库`,
+      remark: quickOutboundForm.outboundType === 'all' 
+        ? `由订单 ${quickOutboundForm.orderNo} 整单出库`
+        : `由订单 ${quickOutboundForm.orderNo} 部分出库`,
       details
     })
 
@@ -1246,9 +1329,11 @@ const handleImport = () => {
 const handleImportSubmit = async (data: any[]) => {
   const customerMap = new Map<string, string>()
   const productMap = new Map<string, string>()
+  const salesmanMap = new Map<string, string>()
 
   customers.value.forEach(c => customerMap.set(c.name, c.id))
   products.value.forEach(p => productMap.set(p.code, p.id))
+  salesmen.value.forEach(s => salesmanMap.set(s.name, s.id))
 
   const processedData = data.map(item => {
     const newItem: any = { ...item }
@@ -1258,6 +1343,13 @@ const handleImportSubmit = async (data: any[]) => {
       delete newItem.customerName
     } else if (item.customerName) {
       newItem.customerError = `客户 "${item.customerName}" 不存在`
+    }
+
+    if (item.salesmanName && salesmanMap.has(item.salesmanName)) {
+      newItem.salesmanId = salesmanMap.get(item.salesmanName)
+      delete newItem.salesmanName
+    } else if (item.salesmanName) {
+      newItem.salesmanError = `业务员 "${item.salesmanName}" 不存在`
     }
 
     if (item.productCode && productMap.has(item.productCode)) {
@@ -1588,6 +1680,19 @@ onMounted(async () => {
 }
 .stock-warning {
   color: #E6A23C;
+}
+.quick-outbound-details {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+.quick-outbound-details .detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-weight: 600;
 }
 :deep(.el-table .cancelled-row) {
   opacity: 0.5;

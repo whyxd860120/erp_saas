@@ -156,34 +156,34 @@
             {{ row.product?.category?.name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="库存状态" width="100">
+        <el-table-column label="即时库存" width="120" align="right">
           <template #default="{ row }">
-            <el-tag :type="getStockStatusType(row)" size="small">
-              {{ getStockStatusText(row) }}
-            </el-tag>
+            <span :class="getStockClass(row)">
+              {{ formatNumber(row.quantity) }}
+            </span>
           </template>
         </el-table-column>
-        <el-table-column label="成本价" width="100" align="right">
+        <el-table-column label="采购在途" width="120" align="right">
           <template #default="{ row }">
-            ¥{{ formatAmount(row.costPrice) }}
+            {{ formatNumber(row.purchaseInTransit || 0) }}
           </template>
         </el-table-column>
-        <el-table-column label="库存价值" width="120" align="right">
+        <el-table-column label="销售在途" width="120" align="right">
           <template #default="{ row }">
-            <span class="amount">¥{{ formatAmount(row.quantity * row.costPrice) }}</span>
+            {{ formatNumber(row.salesInTransit || 0) }}
           </template>
         </el-table-column>
         <el-table-column label="可用库存" width="120" align="right">
           <template #default="{ row }">
             <span :class="getStockClass(row)">
-              {{ formatNumber(row.availableQuantity || row.quantity) }}
+              {{ formatNumber(row.availableQuantity || (row.quantity + (row.purchaseInTransit || 0) - (row.salesInTransit || 0))) }}
             </span>
           </template>
         </el-table-column>
         <el-table-column label="库存状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.quantity <= 0 ? 'warning' : 'success'" size="small">
-              {{ row.quantity <= 0 ? '缺货' : '正常' }}
+            <el-tag :type="getStockStatusType(row)" size="small">
+              {{ getStockStatusText(row) }}
             </el-tag>
           </template>
         </el-table-column>
