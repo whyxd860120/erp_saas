@@ -1134,7 +1134,7 @@ const fetchData = async () => {
 // 获取客户
 const fetchCustomers = async () => {
   try {
-    const response: any = await getCustomers({ page: 1, limit: 100, status: '' })
+    const response: any = await getCustomers({ page: 1, limit: 100 })
     if (response.success) {
       customers.value = response.data.items || []
     }
@@ -1146,7 +1146,7 @@ const fetchCustomers = async () => {
 // 远程搜索客户
 const searchCustomers = async (keyword: string) => {
   try {
-    const response: any = await getCustomers({ page: 1, limit: 100, status: '', search: keyword })
+    const response: any = await getCustomers({ page: 1, limit: 100, search: keyword })
     if (response.success) {
       customers.value = response.data.items || []
     }

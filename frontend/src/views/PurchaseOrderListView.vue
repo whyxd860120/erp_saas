@@ -803,7 +803,7 @@ const fetchData = async () => {
 // 获取供应商
 const fetchSuppliers = async () => {
   try {
-    const response: any = await getSuppliers({ page: 1, limit: 100, status: '' })
+    const response: any = await getSuppliers({ page: 1, limit: 100 })
     if (response.success) {
       suppliers.value = response.data.items || []
     }
@@ -815,7 +815,7 @@ const fetchSuppliers = async () => {
 // 远程搜索供应商
 const searchSuppliers = async (keyword: string) => {
   try {
-    const response: any = await getSuppliers({ page: 1, limit: 100, status: '', search: keyword })
+    const response: any = await getSuppliers({ page: 1, limit: 100, search: keyword })
     if (response.success) {
       suppliers.value = response.data.items || []
     }

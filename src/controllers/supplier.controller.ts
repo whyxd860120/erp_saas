@@ -384,14 +384,17 @@ export const getSuppliers = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: '未关联租户' });
     }
 
-    const { page = '1', limit = '10', status = 'active', search, categoryId } = req.query;
+    const { page = '1', limit = '10', status, search, categoryId } = req.query;
 
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
 
     const where: any = { tenantId: req.user.tenantId };
-    if (status) where.status = status;
+    // 只有当status明确提供且不为空字符串时，才过滤状态
+    if (status !== undefined && status !== '') {
+      where.status = status as string;
+    }
     if (categoryId) where.categoryId = categoryId as string;
 
     if (search) {
