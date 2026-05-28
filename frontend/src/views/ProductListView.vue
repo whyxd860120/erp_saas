@@ -300,6 +300,7 @@
       :columns="importColumns"
       :format-tips="importFormatTips"
       :import-fn="handleImportSubmit"
+      :custom-validate-fn="customValidateProducts"
       @success="handleImportSuccess"
     />
 
@@ -448,6 +449,103 @@ const importFormatTips = [
   '销售价：选填，数字格式',
   '状态：选填，填写"启用"或"禁用"，默认为启用'
 ]
+
+// 自定义验证函数
+function customValidateProducts(data: any[]): any[] {
+  // 转换分类名称为分类ID
+  const categoryMap = new Map<string, string>()
+
+  // 构建分类名称到ID的映射
+  const buildCategoryMap = (categories: CategoryNode[]) => {
+    categories.forEach(cat => {
+      categoryMap.set(cat.name, cat.id)
+      if (cat.children?.length) {
+        buildCategoryMap(cat.children)
+      }
+    })
+  }
+  buildCategoryMap(categoryTree.value)
+
+  // 获取现有物料数据用于验证
+  const existingProducts = allProducts.value
+  const existingCodes = new Set(existingProducts.map(p => p.code))
+  const existingCombinations = new Set(
+    existingProducts.map(p => `${p.categoryId}_${p.name}_${p.spec || ''}`)
+  )
+
+  // 转换导入数据并进行验证
+  return data.map((item) => {
+    const newItem: any = { ...item }
+
+    // 转换分类名称为ID
+    if (item.category && categoryMap.has(item.category)) {
+      newItem.categoryId = categoryMap.get(item.category)
+      delete newItem.category
+    } else if (item.category) {
+      newItem.valid = false
+      newItem.errorMsg = `分类 "${item.category}" 不存在`
+      newItem.errors = { category: true }
+      return newItem
+    }
+
+    // 验证物料编码唯一性
+    if (item.code && existingCodes.has(item.code)) {
+      newItem.valid = false
+      newItem.errorMsg = `物料编码 "${item.code}" 已存在`
+      newItem.errors = { code: true }
+      return newItem
+    }
+
+    // 验证物料分类+名称+规格组合唯一性
+    if (item.name && newItem.categoryId) {
+      const combination = `${newItem.categoryId}_${item.name}_${item.spec || ''}`
+      if (existingCombinations.has(combination)) {
+        newItem.valid = false
+        newItem.errorMsg = `相同分类下的物料名称和规格组合已存在`
+        newItem.errors = { name: true, spec: true }
+        return newItem
+      }
+    }
+
+    // 标记为有效数据
+    newItem.valid = true
+    newItem.errorMsg = ''
+    newItem.errors = {}
+
+    return newItem
+  })
+}
+
+async function handleImportSubmit(data: any[]) {
+  // 转换分类名称为分类ID
+  const categoryMap = new Map<string, string>()
+
+  // 构建分类名称到ID的映射
+  const buildCategoryMap = (categories: CategoryNode[]) => {
+    categories.forEach(cat => {
+      categoryMap.set(cat.name, cat.id)
+      if (cat.children?.length) {
+        buildCategoryMap(cat.children)
+      }
+    })
+  }
+  buildCategoryMap(categoryTree.value)
+
+  // 转换导入数据
+  const processedData = data.map(item => {
+    const newItem: any = { ...item }
+
+    // 转换分类名称为ID
+    if (item.category && categoryMap.has(item.category)) {
+      newItem.categoryId = categoryMap.get(item.category)
+      delete newItem.category
+    }
+
+    return newItem
+  })
+
+  return await importProducts(processedData)
+}
 
 const helpData = {
   operations: [
@@ -945,75 +1043,6 @@ function handleImport() {
 
 function handleImportCategories() {
   categoryImportDialogVisible.value = true
-}
-
-async function handleImportSubmit(data: any[]) {
-  // 转换分类名称为分类ID
-  const categoryMap = new Map<string, string>()
-
-  // 构建分类名称到ID的映射
-  const buildCategoryMap = (categories: CategoryNode[]) => {
-    categories.forEach(cat => {
-      categoryMap.set(cat.name, cat.id)
-      if (cat.children?.length) {
-        buildCategoryMap(cat.children)
-      }
-    })
-  }
-  buildCategoryMap(categoryTree.value)
-
-  // 获取现有物料数据用于验证
-  const existingProducts = allProducts.value
-  const existingCodes = new Set(existingProducts.map(p => p.code))
-  const existingCombinations = new Set(
-    existingProducts.map(p => `${p.categoryId}_${p.name}_${p.spec || ''}`)
-  )
-
-  // 转换导入数据并进行验证
-  const processedData = data.map((item, index) => {
-    const newItem: any = { ...item }
-
-    // 转换分类名称为ID
-    if (item.category && categoryMap.has(item.category)) {
-      newItem.categoryId = categoryMap.get(item.category)
-      delete newItem.category
-    } else if (item.category) {
-      newItem.categoryError = `分类 "${item.category}" 不存在`
-      newItem.valid = false
-      newItem.errorMsg = `分类 "${item.category}" 不存在`
-      return newItem
-    }
-
-    // 验证物料编码唯一性
-    if (item.code && existingCodes.has(item.code)) {
-      newItem.codeError = `物料编码 "${item.code}" 已存在`
-      newItem.valid = false
-      newItem.errorMsg = `物料编码 "${item.code}" 已存在`
-      newItem.errors = { code: true }
-      return newItem
-    }
-
-    // 验证物料分类+名称+规格组合唯一性
-    if (item.name && newItem.categoryId) {
-      const combination = `${newItem.categoryId}_${item.name}_${item.spec || ''}`
-      if (existingCombinations.has(combination)) {
-        newItem.combinationError = `相同分类下的物料名称和规格组合已存在`
-        newItem.valid = false
-        newItem.errorMsg = `相同分类下的物料名称和规格组合已存在`
-        newItem.errors = { name: true, spec: true }
-        return newItem
-      }
-    }
-
-    // 标记为有效数据
-    newItem.valid = true
-    newItem.errorMsg = ''
-    newItem.errors = {}
-
-    return newItem
-  })
-
-  return await importProducts(processedData)
 }
 
 function handleImportSuccess() {

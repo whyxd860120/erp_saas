@@ -284,6 +284,7 @@ const props = defineProps<{
   columns: ColumnConfig[]
   formatTips: string[]
   importFn: (data: any[]) => Promise<{ success: boolean; message?: string; data?: { successCount: number; failCount: number; errors?: any[] } }>
+  customValidateFn?: (data: any[]) => any[]
 }>()
 
 const emit = defineEmits<{
@@ -463,7 +464,14 @@ async function parseFile() {
 
     const data = await readFile(file)
     const rows = parseData(data, extension as string)
-    parsedData.value = validateData(rows)
+    let validatedData = validateData(rows)
+    
+    // 如果有自定义验证函数，则调用它
+    if (props.customValidateFn) {
+      validatedData = props.customValidateFn(validatedData)
+    }
+    
+    parsedData.value = validatedData
     currentStep.value = 1
   } catch (error) {
     console.error('解析文件失败:', error)
