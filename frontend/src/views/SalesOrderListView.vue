@@ -1003,15 +1003,15 @@ const calculateAmounts = () => {
   let goodsAmount = 0
   let taxAmount = 0
   formData.details.forEach(detail => {
-    const amount = (detail.quantity || 0) * (detail.unitPrice || 0)
-    const tax = amount * ((detail.taxRate || 0) / 100)
+    const amount = Number((detail.quantity || 0) * (detail.unitPrice || 0))
+    const tax = Number(amount * ((detail.taxRate || 0) / 100))
     goodsAmount += amount
     taxAmount += tax
   })
-  formData.goodsAmount = goodsAmount
-  formData.taxAmount = taxAmount
-  formData.discountAmount = goodsAmount + taxAmount
-  formData.totalAmount = formData.discountAmount - formData.extraDiscount + (formData.logisticsCost || 0)
+  formData.goodsAmount = Number(goodsAmount)
+  formData.taxAmount = Number(taxAmount)
+  formData.discountAmount = Number(goodsAmount + taxAmount)
+  formData.totalAmount = Number(formData.discountAmount - formData.extraDiscount + (formData.logisticsCost || 0))
 }
 
 // 获取物料属性
@@ -1704,7 +1704,7 @@ const handleProductSelect = (index: number) => {
   const detail = formData.details[index]
   const product = products.value.find(p => p.id === detail.productId)
   if (product) {
-    detail.unitPrice = product.salePrice || 0
+    detail.unitPrice = Number(product.salePrice) || 0
   }
   handleDetailChange(index)
 }
@@ -1712,7 +1712,7 @@ const handleProductSelect = (index: number) => {
 // 明细变更
 const handleDetailChange = (index: number) => {
   const detail = formData.details[index]
-  detail.amount = (detail.quantity || 0) * (detail.unitPrice || 0)
+  detail.amount = Number((detail.quantity || 0) * (detail.unitPrice || 0))
   calculateAmounts()
 }
 
