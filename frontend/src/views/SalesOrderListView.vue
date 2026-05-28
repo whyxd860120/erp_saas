@@ -201,7 +201,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer; margin-right: 4px;">
               查看
@@ -220,15 +220,15 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-            <el-dropdown v-if="row.status === 'confirmed'" trigger="click">
-              <el-tag type="info" size="small" style="cursor: pointer; margin-right: 4px;">
-                更多
-                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </el-tag>
-              <template #dropdown>
-                <el-dropdown-item @click="handleUnconfirm(row)">反确认</el-dropdown-item>
-              </template>
-            </el-dropdown>
+            <el-tag
+              v-if="row.status === 'confirmed'"
+              type="warning"
+              size="small"
+              @click="handleUnconfirm(row)"
+              style="cursor: pointer; margin-right: 4px;"
+            >
+              反确认
+            </el-tag>
             <el-tag
               v-if="row.status === 'confirmed' || row.status === 'partial'"
               type="success"
@@ -505,6 +505,38 @@
       </template>
     </el-dialog>
 
+    <!-- 快速出库对话框 -->
+    <el-dialog v-model="quickOutboundDialogVisible" title="快速出库" width="500px">
+      <el-form :model="quickOutboundForm" label-width="80px">
+        <el-form-item label="订单编号">
+          <el-input v-model="quickOutboundForm.orderNo" disabled />
+        </el-form-item>
+        <el-form-item label="出库仓库" required>
+          <el-select v-model="quickOutboundForm.warehouseId" placeholder="请选择仓库" style="width: 100%;">
+            <el-option
+              v-for="warehouse in warehouses"
+              :key="warehouse.id"
+              :label="warehouse.name"
+              :value="warehouse.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="出库日期">
+          <el-date-picker
+            v-model="quickOutboundForm.outboundDate"
+            type="date"
+            placeholder="选择日期"
+            value-format="YYYY-MM-DD"
+            style="width: 100%;"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="quickOutboundDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleConfirmQuickOutbound" :loading="quickOutboundLoading">确认出库</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 查看详情对话框 -->
     <el-drawer v-model="viewDrawer" title="单据详情" size="800px">
       <div class="order-detail" v-if="currentOrder">
@@ -628,6 +660,8 @@ import {
   getSalesOrders, getSalesOrderById, createSalesOrder,
   updateSalesOrder, confirmSalesOrder, unconfirmSalesOrder, deleteSalesOrder, importSalesOrders
 } from '@/api/sales-order'
+import { createSalesOutbound } from '@/api/sales-outbound'
+import { getWarehouses } from '@/api/warehouse'
 import { getCustomers } from '@/api/customer'
 import { getProducts } from '@/api/product'
 import { getUsers } from '@/api/user'
@@ -652,6 +686,17 @@ const tableData = ref<any[]>([])
 const customers = ref<any[]>([])
 const products = ref<any[]>([])
 const salesmen = ref<any[]>([])
+const warehouses = ref<any[]>([])
+
+// 快速出库
+const quickOutboundDialogVisible = ref(false)
+const quickOutboundLoading = ref(false)
+const quickOutboundForm = reactive({
+  orderId: '',
+  orderNo: '',
+  warehouseId: '',
+  outboundDate: new Date().toISOString().split('T')[0]
+})
 
 // 导入配置
 const importColumns = [
@@ -886,6 +931,18 @@ const fetchCustomers = async () => {
   }
 }
 
+// 获取仓库
+const fetchWarehouses = async () => {
+  try {
+    const response = await getWarehouses({ page: 1, limit: 1000 })
+    if (response.success) {
+      warehouses.value = response.data.items || []
+    }
+  } catch (error) {
+    console.error('获取仓库失败:', error)
+  }
+}
+
 // 获取物料
 const fetchProducts = async () => {
   try {
@@ -985,7 +1042,7 @@ const handleView = async (row: any) => {
   try {
     const response = await getSalesOrderById(row.id)
     if (response.success) {
-      currentOrder.value = response.data.data
+      currentOrder.value = response.data
       viewDrawer.value = true
     }
   } catch (error) {
@@ -1059,7 +1116,63 @@ const handleDelete = async (row: any) => {
 
 // 快速出库
 const handleQuickOutbound = (row: any) => {
-  ElMessage.info('快速出库功能开发中')
+  // 获取订单详情
+  getSalesOrderById(row.id).then(response => {
+    if (response.success) {
+      const order = response.data
+      quickOutboundForm.orderId = order.id
+      quickOutboundForm.orderNo = order.orderNo
+      quickOutboundForm.warehouseId = ''
+      quickOutboundForm.outboundDate = new Date().toISOString().split('T')[0]
+      quickOutboundDialogVisible.value = true
+    }
+  })
+}
+
+// 确认快速出库
+const handleConfirmQuickOutbound = async () => {
+  if (!quickOutboundForm.warehouseId) {
+    ElMessage.warning('请选择出库仓库')
+    return
+  }
+
+  try {
+    quickOutboundLoading.value = true
+
+    // 获取订单详情
+    const orderResponse = await getSalesOrderById(quickOutboundForm.orderId)
+    if (!orderResponse.success) {
+      ElMessage.error('获取订单详情失败')
+      return
+    }
+
+    const order = orderResponse.data
+
+    // 构建出库单明细（从订单明细复制）
+    const details = order.items.map((item: any) => ({
+      productId: item.productId,
+      quantity: Number(item.quantity) || 0,
+      unitPrice: Number(item.unitPrice) || 0
+    }))
+
+    // 创建出库单
+    await createSalesOutbound({
+      orderId: quickOutboundForm.orderId,
+      warehouseId: quickOutboundForm.warehouseId,
+      outboundDate: quickOutboundForm.outboundDate,
+      remark: `由订单 ${quickOutboundForm.orderNo} 快速出库`,
+      details
+    })
+
+    ElMessage.success('快速出库成功')
+    quickOutboundDialogVisible.value = false
+    fetchData()
+  } catch (error) {
+    console.error('快速出库失败:', error)
+    ElMessage.error('快速出库失败')
+  } finally {
+    quickOutboundLoading.value = false
+  }
 }
 
 // 批量确认
@@ -1290,7 +1403,7 @@ const handleCurrentChange = (val: number) => {
 
 // 初始化
 onMounted(async () => {
-  await Promise.all([fetchData(), fetchCustomers(), fetchProducts(), fetchSalesmen()])
+  await Promise.all([fetchData(), fetchCustomers(), fetchProducts(), fetchSalesmen(), fetchWarehouses()])
 })
 </script>
 
