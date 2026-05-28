@@ -1458,9 +1458,14 @@ const handleConfirmPushPurchase = async () => {
         unitPrice: Number(item.purchasePrice) || 0
       }))
 
+    // 生成采购订单编号
+    const orderNo = `PO${Date.now()}${Math.floor(Math.random() * 1000)}`
+
     // 创建采购订单
     await createPurchaseOrder({
+      orderNo,
       supplierId: pushPurchaseForm.supplierId,
+      orderDate: pushPurchaseForm.purchaseDate,
       items: details,
       remark: `由销售订单 ${pushPurchaseForm.orderNo} 下推生成`
     })

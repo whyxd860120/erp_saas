@@ -238,18 +238,21 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
     } = req.body;
 
     // 验证参数
-    if (!orderNo || !supplierId || !items || !Array.isArray(items) || items.length === 0) {
+    if (!supplierId || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: '订单编号、供应商和商品明细不能为空',
+        message: '供应商和商品明细不能为空',
       });
     }
+
+    // 如果没有提供订单编号，自动生成
+    const finalOrderNo = orderNo || `PO${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
     // 检查订单编号是否已存在（同一租户内）
     const existingOrder = await prisma.purchaseOrder.findFirst({
       where: {
         tenantId: req.user.tenantId,
-        orderNo,
+        orderNo: finalOrderNo,
       },
     });
 
@@ -334,7 +337,7 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
       const newOrder = await tx.purchaseOrder.create({
         data: {
           tenantId: req.user!.tenantId!,
-          orderNo,
+          orderNo: finalOrderNo,
           supplierId,
           orderDate: new Date(orderDate),
           totalAmount,
