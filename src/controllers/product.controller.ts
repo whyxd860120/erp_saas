@@ -923,6 +923,7 @@ export const batchDeleteProducts = async (req: Request, res: Response) => {
           continue;
         }
 
+        // 检查是否有库存
         const inventoryItems = await prisma.inventoryItem.findFirst({
           where: {
             productId: id,
@@ -932,31 +933,39 @@ export const batchDeleteProducts = async (req: Request, res: Response) => {
         });
 
         if (inventoryItems) {
-          errors.push({ id, message: '该商品有库存，无法删除' });
+          errors.push({ id, message: `商品"${existingProduct.code}"有库存，无法删除` });
           continue;
         }
 
-        const purchaseInboundDetails = await prisma.purchaseInboundDetail.findFirst({
+        // 检查是否有未完成的采购订单
+        const purchaseOrderDetails = await prisma.purchaseOrderDetail.findFirst({
           where: {
             productId: id,
-            tenantId: req.user.tenantId,
+            purchaseOrder: {
+              tenantId: req.user.tenantId,
+              status: 'draft'
+            }
           },
         });
 
-        if (purchaseInboundDetails) {
-          errors.push({ id, message: '该商品有关联的采购入库记录，无法删除' });
+        if (purchaseOrderDetails) {
+          errors.push({ id, message: `商品"${existingProduct.code}"有未完成的采购订单，无法删除` });
           continue;
         }
 
-        const salesOutboundDetails = await prisma.salesOutboundDetail.findFirst({
+        // 检查是否有未完成的销售订单
+        const salesOrderDetails = await prisma.salesOrderDetail.findFirst({
           where: {
             productId: id,
-            tenantId: req.user.tenantId,
+            salesOrder: {
+              tenantId: req.user.tenantId,
+              status: 'draft'
+            }
           },
         });
 
-        if (salesOutboundDetails) {
-          errors.push({ id, message: '该商品有关联的销售出库记录，无法删除' });
+        if (salesOrderDetails) {
+          errors.push({ id, message: `商品"${existingProduct.code}"有未完成的销售订单，无法删除` });
           continue;
         }
 
@@ -966,7 +975,8 @@ export const batchDeleteProducts = async (req: Request, res: Response) => {
 
         successIds.push(id);
       } catch (error) {
-        errors.push({ id, message: '删除失败' });
+        console.error('删除商品失败:', error);
+        errors.push({ id, message: '删除失败，请稍后重试' });
       }
     }
 

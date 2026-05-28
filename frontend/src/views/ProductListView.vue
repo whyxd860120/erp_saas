@@ -924,12 +924,15 @@ async function handleDeleteAll() {
 
       if (result.success) {
         const { successIds, errors } = result.data
-        ElMessage.success(
-          `删除完成：成功 ${successIds.length} 个，失败 ${errors.length} 个`
-        )
         
         if (errors.length > 0) {
+          const errorMessages = errors.map(err => err.message).join('；')
+          ElMessage.warning(
+            `删除完成：成功 ${successIds.length} 个，失败 ${errors.length} 个。失败原因：${errorMessages}`
+          )
           console.error('删除失败的物料:', errors)
+        } else {
+          ElMessage.success(`删除完成：成功 ${successIds.length} 个`)
         }
 
         await loadData()
