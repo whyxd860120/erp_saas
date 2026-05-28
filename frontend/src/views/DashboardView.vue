@@ -268,7 +268,7 @@ const recentLogs = ref([])
 // 获取系统管理员统计数据
 const fetchSystemStats = async () => {
   try {
-    const response = await getTenants({ page: 1, limit: 1000 })
+    const response: any = await getTenants({ page: 1, limit: 1000 })
     const tenants = response.data.items || []
     
     // 统计租户数量
@@ -295,7 +295,7 @@ const fetchSystemStats = async () => {
 // 获取租户统计数据
 const fetchTenantStats = async () => {
   try {
-    const [purchaseRes, salesRes, productRes, userRes] = await Promise.all([
+    const [purchaseRes, salesRes, productRes, userRes]: any[] = await Promise.all([
       purchaseOrderApi.getPurchaseOrders({ page: 1, limit: 1 }),
       salesOrderApi.getSalesOrders({ page: 1, limit: 1 }),
       productApi.getProducts({ page: 1, limit: 1 }),
@@ -316,7 +316,7 @@ const fetchTenantStats = async () => {
 // 获取最近日志
 const fetchRecentLogs = async () => {
   try {
-    const response = await getAuditLogs({ page: 1, limit: 10 })
+    const response: any = await getAuditLogs({ page: 1, limit: 10 })
     recentLogs.value = response.data.items || []
   } catch (error) {
     console.error('获取审计日志失败:', error)

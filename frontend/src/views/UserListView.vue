@@ -399,6 +399,7 @@ const helpDialogVisible = ref(false)
 
 // 表单数据
 const formData = reactive({
+  id: '',
   code: '',
   name: '',
   username: '',
@@ -408,8 +409,8 @@ const formData = reactive({
   departmentId: '',
   positionId: '',
   gender: 'unknown',
-  birthDate: null as Date | null,
-  hireDate: null as Date | null,
+  birthDate: null as string | null,
+  hireDate: null as string | null,
   address: '',
   idCard: '',
   role: 'staff',
@@ -446,7 +447,7 @@ const fetchUsers = async () => {
       params.status = searchForm.status
     }
 
-    const response = await getUsers(params)
+    const response: any = await getUsers(params)
     if (response.success) {
       tableData.value = response.data.items || []
       pagination.total = response.data.total
@@ -502,7 +503,7 @@ const handleEdit = async (row: any) => {
     dialogTitle.value = '编辑人员'
     isEdit.value = true
 
-    const response = await getUserDetail(row.id)
+    const response: any = await getUserDetail(row.id)
     if (response.success) {
       const user = response.data
       if (!user) {
@@ -589,7 +590,7 @@ const handleResetPassword = async (row: any) => {
       }
     )
 
-    await resetPassword(row.id, { newPassword })
+    await resetPassword(row.id, { password: newPassword })
     ElMessage.success('密码重置成功')
   } catch (error: any) {
     if (error !== 'cancel') {
@@ -647,11 +648,13 @@ const handleSubmit = async () => {
 
     if (isEdit.value) {
       // 编辑用户
-      await updateUser(formData.id, formData)
+      const updateData = { ...formData, birthDate: formData.birthDate || undefined, hireDate: formData.hireDate || undefined }
+      await updateUser(formData.id, updateData)
       ElMessage.success('更新成功')
     } else {
       // 新增用户
-      await createUser(formData)
+      const createData = { ...formData, birthDate: formData.birthDate || undefined, hireDate: formData.hireDate || undefined }
+      await createUser(createData)
       ElMessage.success('创建成功')
     }
 

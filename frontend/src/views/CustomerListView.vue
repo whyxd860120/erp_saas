@@ -315,11 +315,11 @@ import { getUsers } from '@/api/user'
 declare const XLSX: any
 
 // 用户数据（用于专属业务员选择）
-const users = ref([])
+const users = ref<any[]>([])
 
 async function loadUsers() {
   try {
-    const res = await getUsers({ page: 1, limit: 1000, status: 'active' })
+    const res: any = await getUsers({ page: 1, limit: 1000, status: 'active' })
     if (res.success && res.data?.items) {
       users.value = res.data.items
     }
@@ -508,7 +508,8 @@ async function handleImportSubmit(data: any[]) {
     return newItem
   })
 
-  return await importCustomers(processedData)
+  const result: any = await importCustomers(processedData)
+  return result
 }
 
 async function handleDeleteAll() {
@@ -531,13 +532,13 @@ async function handleDeleteAll() {
 
     try {
       const allIds = displayCustomers.value.map(c => c.id)
-      const res = await batchDeleteCustomers(allIds)
+      const res: any = await batchDeleteCustomers(allIds)
       
       if (res.success) {
         const { successIds, errors } = res.data
         
         if (errors.length > 0) {
-          const errorMessages = errors.map(err => err.message).join('；')
+          const errorMessages = errors.map((err: any) => err.message).join('；')
           ElMessage.warning(
             `删除完成：成功 ${successIds.length} 个，失败 ${errors.length} 个。失败原因：${errorMessages}`
           )
@@ -687,7 +688,7 @@ function findCategoryNode(nodes: CategoryNode[], id: string): CategoryNode | nul
 async function loadData() {
   try {
     loading.value = true
-    const catRes = await getCustomerCategoryTree()
+    const catRes: any = await getCustomerCategoryTree()
 
     if (catRes.success) {
       categoryTree.value = catRes.data || []
@@ -709,7 +710,7 @@ async function loadData() {
 // 加载所有客户（限制100条）
 async function loadAllCustomers(limit: number = 100) {
   try {
-    const res = await getCustomers({
+    const res: any = await getCustomers({
       page: 1,
       limit,
       ...(showInactive.value ? { status: '' } : { status: 'active' })
@@ -725,7 +726,7 @@ async function loadAllCustomers(limit: number = 100) {
 // 按分类加载客户
 async function loadCustomersByCategory(categoryId: string) {
   try {
-    const res = await getCustomers({
+    const res: any = await getCustomers({
       page: 1,
       limit: 100,
       categoryId,
@@ -763,7 +764,7 @@ function handleSearch() {
   searchTimer = setTimeout(async () => {
     try {
       loading.value = true
-      const res = await getCustomers({
+      const res: any = await getCustomers({
         page: 1,
         limit: 100,
         search: searchForm.keyword.trim() || undefined,
@@ -815,11 +816,11 @@ function handleAddChildCategory() {
 async function handleEditCategory() {
   if (!selectedCategoryId.value) return
   // 从后端获取分类详情
-  getCustomerCategories().then(res => {
+  getCustomerCategories().then((res: any) => {
     if (res.success) {
       const categories = res.data || []
       const flatCategories = flattenCategories(categories)
-      const node = flatCategories.find(c => c.id === selectedCategoryId.value)
+      const node = flatCategories.find((c: any) => c.id === selectedCategoryId.value)
       if (node) {
         categoryIsEdit.value = true
         categoryDialogTitle.value = '编辑分类'
@@ -837,17 +838,17 @@ async function handleDeleteCategory() {
   if (!selectedCategoryId.value) return
   try {
     // 获取分类名称用于确认
-    const categoriesRes = await getCustomerCategories()
+    const categoriesRes: any = await getCustomerCategories()
     let categoryName = '该分类'
     if (categoriesRes.success) {
       const categories = categoriesRes.data || []
       const flatCategories = flattenCategories(categories)
-      const node = flatCategories.find(c => c.id === selectedCategoryId.value)
+      const node = flatCategories.find((c: any) => c.id === selectedCategoryId.value)
       if (node) categoryName = node.name
     }
 
     await ElMessageBox.confirm(`确定删除分类「${categoryName}」吗？`, '提示', { type: 'warning' })
-    const res = await deleteCustomerCategory(selectedCategoryId.value)
+    const res: any = await deleteCustomerCategory(selectedCategoryId.value)
     if (res.success) {
       ElMessage.success('删除成功')
       selectedCategoryId.value = null
@@ -865,10 +866,10 @@ async function handleSubmitCategory() {
   try {
     const payload = { name: categoryForm.name, parentId: categoryForm.parentId || undefined, sortOrder: categoryForm.sortOrder }
     if (categoryIsEdit.value) {
-      const res = await updateCustomerCategory(categoryForm.id, payload)
+      const res: any = await updateCustomerCategory(categoryForm.id, payload)
       if (res.success) ElMessage.success('更新成功')
     } else {
-      const res = await createCustomerCategory(payload)
+      const res: any = await createCustomerCategory(payload)
       if (res.success) ElMessage.success('创建成功')
     }
     categoryDialogVisible.value = false
@@ -897,7 +898,7 @@ function handleCreateCustomer() {
 
 async function handleEditCustomer(row: CustomerItem) {
   try {
-    const res = await getCustomerById(row.id)
+    const res: any = await getCustomerById(row.id)
     if (res.success) {
       customerIsEdit.value = true
       customerDialogTitle.value = '编辑客户'
@@ -924,7 +925,7 @@ async function handleToggleCustomerStatus(row: any) {
   const actionName = newStatus === 'active' ? '启用' : '禁用'
   try {
     await ElMessageBox.confirm(`确定${actionName}「${row.name}」吗？`, '提示', { type: 'warning' })
-    const res = await toggleCustomerStatus(row.id, newStatus)
+    const res: any = await toggleCustomerStatus(row.id, newStatus)
     if (res.success) {
       ElMessage.success(`${actionName}成功`)
       await loadData()
@@ -941,7 +942,7 @@ async function handleToggleCustomerStatus(row: any) {
 async function handleDeleteCustomer(row: CustomerItem) {
   try {
     await ElMessageBox.confirm(`确定删除客户「${row.name}」吗？`, '提示', { type: 'warning' })
-    const res = await deleteCustomer(row.id)
+    const res: any = await deleteCustomer(row.id)
     if (res.success) {
       ElMessage.success('删除成功')
       await loadData()
@@ -968,10 +969,10 @@ async function handleSubmitCustomer() {
       status: customerForm.status
     }
     if (customerIsEdit.value) {
-      const res = await updateCustomer(customerForm.id, payload)
+      const res: any = await updateCustomer(customerForm.id, payload)
       if (res.success) ElMessage.success('更新成功')
     } else {
-      const res = await createCustomer(payload as any)
+      const res: any = await createCustomer(payload as any)
       if (res.success) ElMessage.success('创建成功')
     }
     customerDialogVisible.value = false
@@ -1016,7 +1017,7 @@ function handleExport() {
     return
   }
   const headers = ['客户编码', '客户名称', '联系人', '电话', '邮箱', '地址', '专属业务员', '分类', '状态']
-  const data = allCustomers.value.map(c => [
+  const data = displayCustomers.value.map((c: any) => [
     c.code,
     c.name,
     c.contact || '',
@@ -1034,19 +1035,20 @@ function handleExport() {
   ElMessage.success('导出成功')
 }
 
+const flattenCategories = (nodes: CategoryNode[], parentName = '', result: any[] = []) => {
+  nodes.forEach(node => {
+    result.push([node.name, parentName, node.sortOrder || 0, node.status === 'active' ? '启用' : '禁用'])
+    if (node.children?.length) flattenCategories(node.children, node.name, result)
+  })
+  return result
+}
+
 function handleExportCategories() {
   if (typeof XLSX === 'undefined') {
     ElMessage.error('Excel 导出库未加载，请刷新页面重试')
     return
   }
   const headers = ['分类名称', '上级分类', '排序', '状态']
-  const flattenCategories = (nodes: CategoryNode[], parentName = '', result: any[] = []) => {
-    nodes.forEach(node => {
-      result.push([node.name, parentName, node.sortOrder || 0, node.status === 'active' ? '启用' : '禁用'])
-      if (node.children?.length) flattenCategories(node.children, node.name, result)
-    })
-    return result
-  }
   const data = flattenCategories(categoryTree.value)
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
   const wb = XLSX.utils.book_new()

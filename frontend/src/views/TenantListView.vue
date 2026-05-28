@@ -341,8 +341,8 @@
         <div class="feature-item" v-for="(_, feature) in features" :key="feature">
           <el-icon><component :is="features[feature].icon" /></el-icon>
           <span>{{ features[feature].label }}</span>
-          <el-tag :type="getFeatureStatusType(currentTenant[`feature${feature.charAt(0).toUpperCase() + feature.slice(1)}`])" size="small">
-            {{ getFeatureStatusLabel(currentTenant[`feature${feature.charAt(0).toUpperCase() + feature.slice(1)}`]) }}
+          <el-tag v-if="currentTenant" :type="getFeatureStatusType((currentTenant as any)[`feature${feature.charAt(0).toUpperCase() + feature.slice(1)}`])" size="small">
+            {{ getFeatureStatusLabel((currentTenant as any)[`feature${feature.charAt(0).toUpperCase() + feature.slice(1)}`]) }}
           </el-tag>
         </div>
       </div>
@@ -368,6 +368,7 @@ import { Plus, Refresh, Search, View, Edit, Delete, OfficeBuilding, Link, Settin
 import type { FormInstance, FormRules } from 'element-plus'
 import * as tenantApi from '@/api/tenant'
 import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
+import pinyin from 'pinyin'
 
 interface Tenant {
   id: string
@@ -390,11 +391,15 @@ interface Tenant {
   featureWebhooks: boolean
   featureAuditLogs: boolean
   featureAnalytics: boolean
+  trialEndsAt?: string
+  currentPeriodStartsAt?: string
+  currentPeriodEndsAt?: string
   createdAt: string
   updatedAt: string
   _count?: {
     users: number
   }
+  [key: string]: any
 }
 
 const loading = ref(false)
@@ -474,16 +479,16 @@ const features = {
 const loadTenants = async () => {
   loading.value = true
   try {
-    const res = await tenantApi.getTenants({
+    const response: any = await tenantApi.getTenants({
       page: pagination.page,
       limit: pagination.limit,
       keyword: searchKeyword.value,
       status: searchStatus.value
     })
     
-    if (res.success) {
-      tenants.value = res.data.items
-      pagination.total = res.data.total
+    if (response.success) {
+      tenants.value = response.data.items
+      pagination.total = response.data.total
     }
   } catch (error: any) {
     ElMessage.error(error.message || '加载租户列表失败')
@@ -528,7 +533,7 @@ const handleDelete = async (row: Tenant) => {
       }
     )
 
-    const res = await tenantApi.deleteTenant(row.id)
+    const res: any = await tenantApi.deleteTenant(row.id)
     if (res.success) {
       ElMessage.success('删除成功')
       await loadTenants()
@@ -546,7 +551,6 @@ const generateSlug = () => {
     return
   }
   
-  const pinyin = require('pinyin')
   const slug = pinyin(formData.name, {
     style: pinyin.STYLE_NORMAL,
     heteronym: false
@@ -568,10 +572,11 @@ const handleSubmit = async () => {
     await formRef.value.validate()
     
     submitLoading.value = true
-    let res
+    let res: any
     
     if (isEdit.value) {
-      res = await tenantApi.updateTenant(currentTenant.value!.id, formData)
+      const updateData = { ...formData, status: formData.status as 'active' | 'inactive' }
+      res = await tenantApi.updateTenant(currentTenant.value!.id, updateData)
     } else {
       res = await tenantApi.createTenant(formData)
     }

@@ -225,7 +225,7 @@ const fetchAccounts = async () => {
       params.search = searchForm.keyword
     }
     
-    const response = await getAccounts(params)
+    const response: any = await getAccounts(params)
     if (response.success) {
       tableData.value = response.data.items
       pagination.total = response.data.total
@@ -270,7 +270,7 @@ const handleEdit = async (row: any) => {
     dialogTitle.value = '编辑账户'
     isEdit.value = true
     
-    const response = await getAccountById(row.id)
+    const response: any = await getAccountById(row.id)
     if (response.success) {
       const account = response.data
       Object.assign(formData, account)

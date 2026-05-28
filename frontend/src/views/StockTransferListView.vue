@@ -157,7 +157,7 @@
               placeholder="请选择物料"
               filterable
               style="width: 100%"
-              @change="(val) => handleProductSelect($index, products.find(p => p.id === val))"
+              @change="(val: string) => handleProductSelect($index, products.find(p => p.id === val))"
             >
               <el-option v-for="p in products" :key="p.id" :label="`${p.code} - ${p.name}`" :value="p.id" />
             </el-select>
@@ -215,10 +215,10 @@
           <el-descriptions-item label="调拨单号">{{ currentTransfer?.transferNo }}</el-descriptions-item>
           <el-descriptions-item label="调出仓库">{{ currentTransfer?.fromWarehouse?.name }}</el-descriptions-item>
           <el-descriptions-item label="调入仓库">{{ currentTransfer?.toWarehouse?.name }}</el-descriptions-item>
-          <el-descriptions-item label="调拨日期">{{ formatDate(currentTransfer?.transferDate) }}</el-descriptions-item>
+          <el-descriptions-item label="调拨日期">{{ currentTransfer?.transferDate ? formatDate(currentTransfer.transferDate) : '-' }}</el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="getStatusType(currentTransfer?.status)">
-              {{ getStatusText(currentTransfer?.status) }}
+            <el-tag v-if="currentTransfer?.status" :type="getStatusType(currentTransfer.status)">
+              {{ getStatusText(currentTransfer.status) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="总数量">{{ currentTransfer?.totalQty }}</el-descriptions-item>
@@ -365,7 +365,7 @@ const fetchWarehouses = async () => {
 // 获取产品列表
 const fetchProducts = async () => {
   try {
-    const response = await getProducts({ page: 1, limit: 1000 }) as any
+    const response = await getProducts({ page: 1, limit: 10000 }) as any
     if (response.success) {
       products.value = response.data.items || []
     }
@@ -483,7 +483,7 @@ const handleCreateSubmit = async () => {
       transferNo: createForm.transferNo,
       fromWarehouseId: createForm.fromWarehouseId,
       toWarehouseId: createForm.toWarehouseId,
-      transferDate: createForm.transferDate,
+      transferDate: createForm.transferDate instanceof Date ? createForm.transferDate.toISOString() : createForm.transferDate,
       remark: createForm.remark,
       details: createForm.details.map(d => ({
         productId: d.productId,

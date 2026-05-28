@@ -777,7 +777,7 @@ const fetchData = async () => {
       startDate: searchForm.dateRange?.[0],
       endDate: searchForm.dateRange?.[1]
     }
-    const response = await getPurchaseOrders(params)
+    const response: any = await getPurchaseOrders(params)
     if (response.success) {
       tableData.value = response.data.items || []
       pagination.total = response.data.total
@@ -799,7 +799,7 @@ const fetchData = async () => {
 // 获取供应商
 const fetchSuppliers = async () => {
   try {
-    const response = await getSuppliers({ page: 1, limit: 1000, status: '' })
+    const response: any = await getSuppliers({ page: 1, limit: 10000, status: '' })
     if (response.success) {
       suppliers.value = response.data.items || []
     }
@@ -811,7 +811,7 @@ const fetchSuppliers = async () => {
 // 获取物料
 const fetchProducts = async () => {
   try {
-    const response = await getProducts({ page: 1, limit: 1000 })
+    const response: any = await getProducts({ page: 1, limit: 10000 })
     if (response.success) {
       products.value = response.data.items || []
     }
@@ -847,11 +847,20 @@ const handleSelectionChange = (rows: any[]) => {
 }
 
 // 新增
-const handleCreate = () => {
+const handleCreate = async () => {
   dialogTitle.value = '新增采购订单'
   isEdit.value = false
   resetForm()
   addDefaultDetail()
+  
+  // 按需加载数据，确保必要数据已加载
+  if (!suppliers.value.length) {
+    await fetchSuppliers()
+  }
+  if (!products.value.length) {
+    await fetchProducts()
+  }
+  
   dialogVisible.value = true
 }
 
@@ -860,7 +869,7 @@ const handleEdit = async (row: any) => {
   dialogTitle.value = '编辑采购订单'
   isEdit.value = true
   try {
-    const response = await getPurchaseOrderById(row.id)
+    const response: any = await getPurchaseOrderById(row.id)
     if (response.success) {
       const order = response.data.data
       Object.assign(formData, {
@@ -890,7 +899,7 @@ const handleEdit = async (row: any) => {
 // 查看
 const handleView = async (row: any) => {
   try {
-    const response = await getPurchaseOrderById(row.id)
+    const response: any = await getPurchaseOrderById(row.id)
     if (response.success) {
       currentOrder.value = response.data.data
       viewDrawer.value = true
@@ -1045,11 +1054,12 @@ const handleImportSubmit = async (data: any[]) => {
     return newItem
   })
 
-  return await importPurchaseOrders(processedData)
+  const result: any = await importPurchaseOrders(processedData)
+  return result
 }
 
 const handleImportSuccess = () => {
-  loadData()
+  fetchData()
 }
 
 // 添加明细
@@ -1119,7 +1129,7 @@ const submitOrder = async (confirmed: boolean) => {
       orderDate: formData.orderDate,
       remark: formData.remark,
       discountAmount: formData.discountAmount,
-      details: formData.details.map(d => ({
+      items: formData.details.map(d => ({
         productId: d.productId,
         quantity: d.quantity,
         unitPrice: d.unitPrice,
@@ -1174,6 +1184,123 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   pagination.page = val
   fetchData()
+}
+
+// 帮助数据
+const helpData = computed(() => {
+  if (activeTab.value === 'order') {
+    return {
+      operations: [
+        {
+          title: '新增采购订单',
+          steps: [
+            '点击"新增采购订单"按钮',
+            '选择供应商和采购员',
+            '添加物料明细，选择物料、输入数量和单价',
+            '设置订单日期、预计到货日期等基本信息',
+            '点击"保存草稿"保存订单，或点击"提交"直接确认订单'
+          ]
+        },
+        {
+          title: '确认订单',
+          steps: [
+            '在订单列表中找到草稿状态的订单',
+            '点击操作列中的"确认"按钮',
+            '确认后订单状态变为"已确认"，可以进行入库操作'
+          ]
+        },
+        {
+          title: '快速入库',
+          steps: [
+            '在已确认的订单上点击"快速入库"按钮',
+            '选择入库仓库和入库方式（整单入库或部分入库）',
+            '如果是部分入库，选择需要入库的物料明细',
+            '点击"确认入库"生成采购入库单'
+          ]
+        },
+        {
+          title: '复制订单',
+          steps: [
+            '在订单上点击"复制"按钮',
+            '系统自动复制订单信息',
+            '修改需要调整的内容',
+            '保存或提交新订单'
+          ]
+        }
+      ],
+      notices: [
+        '只有草稿状态的订单可以编辑和删除',
+        '已确认的订单不能直接修改，需要先反确认',
+        '订单确认后才能进行入库操作',
+        '删除订单会同时删除相关的入库单和付款单',
+        '采购订单可以由销售订单下推生成'
+      ],
+      tips: [
+        '可以使用快捷键 Ctrl+N 快速新增订单',
+        '支持批量操作：批量确认、批量删除',
+        '订单编号系统自动生成，支持自定义编号规则',
+        '可以导入Excel批量创建订单',
+        '支持按供应商、状态、日期等条件筛选订单'
+      ],
+      shortcuts: [
+        { key: 'Ctrl+N', description: '新增订单' },
+        { key: 'Ctrl+S', description: '保存草稿' },
+        { key: 'Ctrl+Enter', description: '提交订单' },
+        { key: 'F5', description: '刷新列表' }
+      ],
+      version: '1.0.0',
+      lastUpdate: '2025-05-28',
+      changes: [
+        '优化库存计算逻辑',
+        '增加复制订单功能',
+        '支持销售订单下推采购订单'
+      ]
+    }
+  } else {
+    return {
+      operations: [
+        {
+          title: '新增采购入库单',
+          steps: [
+            '点击"新增采购入库"按钮',
+            '选择入库仓库和供应商',
+            '添加入库明细，选择物料和数量',
+            '设置入库日期和备注',
+            '点击"保存草稿"或"提交"'
+          ]
+        },
+        {
+          title: '确认入库单',
+          steps: [
+            '在入库单列表中找到草稿状态的入库单',
+            '点击"确认"按钮',
+            '确认后库存会相应增加'
+          ]
+        }
+      ],
+      notices: [
+        '入库数量必须与采购订单数量一致',
+        '确认入库单会增加库存',
+        '已确认的入库单不能直接修改'
+      ],
+      tips: [
+        '可以关联采购订单自动生成入库单',
+        '支持部分入库',
+        '入库单确认后不可撤销'
+      ],
+      shortcuts: [
+        { key: 'Ctrl+N', description: '新增入库单' },
+        { key: 'Ctrl+S', description: '保存草稿' }
+      ],
+      version: '1.0.0',
+      lastUpdate: '2025-05-28'
+    }
+  }
+})
+
+// 打开帮助
+const handleHelp = () => {
+  helpDialogVisible.value = true
 }
 
 // 初始化
@@ -1341,122 +1468,5 @@ onMounted(async () => {
 }
 :deep(.el-table .amount) {
   font-weight: 600;
-}
-
-// 帮助数据
-const helpData = computed(() => {
-  if (activeTab.value === 'order') {
-    return {
-      operations: [
-        {
-          title: '新增采购订单',
-          steps: [
-            '点击"新增采购订单"按钮',
-            '选择供应商和采购员',
-            '添加物料明细，选择物料、输入数量和单价',
-            '设置订单日期、预计到货日期等基本信息',
-            '点击"保存草稿"保存订单，或点击"提交"直接确认订单'
-          ]
-        },
-        {
-          title: '确认订单',
-          steps: [
-            '在订单列表中找到草稿状态的订单',
-            '点击操作列中的"确认"按钮',
-            '确认后订单状态变为"已确认"，可以进行入库操作'
-          ]
-        },
-        {
-          title: '快速入库',
-          steps: [
-            '在已确认的订单上点击"快速入库"按钮',
-            '选择入库仓库和入库方式（整单入库或部分入库）',
-            '如果是部分入库，选择需要入库的物料明细',
-            '点击"确认入库"生成采购入库单'
-          ]
-        },
-        {
-          title: '复制订单',
-          steps: [
-            '在订单上点击"复制"按钮',
-            '系统自动复制订单信息',
-            '修改需要调整的内容',
-            '保存或提交新订单'
-          ]
-        }
-      ],
-      notices: [
-        '只有草稿状态的订单可以编辑和删除',
-        '已确认的订单不能直接修改，需要先反确认',
-        '订单确认后才能进行入库操作',
-        '删除订单会同时删除相关的入库单和付款单',
-        '采购订单可以由销售订单下推生成'
-      ],
-      tips: [
-        '可以使用快捷键 Ctrl+N 快速新增订单',
-        '支持批量操作：批量确认、批量删除',
-        '订单编号系统自动生成，支持自定义编号规则',
-        '可以导入Excel批量创建订单',
-        '支持按供应商、状态、日期等条件筛选订单'
-      ],
-      shortcuts: [
-        { key: 'Ctrl+N', description: '新增订单' },
-        { key: 'Ctrl+S', description: '保存草稿' },
-        { key: 'Ctrl+Enter', description: '提交订单' },
-        { key: 'F5', description: '刷新列表' }
-      ],
-      version: '1.0.0',
-      lastUpdate: '2025-05-28',
-      changes: [
-        '优化库存计算逻辑',
-        '增加复制订单功能',
-        '支持销售订单下推采购订单'
-      ]
-    }
-  } else {
-    return {
-      operations: [
-        {
-          title: '新增采购入库单',
-          steps: [
-            '点击"新增采购入库"按钮',
-            '选择入库仓库和供应商',
-            '添加入库明细，选择物料和数量',
-            '设置入库日期和备注',
-            '点击"保存草稿"或"提交"'
-          ]
-        },
-        {
-          title: '确认入库单',
-          steps: [
-            '在入库单列表中找到草稿状态的入库单',
-            '点击"确认"按钮',
-            '确认后库存会相应增加'
-          ]
-        }
-      ],
-      notices: [
-        '入库数量必须与采购订单数量一致',
-        '确认入库单会增加库存',
-        '已确认的入库单不能直接修改'
-      ],
-      tips: [
-        '可以关联采购订单自动生成入库单',
-        '支持部分入库',
-        '入库单确认后不可撤销'
-      ],
-      shortcuts: [
-        { key: 'Ctrl+N', description: '新增入库单' },
-        { key: 'Ctrl+S', description: '保存草稿' }
-      ],
-      version: '1.0.0',
-      lastUpdate: '2025-05-28'
-    }
-  }
-})
-
-// 打开帮助
-const handleHelp = () => {
-  helpDialogVisible.value = true
 }
 </style>

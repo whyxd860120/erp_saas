@@ -158,7 +158,7 @@ const tableData = ref([])
 const loading = ref(false)
 
 // 用户列表
-const users = ref([])
+const users = ref<any[]>([])
 
 // 搜索表单
 const searchForm = reactive({
@@ -177,7 +177,7 @@ const pagination = reactive({
 
 // 详情对话框
 const detailDialogVisible = ref(false)
-const currentLog = ref(null)
+const currentLog = ref<any>(null)
 
 // 获取审计日志列表
 const fetchAuditLogs = async () => {
@@ -197,7 +197,7 @@ const fetchAuditLogs = async () => {
       params.endDate = searchForm.dateRange[1]
     }
     
-    const response = await getAuditLogs(params)
+    const response: any = await getAuditLogs(params)
     if (response.success) {
       tableData.value = response.data.items
       pagination.total = response.data.total
@@ -212,7 +212,7 @@ const fetchAuditLogs = async () => {
 // 获取用户列表
 const fetchUsers = async () => {
   try {
-    const response = await getUsers({ page: 1, limit: 1000 })
+    const response: any = await getUsers({ page: 1, limit: 1000 })
     if (response.success) {
       users.value = response.data.items || []
     }

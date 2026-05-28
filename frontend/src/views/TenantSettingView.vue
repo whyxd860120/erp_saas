@@ -255,7 +255,8 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, FormInstance, FormRules } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import { OfficeBuilding, Picture } from '@element-plus/icons-vue'
 import tenantSettingApi, { type Tenant } from '@/api/tenant-setting'
 
@@ -281,6 +282,11 @@ const form = ref<Tenant & {
   numberFormat?: string
   primaryColor?: string
   customCss?: string
+  fiscalYearStartYear?: number
+  fiscalYearStartMonth?: number
+  currentFiscalYear?: number
+  currentFiscalMonth?: number
+  initializationStatus?: string
 }>({
   id: '',
   name: '',
@@ -312,7 +318,12 @@ const form = ref<Tenant & {
   featureAnalytics: false,
   quotaUsers: 5,
   quotaStorage: 1000,
-  quotaApiCalls: 1000
+  quotaApiCalls: 1000,
+  fiscalYearStartYear: 2025,
+  fiscalYearStartMonth: 1,
+  currentFiscalYear: 2025,
+  currentFiscalMonth: 5,
+  initializationStatus: 'pending'
 })
 
 const settingTabs = [
@@ -331,7 +342,7 @@ const fetchTenant = async () => {
   try {
     const res = await tenantSettingApi.getCurrentTenant()
     if (res.success) {
-      const data = res.data
+      const data: any = res.data
       form.value = {
         ...form.value,
         ...data,
@@ -357,7 +368,7 @@ const handleSave = async () => {
     if (valid) {
       try {
         loading.value = true
-        const updateData = {
+        const updateData: any = {
           displayName: form.value.displayName,
           description: form.value.description,
           logoUrl: form.value.logoUrl,

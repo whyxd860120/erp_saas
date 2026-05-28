@@ -490,7 +490,7 @@ const handleChangePassword = async () => {
       ElMessage.error('两次输入的新密码不一致')
       return
     }
-    const response = await changePassword({ oldPassword, newPassword })
+    const response: any = await changePassword({ oldPassword, newPassword })
     if (response.success) {
       ElMessage.success('密码修改成功，请重新登录')
       setTimeout(() => { handleLogout() }, 1500)
@@ -512,7 +512,7 @@ const toggleCollapse = () => {
 const loadMenuData = async () => {
   try {
     loadingMenus.value = true
-    const response = await getMenus()
+    const response: any = await getMenus()
     if (response.success) {
       databaseMenus.value = response.data
     }

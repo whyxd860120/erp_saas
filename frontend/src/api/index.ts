@@ -175,6 +175,8 @@ export const paymentReceiptApi = {
     request({ url: `/api/v1/payment-receipts/${id}`, method: 'GET' }),
   createPaymentReceipt: (data: any) => 
     request({ url: '/api/v1/payment-receipts', method: 'POST', data }),
+  updatePaymentReceipt: (id: string, data: any) => 
+    request({ url: `/api/v1/payment-receipts/${id}`, method: 'PUT', data }),
   confirmPaymentReceipt: (id: string) => 
     request({ url: `/api/v1/payment-receipts/${id}/confirm`, method: 'POST' }),
   deletePaymentReceipt: (id: string) => 

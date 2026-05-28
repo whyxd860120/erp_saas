@@ -235,9 +235,9 @@ const searchForm = reactive({
 })
 
 // 下拉数据
-const suppliers = ref([])
-const accounts = ref([])
-const purchaseOrders = ref([])
+const suppliers = ref<any[]>([])
+const accounts = ref<any[]>([])
+const purchaseOrders = ref<any[]>([])
 
 // 分页
 const pagination = reactive({
@@ -258,7 +258,7 @@ const formData = reactive({
   id: '',
   paymentNo: '',
   supplierId: '',
-  paymentDate: new Date(),
+  paymentDate: new Date().toISOString().split('T')[0],
   amount: 0,
   accountId: '',
   purchaseOrderId: '',
@@ -294,7 +294,7 @@ const fetchPaymentPayments = async () => {
       ...searchForm
     }
     
-    const response = await getPaymentPayments(params)
+    const response: any = await getPaymentPayments(params)
     if (response.success) {
       tableData.value = response.data.items
       pagination.total = response.data.total
@@ -309,7 +309,7 @@ const fetchPaymentPayments = async () => {
 // 获取供应商列表
 const fetchSuppliers = async () => {
   try {
-    const response = await getSuppliers({ page: 1, limit: 1000 })
+    const response: any = await getSuppliers({ page: 1, limit: 10000 })
     if (response.success) {
       suppliers.value = response.data.items || []
     }
@@ -321,7 +321,7 @@ const fetchSuppliers = async () => {
 // 获取账户列表
 const fetchAccounts = async () => {
   try {
-    const response = await getAccounts({ page: 1, limit: 1000 })
+    const response: any = await getAccounts({ page: 1, limit: 1000 })
     if (response.success) {
       accounts.value = response.data.items || []
     }
@@ -333,7 +333,7 @@ const fetchAccounts = async () => {
 // 获取采购订单列表
 const fetchPurchaseOrders = async () => {
   try {
-    const response = await getPurchaseOrders({ page: 1, limit: 1000, status: 'confirmed,partial,completed' })
+    const response: any = await getPurchaseOrders({ page: 1, limit: 1000, status: 'confirmed,partial,completed' })
     if (response.success) {
       purchaseOrders.value = response.data.items || []
     }
@@ -371,7 +371,7 @@ const handleView = async (row: any) => {
     dialogTitle.value = '查看付款单'
     isEdit.value = true
     
-    const response = await getPaymentPaymentById(row.id)
+    const response: any = await getPaymentPaymentById(row.id)
     if (response.success) {
       const payment = response.data.data
       Object.assign(formData, {
@@ -493,7 +493,7 @@ const resetForm = () => {
   formData.id = ''
   formData.paymentNo = ''
   formData.supplierId = ''
-  formData.paymentDate = new Date()
+  formData.paymentDate = new Date().toISOString().split('T')[0]
   formData.amount = 0
   formData.accountId = ''
   formData.purchaseOrderId = ''

@@ -307,6 +307,7 @@ const changePlanDialogVisible = ref(false)
 const invoicesDialogVisible = ref(false)
 const selectedPlan = ref<Plan | null>(null)
 const plansRef = ref<HTMLElement | null>(null)
+const activeTab = ref(0)
 
 const quotaUsage = reactive({
   users: 3,

@@ -545,7 +545,8 @@ async function handleImportSubmit(data: any[]) {
     return newItem
   })
 
-  return await importProducts(processedData)
+  const result: any = await importProducts(processedData)
+  return result
 }
 
 const helpData = {
@@ -700,7 +701,7 @@ function formatPrice(val: number | string | undefined) {
 async function loadData() {
   try {
     loading.value = true
-    const catRes = await getCategoryTree()
+    const catRes: any = await getCategoryTree()
     if (catRes.success) {
       categoryTree.value = catRes.data || []
     }
@@ -720,7 +721,7 @@ async function loadData() {
 // 加载所有物料（限制数量）
 async function loadAllProducts(limit: number = 100) {
   try {
-    const res = await getProducts({
+    const res: any = await getProducts({
       page: 1,
       limit,
       ...(showInactive.value ? { status: '' } : { status: 'active' })
@@ -737,7 +738,7 @@ async function loadAllProducts(limit: number = 100) {
 // 按分类加载物料
 async function loadProductsByCategory(categoryId: string) {
   try {
-    const res = await getProducts({
+    const res: any = await getProducts({
       page: 1,
       limit: 100,
       categoryId,
@@ -776,7 +777,7 @@ function handleSearch() {
   searchTimer = setTimeout(async () => {
     try {
       loading.value = true
-      const res = await getProducts({
+      const res: any = await getProducts({
         page: 1,
         limit: 100,
         search: searchForm.keyword.trim() || undefined,
@@ -829,7 +830,7 @@ function handleAddChildCategory() {
 async function handleEditCategory() {
   if (!selectedCategoryId.value) return
   // 从后端获取分类详情
-  getCategories().then(res => {
+  getCategories().then((res: any) => {
     if (res.success) {
       const categories = res.data || []
       const flatCategories = flattenCategories(categories)
@@ -851,7 +852,7 @@ async function handleDeleteCategory() {
   if (!selectedCategoryId.value) return
   try {
     // 获取分类名称用于确认
-    const categoriesRes = await getCategories()
+    const categoriesRes: any = await getCategories()
     let categoryName = '该分类'
     if (categoriesRes.success) {
       const categories = categoriesRes.data || []
@@ -861,7 +862,7 @@ async function handleDeleteCategory() {
     }
 
     await ElMessageBox.confirm(`确定删除分类「${categoryName}」吗？`, '提示', { type: 'warning' })
-    const res = await deleteCategory(selectedCategoryId.value)
+    const res: any = await deleteCategory(selectedCategoryId.value)
     if (res.success) {
       ElMessage.success('删除成功')
       selectedCategoryId.value = null
@@ -892,10 +893,10 @@ async function handleSubmitCategory() {
   try {
     const payload = { name: categoryForm.name, parentId: categoryForm.parentId || undefined, sortOrder: categoryForm.sortOrder }
     if (categoryIsEdit.value) {
-      const res = await updateCategory(categoryForm.id, payload)
+      const res: any = await updateCategory(categoryForm.id, payload)
       if (res.success) ElMessage.success('更新成功')
     } else {
-      const res = await createCategory(payload)
+      const res: any = await createCategory(payload)
       if (res.success) ElMessage.success('创建成功')
     }
     categoryDialogVisible.value = false
@@ -929,7 +930,7 @@ function handleCreateProduct() {
 
 async function handleEditProduct(row: ProductItem) {
   try {
-    const res = await getProductById(row.id)
+    const res: any = await getProductById(row.id)
     if (res.success) {
       productIsEdit.value = true
       productDialogTitle.value = '编辑物料'
@@ -958,7 +959,7 @@ async function handleToggleProductStatus(row: any) {
   const actionName = newStatus === 'active' ? '启用' : '禁用'
   try {
     await ElMessageBox.confirm(`确定${actionName}「${row.name}」吗？`, '提示', { type: 'warning' })
-    const res = await toggleProductStatus(row.id, newStatus)
+    const res: any = await toggleProductStatus(row.id, newStatus)
     if (res.success) {
       ElMessage.success(`${actionName}成功`)
       await loadData()
@@ -975,7 +976,7 @@ async function handleToggleProductStatus(row: any) {
 async function handleDeleteProduct(row: ProductItem) {
   try {
     await ElMessageBox.confirm(`确定删除物料「${row.name}」吗？`, '提示', { type: 'warning' })
-    const res = await deleteProduct(row.id)
+    const res: any = await deleteProduct(row.id)
     if (res.success) {
       ElMessage.success('删除成功')
       await loadData()
@@ -1006,10 +1007,10 @@ async function handleSubmitProduct() {
       enableSN: productForm.enableSN
     }
     if (productIsEdit.value) {
-      const res = await updateProduct(productForm.id, payload)
+      const res: any = await updateProduct(productForm.id, payload)
       if (res.success) ElMessage.success('更新成功')
     } else {
-      const res = await createProduct(payload as any)
+      const res: any = await createProduct(payload as any)
       if (res.success) ElMessage.success('创建成功')
     }
     productDialogVisible.value = false
@@ -1100,14 +1101,14 @@ async function handleDeleteAll() {
     })
 
     try {
-      const result = await batchDeleteProducts(productIds)
+      const result: any = await batchDeleteProducts(productIds)
       loadingInstance.close()
 
       if (result.success) {
         const { successIds, errors } = result.data
         
         if (errors.length > 0) {
-          const errorMessages = errors.map(err => err.message).join('；')
+          const errorMessages = errors.map((err: any) => err.message).join('；')
           ElMessage.warning(
             `删除完成：成功 ${successIds.length} 个，失败 ${errors.length} 个。失败原因：${errorMessages}`
           )

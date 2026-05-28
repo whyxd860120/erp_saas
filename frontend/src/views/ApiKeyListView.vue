@@ -105,7 +105,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage, FormInstance, FormRules } from 'element-plus';
+import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
 import { DocumentCopy } from '@element-plus/icons-vue';
 import apiKeyApi, { type ApiKey } from '@/api/api-key';
 
@@ -118,7 +119,7 @@ const createdDialogVisible = ref(false);
 const isEdit = ref(false);
 const apiKeys = ref<ApiKey[]>([]);
 const newApiKey = ref('');
-const form = ref<Partial<ApiKey> & { expiresInDays?: number | null }>({
+const form = ref<Partial<ApiKey> & { expiresInDays?: number | undefined }>({
   name: '',
   permissions: '',
   isActive: true,

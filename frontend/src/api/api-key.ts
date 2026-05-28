@@ -18,7 +18,7 @@ export function getApiKeys(): Promise<{ success: boolean; data: ApiKey[] }> {
   return request({ url: '/api/v1/api-keys', method: 'get' });
 }
 
-export function createApiKey(data: Partial<ApiKey> & { expiresInDays?: number }): Promise<{ success: boolean; data: ApiKey }> {
+export function createApiKey(data: Partial<ApiKey> & { expiresInDays?: number | undefined }): Promise<{ success: boolean; data: ApiKey }> {
   return request({ url: '/api/v1/api-keys', method: 'post', data });
 }
 

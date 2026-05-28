@@ -223,7 +223,7 @@ async function loadData() {
     if (searchForm.documentType) {
       params.documentType = searchForm.documentType
     }
-    const res = await getWorkflowDefinitions(params)
+    const res: any = await getWorkflowDefinitions(params)
     if (res.success) {
       tableData.value = res.data || []
     }
@@ -235,21 +235,21 @@ async function loadData() {
 }
 
 async function loadDocumentTypes() {
-  const res = await getDocumentTypes()
+  const res: any = await getDocumentTypes()
   if (res.success) {
     documentTypes.value = res.data || []
   }
 }
 
 async function loadUsers() {
-  const res = await getUsers({ page: 1, limit: 1000 })
+  const res: any = await getUsers({ page: 1, limit: 1000 })
   if (res.success) {
     userList.value = res.data.items || []
   }
 }
 
 async function loadRoles() {
-  const res = await getRoles()
+  const res: any = await getRoles()
   if (res.success) {
     roleList.value = res.data || []
   }
@@ -288,7 +288,7 @@ function handleEdit(row: any) {
 async function handleDelete(row: any) {
   try {
     await ElMessageBox.confirm(`确定删除工作流 "${row.name}" 吗？`, '提示', { type: 'warning' })
-    const res = await deleteWorkflowDefinition(row.id)
+    const res: any = await deleteWorkflowDefinition(row.id)
     if (res.success) {
       ElMessage.success('删除成功')
       loadData()
@@ -304,7 +304,7 @@ async function handleToggleStatus(row: any) {
   const action = row.isActive ? '禁用' : '启用'
   try {
     await ElMessageBox.confirm(`确定${action}工作流 "${row.name}" 吗？`, '提示', { type: 'warning' })
-    const res = await updateWorkflowDefinition(row.id, { isActive: !row.isActive })
+    const res: any = await updateWorkflowDefinition(row.id, { isActive: !row.isActive })
     if (res.success) {
       ElMessage.success(`${action}成功`)
       loadData()
@@ -345,7 +345,7 @@ async function handleSubmit() {
       nodes: formData.nodes
     }
 
-    let res
+    let res: any
     if (isEdit.value) {
       res = await updateWorkflowDefinition(formData.id, payload)
     } else {

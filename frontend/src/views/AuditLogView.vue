@@ -121,7 +121,7 @@ const fetchAuditLogs = async () => {
       params.endDate = searchForm.timeRange[1]
     }
     
-    const response = await auditLogApi.getAuditLogs(params)
+    const response: any = await auditLogApi.getAuditLogs(params)
     if (response.success) {
       logList.value = response.data.items || []
       pagination.total = response.data.total || 0

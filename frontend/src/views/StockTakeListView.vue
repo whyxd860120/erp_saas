@@ -119,18 +119,18 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="盘点单号">{{ currentStockTake?.takeNo }}</el-descriptions-item>
           <el-descriptions-item label="仓库">{{ currentStockTake?.warehouse?.name }}</el-descriptions-item>
-          <el-descriptions-item label="盘点日期">{{ formatDate(currentStockTake?.takeDate) }}</el-descriptions-item>
+          <el-descriptions-item label="盘点日期">{{ currentStockTake?.takeDate ? formatDate(currentStockTake.takeDate) : '-' }}</el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="getStatusType(currentStockTake?.status)">
-              {{ getStatusText(currentStockTake?.status) }}
+            <el-tag v-if="currentStockTake?.status" :type="getStatusType(currentStockTake.status)">
+              {{ getStatusText(currentStockTake.status) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="总差异数量">
-            <span :class="currentStockTake?.totalDiffQty > 0 ? 'positive' : currentStockTake?.totalDiffQty < 0 ? 'negative' : ''">
-              {{ currentStockTake?.totalDiffQty > 0 ? '+' : '' }}{{ currentStockTake?.totalDiffQty }}
+            <span v-if="currentStockTake?.totalDiffQty !== undefined" :class="currentStockTake.totalDiffQty > 0 ? 'positive' : currentStockTake.totalDiffQty < 0 ? 'negative' : ''">
+              {{ currentStockTake.totalDiffQty > 0 ? '+' : '' }}{{ currentStockTake.totalDiffQty }}
             </span>
           </el-descriptions-item>
-          <el-descriptions-item label="总差异金额">{{ formatCurrency(currentStockTake?.totalDiffCost) }}</el-descriptions-item>
+          <el-descriptions-item label="总差异金额">{{ currentStockTake?.totalDiffCost !== undefined ? formatCurrency(currentStockTake.totalDiffCost) : '-' }}</el-descriptions-item>
           <el-descriptions-item label="备注" :span="2">{{ currentStockTake?.remark || '-' }}</el-descriptions-item>
         </el-descriptions>
 
@@ -220,7 +220,7 @@
               v-model="row.productId"
               placeholder="选择物料"
               filterable
-              @change="(val) => handleProductChange(val, $index)"
+              @change="(val: string) => handleProductChange(val, $index)"
               style="width: 100%"
             >
               <el-option v-for="p in products" :key="p.id" :label="`${p.code} - ${p.name}`" :value="p.id" />
@@ -229,7 +229,7 @@
         </el-table-column>
         <el-table-column prop="productName" label="物料名称" min-width="120" />
         <el-table-column prop="systemQty" label="账面数量" width="100" align="right">
-          <template #default="{ row }">
+          <template #default="{ row, $index }">
             <el-input-number v-model="row.systemQty" :min="0" controls-position="right" @change="() => calculateDiff($index)" style="width: 100%" />
           </template>
         </el-table-column>
@@ -246,7 +246,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="unitCost" label="单位成本" width="120" align="right">
-          <template #default="{ row }">
+          <template #default="{ row, $index }">
             <el-input-number v-model="row.unitCost" :min="0" :precision="2" controls-position="right" @change="() => calculateDiff($index)" style="width: 100%" />
           </template>
         </el-table-column>
@@ -398,7 +398,7 @@ const fetchWarehouses = async () => {
 // 获取产品列表
 const fetchProducts = async () => {
   try {
-    const response = await getProducts({ page: 1, limit: 1000 }) as any
+    const response = await getProducts({ page: 1, limit: 10000 }) as any
     if (response.success) {
       products.value = response.data.items || []
     }

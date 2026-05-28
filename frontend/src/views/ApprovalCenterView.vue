@@ -278,7 +278,7 @@ function formatDate(date: string | undefined) {
 
 async function loadPendingApprovals() {
   try {
-    const res = await getPendingApprovals()
+    const res: any = await getPendingApprovals()
     if (res.success) {
       pendingList.value = res.data || []
       pendingCount.value = pendingList.value.length
@@ -290,7 +290,7 @@ async function loadPendingApprovals() {
 
 async function loadMyRequests() {
   try {
-    const res = await getMyRequests({
+    const res: any = await getMyRequests({
       status: myRequestStatus.value,
       page: myRequestPage.value,
       limit: myRequestLimit.value
@@ -320,7 +320,7 @@ function handleApprove(item: any) {
 
 async function handleApproveConfirm() {
   try {
-    const res = await approveDocument(currentItem.value.instanceId, {
+    const res: any = await approveDocument(currentItem.value.instanceId, {
       action: 'approve',
       opinion: approveForm.opinion
     })
@@ -339,7 +339,7 @@ async function handleReject() {
     await ElMessageBox.confirm('确定要驳回此单据吗？驳回后单据将被退回给发起人', '确认驳回', {
       type: 'warning'
     })
-    const res = await approveDocument(currentItem.value.instanceId, {
+    const res: any = await approveDocument(currentItem.value.instanceId, {
       action: 'reject',
       opinion: approveForm.opinion
     })
@@ -359,7 +359,7 @@ async function handleViewDetail(item: any) {
   currentItem.value = item
   detailDialogVisible.value = true
   try {
-    const res = await getApprovalHistory(item.instanceId || item.instance?.id || item.id)
+    const res: any = await getApprovalHistory(item.instanceId || item.instance?.id || item.id)
     if (res.success) {
       historyList.value = res.data || []
     }
@@ -371,7 +371,7 @@ async function handleViewDetail(item: any) {
 async function handleCancel(item: any) {
   try {
     await ElMessageBox.confirm('确定要取消此单据的审批吗？', '确认取消', { type: 'warning' })
-    const res = await cancelWorkflow(item.instanceId || item.id)
+    const res: any = await cancelWorkflow(item.instanceId || item.id)
     if (res.success) {
       ElMessage.success('已取消')
       loadMyRequests()

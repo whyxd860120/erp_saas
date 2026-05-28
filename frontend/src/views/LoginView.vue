@@ -458,9 +458,9 @@ const handleRegister = async () => {
     }
     
     registerLoading.value = true
-    const res = await registerApi({
-      username: registerForm.username,
+    const res: any = await registerApi({
       name: registerForm.name,
+      email: registerForm.username,
       password: registerForm.password,
       tenantName: registerForm.tenantName,
       tenantSlug: registerForm.tenantSlug

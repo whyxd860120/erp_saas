@@ -11,16 +11,31 @@ export interface ProductParams {
 
 // 创建/更新产品参数
 export interface CreateProductParams {
+  code?: string
   name: string
-  sku: string
+  sku?: string
+  spec?: string
   barcode?: string
+  brand?: string
+  origin?: string
+  weight?: number
+  volume?: number
+  enableBatch?: boolean
+  enableExpiry?: boolean
+  shelfLife?: number
+  enableSN?: boolean
+  minStock?: number
+  maxStock?: number
+  leadTime?: number
+  defaultWarehouseId?: string
   categoryId?: string
+  status?: string
+  remark?: string
   unit?: string
   costPrice?: number
   sellPrice?: number
+  salePrice?: number
   stock?: number
-  minStock?: number
-  maxStock?: number
   description?: string
   image?: string
 }

@@ -583,7 +583,7 @@ const fetchData = async () => {
       categoryId: searchForm.categoryId,
       stockStatus: searchForm.stockStatus
     }
-    const response = await getInventory(params)
+    const response: any = await getInventory(params)
     if (response.success) {
       tableData.value = response.data.items || []
       pagination.total = response.data.total
@@ -605,7 +605,7 @@ const fetchData = async () => {
 // 获取仓库
 const fetchWarehouses = async () => {
   try {
-    const response = await getWarehouses({ page: 1, limit: 1000 })
+    const response: any = await getWarehouses({ page: 1, limit: 1000 })
     if (response.success) {
       warehouses.value = response.data.items || []
     }
@@ -617,7 +617,7 @@ const fetchWarehouses = async () => {
 // 获取分类
 const fetchCategories = async () => {
   try {
-    const response = await getCategories()
+    const response: any = await getCategories()
     if (response.success) {
       categories.value = response.data || []
     }
@@ -705,7 +705,7 @@ const handleAdjustSubmit = async () => {
     const resultQty = getResultStock()
     await adjustInventory(adjustForm.id, {
       quantity: adjustForm.adjustType === 'set' ? adjustForm.adjustQty : adjustForm.adjustQty,
-      type: adjustForm.adjustType,
+      type: adjustForm.adjustType as 'increase' | 'decrease' | 'set',
       reason: adjustForm.reason,
       remark: adjustForm.remark
     })

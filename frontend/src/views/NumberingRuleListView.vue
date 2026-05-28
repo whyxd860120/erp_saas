@@ -256,7 +256,7 @@ const generatedNumber = ref('')
 const fetchData = async () => {
   try {
     loading.value = true
-    const response = await getNumberingRules(searchForm)
+    const response: any = await getNumberingRules(searchForm)
     if (response.success) {
       tableData.value = response.data || []
     }
@@ -331,7 +331,7 @@ const handleDelete = (row: any) => {
     }
   ).then(async () => {
     try {
-      const response = await deleteNumberingRule(row.id)
+      const response: any = await deleteNumberingRule(row.id)
       if (response.success) {
         ElMessage.success('删除成功')
         await fetchData()
@@ -370,14 +370,14 @@ const handleSubmit = async () => {
   try {
     submitLoading.value = true
     if (isEdit.value) {
-      const response = await updateNumberingRule(form.id, form)
+      const response: any = await updateNumberingRule(form.id, form)
       if (response.success) {
         ElMessage.success('更新成功')
         dialogVisible.value = false
         fetchData()
       }
     } else {
-      const response = await createNumberingRule(form)
+      const response: any = await createNumberingRule(form)
       if (response.success) {
         ElMessage.success('创建成功')
         dialogVisible.value = false
@@ -399,7 +399,7 @@ const handleGenerateNumber = async (row: any) => {
   }
   
   try {
-    const response = await generateNextNumber(row.businessType)
+    const response: any = await generateNextNumber(row.businessType)
     if (response.success) {
       selectedRule.value = row
       generatedNumber.value = response.data.number

@@ -690,7 +690,7 @@ const fetchData = async () => {
       endDate: searchForm.dateRange?.[1],
       type: activeTab.value
     }
-    const response = await paymentReceiptApi.getPaymentReceipts(params)
+    const response: any = await paymentReceiptApi.getPaymentReceipts(params)
     if (response.success) {
       tableData.value = response.data.items || []
       pagination.total = response.data.total
@@ -712,7 +712,7 @@ const fetchData = async () => {
 // 获取账户数据
 const fetchAccounts = async () => {
   try {
-    const response = await getAccounts({ page: 1, limit: 1000 })
+    const response: any = await getAccounts({ page: 1, limit: 1000 })
     if (response.success) {
       accountData.value = response.data.items || []
     }
@@ -724,9 +724,9 @@ const fetchAccounts = async () => {
 // 获取合作伙伴（客户/供应商）
 const fetchPartners = async () => {
   try {
-    const [customerRes, supplierRes] = await Promise.all([
-      getCustomers({ page: 1, limit: 1000 }),
-      getSuppliers({ page: 1, limit: 1000 })
+    const [customerRes, supplierRes]: any[] = await Promise.all([
+      getCustomers({ page: 1, limit: 10000 }),
+      getSuppliers({ page: 1, limit: 10000 })
     ])
     partners.value = [
       ...(customerRes.data?.items || []),
@@ -740,7 +740,7 @@ const fetchPartners = async () => {
 // 获取账户列表
 const fetchAccountList = async () => {
   try {
-    const response = await getAccounts({ page: 1, limit: 1000 })
+    const response: any = await getAccounts({ page: 1, limit: 1000 })
     if (response.success) {
       accounts.value = response.data.items || []
     }
@@ -781,7 +781,7 @@ const handleSelectionChange = (rows: any[]) => {
 }
 
 // 新增
-const handleCreate = () => {
+const handleCreate = async () => {
   if (activeTab.value === 'account') {
     dialogTitle.value = '新增账户'
     isEdit.value = false
@@ -791,6 +791,15 @@ const handleCreate = () => {
     dialogTitle.value = activeTab.value === 'receipt' ? '新增收款单' : '新增付款单'
     isEdit.value = false
     resetForm()
+    
+    // 按需加载数据，确保必要数据已加载
+    if (!partners.value.length) {
+      await fetchPartners()
+    }
+    if (!accounts.value.length) {
+      await fetchAccountList()
+    }
+    
     dialogVisible.value = true
   }
 }
@@ -807,7 +816,7 @@ const handleEdit = async (row: any) => {
   dialogTitle.value = activeTab.value === 'receipt' ? '编辑收款单' : '编辑付款单'
   isEdit.value = true
   try {
-    const response = await paymentReceiptApi.getPaymentReceiptById(row.id)
+    const response: any = await paymentReceiptApi.getPaymentReceiptById(row.id)
     if (response.success) {
       const bill = response.data.data
       Object.assign(formData, {
@@ -831,7 +840,7 @@ const handleEdit = async (row: any) => {
 // 查看
 const handleView = async (row: any) => {
   try {
-    const response = await paymentReceiptApi.getPaymentReceiptById(row.id)
+    const response: any = await paymentReceiptApi.getPaymentReceiptById(row.id)
     if (response.success) {
       currentBill.value = response.data.data
       viewDrawer.value = true

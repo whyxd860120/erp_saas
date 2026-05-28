@@ -752,7 +752,7 @@ async function confirmImport() {
       importProgress.value.percentage = Math.round(((i + 1) / validData.length) * 100)
 
       try {
-        const res = await createProduct({
+        const res: any = await createProduct({
           code: row.code,
           name: row.name,
           spec: row.spec,

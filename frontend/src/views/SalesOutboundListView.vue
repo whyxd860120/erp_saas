@@ -236,7 +236,7 @@
                   placeholder="请选择物料"
                   filterable
                   style="width: 100%"
-                  @change="(val) => handleProductChange(val, $index)"
+                  @change="(val: string) => handleProductChange(val, $index)"
                 >
                   <el-option
                     v-for="product in products"
@@ -356,11 +356,11 @@ const searchForm = reactive({
 })
 
 // 下拉数据
-const customers = ref([])
-const users = ref([])
-const salesOrders = ref([])
-const warehouses = ref([])
-const products = ref([])
+const customers = ref<any[]>([])
+const users = ref<any[]>([])
+const salesOrders = ref<any[]>([])
+const warehouses = ref<any[]>([])
+const products = ref<any[]>([])
 const inventoryMap = ref<Record<string, number>>({})
 
 // 分页
@@ -415,7 +415,7 @@ const fetchSalesOutbounds = async () => {
       ...searchForm
     }
     
-    const response = await getSalesOutbounds(params)
+    const response: any = await getSalesOutbounds(params)
     if (response.success) {
       tableData.value = response.data.items
       pagination.total = response.data.total
@@ -430,7 +430,7 @@ const fetchSalesOutbounds = async () => {
 // 获取客户列表
 const fetchCustomers = async () => {
   try {
-    const response = await getCustomers({ page: 1, limit: 1000, status: '' })
+    const response: any = await getCustomers({ page: 1, limit: 10000, status: '' })
     if (response.success) {
       customers.value = response.data.items || []
     }
@@ -442,7 +442,7 @@ const fetchCustomers = async () => {
 // 获取用户列表
 const fetchUsers = async () => {
   try {
-    const response = await getUsers({ page: 1, limit: 1000, status: 'active' })
+    const response: any = await getUsers({ page: 1, limit: 1000, status: 'active' })
     if (response.success) {
       users.value = response.data.items || []
     }
@@ -454,7 +454,7 @@ const fetchUsers = async () => {
 // 获取销售订单列表
 const fetchSalesOrders = async () => {
   try {
-    const response = await getSalesOrders({ page: 1, limit: 1000, status: 'confirmed' })
+    const response: any = await getSalesOrders({ page: 1, limit: 1000, status: 'confirmed' })
     if (response.success) {
       salesOrders.value = response.data.items || []
     }
@@ -466,7 +466,7 @@ const fetchSalesOrders = async () => {
 // 获取仓库列表
 const fetchWarehouses = async () => {
   try {
-    const response = await getWarehouses({ page: 1, limit: 1000 })
+    const response: any = await getWarehouses({ page: 1, limit: 1000 })
     if (response.success) {
       warehouses.value = response.data.items || []
     }
@@ -478,7 +478,7 @@ const fetchWarehouses = async () => {
 // 获取物料列表
 const fetchProducts = async () => {
   try {
-    const response = await getProducts({ page: 1, limit: 1000 })
+    const response: any = await getProducts({ page: 1, limit: 10000 })
     if (response.success) {
       products.value = response.data.items || []
     }
@@ -490,7 +490,7 @@ const fetchProducts = async () => {
   // 获取库存数据
   const fetchInventory = async () => {
     try {
-      const response = await getInventory({ page: 1, limit: 1000 })
+      const response: any = await getInventory({ page: 1, limit: 10000 })
     if (response.success) {
       const map: Record<string, number> = {}
       response.data.items?.forEach((item: any) => {
@@ -552,10 +552,25 @@ const handleReset = () => {
 }
 
 // 新增
-const handleCreate = () => {
+const handleCreate = async () => {
   dialogTitle.value = '新增销售出库单'
   isEdit.value = false
   resetForm()
+  
+  // 按需加载数据，确保必要数据已加载
+  if (!customers.value.length) {
+    await fetchCustomers()
+  }
+  if (!products.value.length) {
+    await fetchProducts()
+  }
+  if (!warehouses.value.length) {
+    await fetchWarehouses()
+  }
+  if (!users.value.length) {
+    await fetchUsers()
+  }
+  
   dialogVisible.value = true
   // 不在这里预生成编号，用户保存时才生成
 }
@@ -590,7 +605,7 @@ const handleView = async (row: any) => {
     dialogTitle.value = '查看销售出库单'
     isEdit.value = true
     
-    const response = await getSalesOutboundById(row.id)
+    const response: any = await getSalesOutboundById(row.id)
     if (response.success) {
       const outbound = response.data.data
       Object.assign(formData, {
@@ -784,7 +799,7 @@ const resetForm = () => {
 // 监听客户选择，自动带入专属业务员
 watch(() => formData.customerId, (newCustomerId) => {
   if (newCustomerId) {
-    const selectedCustomer = customers.value.find(c => c.id === newCustomerId)
+    const selectedCustomer: any = customers.value.find(c => c.id === newCustomerId)
     if (selectedCustomer?.salesmanId) {
       formData.salesmanId = selectedCustomer.salesmanId
     } else if (selectedCustomer?.user?.id) {

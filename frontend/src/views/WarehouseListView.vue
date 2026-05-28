@@ -263,7 +263,7 @@ const fetchWarehouses = async () => {
       params.search = searchForm.keyword
     }
     
-    const response = await getWarehouses(params)
+    const response: any = await getWarehouses(params)
     if (response.success) {
       tableData.value = response.data.items
       pagination.total = response.data.total
@@ -302,7 +302,7 @@ const handleEdit = async (row: any) => {
     dialogTitle.value = '编辑仓库'
     isEdit.value = true
     
-    const response = await getWarehouseById(row.id)
+    const response: any = await getWarehouseById(row.id)
     if (response.success) {
       const warehouse = response.data
       Object.assign(formData, warehouse)

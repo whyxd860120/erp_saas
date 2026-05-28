@@ -649,7 +649,7 @@ async function confirmImport() {
           }
         }
 
-        const res = await createCategory({
+        const res: any = await createCategory({
           name: row.name,
           parentId,
           sortOrder: row.sortOrder

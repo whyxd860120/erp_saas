@@ -118,15 +118,15 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="单据编号">{{ currentOutbound?.outboundNo }}</el-descriptions-item>
           <el-descriptions-item label="仓库">{{ currentOutbound?.warehouse?.name }}</el-descriptions-item>
-          <el-descriptions-item label="出库类型">{{ getOutboundTypeText(currentOutbound?.outboundType) }}</el-descriptions-item>
-          <el-descriptions-item label="单据日期">{{ formatDate(currentOutbound?.outboundDate) }}</el-descriptions-item>
+          <el-descriptions-item label="出库类型">{{ getOutboundTypeText(currentOutbound?.outboundType || '') }}</el-descriptions-item>
+          <el-descriptions-item label="单据日期">{{ formatDate(currentOutbound?.outboundDate || '') }}</el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="getStatusType(currentOutbound?.status)">
-              {{ getStatusText(currentOutbound?.status) }}
+            <el-tag :type="getStatusType(currentOutbound?.status || '')">
+              {{ getStatusText(currentOutbound?.status || '') }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="出库数量">{{ currentOutbound?.totalQty }}</el-descriptions-item>
-          <el-descriptions-item label="出库金额">{{ formatCurrency(currentOutbound?.totalAmount) }}</el-descriptions-item>
+          <el-descriptions-item label="出库金额">{{ formatCurrency(currentOutbound?.totalAmount || 0) }}</el-descriptions-item>
           <el-descriptions-item label="备注" :span="2">{{ currentOutbound?.remark || '-' }}</el-descriptions-item>
         </el-descriptions>
 
@@ -213,7 +213,7 @@
               placeholder="请选择物料"
               filterable
               style="width: 100%"
-              @change="(val) => handleProductSelect($index, products.find(p => p.id === val))"
+              @change="(val: any) => handleProductSelect($index, products.find(p => p.id === val))"
             >
               <el-option v-for="p in products" :key="p.id" :label="`${p.code} - ${p.name}`" :value="p.id" />
             </el-select>
@@ -382,7 +382,7 @@ const fetchWarehouses = async () => {
 // 获取产品列表
 const fetchProducts = async () => {
   try {
-    const response = await getProducts({ page: 1, limit: 1000 }) as any
+    const response = await getProducts({ page: 1, limit: 10000 }) as any
     if (response.success) {
       products.value = response.data.items || []
     }

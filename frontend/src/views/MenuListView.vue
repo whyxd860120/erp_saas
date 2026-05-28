@@ -505,9 +505,10 @@ const formData = ref({
   code: '',
   path: '',
   icon: '',
-  parentId: null as string | null,
+  parentId: undefined as string | undefined,
   sortOrder: 0,
-  description: ''
+  description: '',
+  isSystem: false
 })
 
 const formRules: FormRules = {
@@ -576,7 +577,7 @@ const loadMenus = async () => {
   loading.value = true
   try {
     console.log('📡 调用API...')
-    const [treeRes, flatRes] = await Promise.all([
+    const [treeRes, flatRes]: any[] = await Promise.all([
       getMenus(),
       getMenusFlat()
     ])
@@ -584,7 +585,7 @@ const loadMenus = async () => {
     console.log('✅ API响应:', { treeRes, flatRes })
 
     if (treeRes.success) {
-      const addLevel = (items: any[], level = 1) => {
+      const addLevel = (items: any[], level = 1): any[] => {
         return items.map(item => ({
           ...item,
           level,
@@ -690,9 +691,10 @@ const handleCreate = () => {
     code: '',
     path: '',
     icon: '',
-    parentId: null,
+    parentId: undefined,
     sortOrder: 0,
-    description: ''
+    description: '',
+    isSystem: false
   }
   dialogVisible.value = true
 }
@@ -724,7 +726,8 @@ const handleAddChild = (data: any) => {
     icon: '',
     parentId: data.id,
     sortOrder: 0,
-    description: ''
+    description: '',
+    isSystem: false
   }
   dialogVisible.value = true
 }
@@ -738,9 +741,10 @@ const handleEdit = (data: any) => {
     code: data.code,
     path: data.path || '',
     icon: data.icon || '',
-    parentId: data.parentId || null,
+    parentId: data.parentId || undefined,
     sortOrder: data.sortOrder || 0,
-    description: data.description || ''
+    description: data.description || '',
+    isSystem: data.isSystem || false
   }
   dialogVisible.value = true
 }
@@ -757,8 +761,8 @@ const handleSetAsParent = async (data: any, node: any) => {
       }
     )
 
-    const res = await updateMenu(data.id, {
-      parentId: null
+    const res: any = await updateMenu(data.id, {
+      parentId: undefined
     })
 
     if (res.success) {
@@ -791,7 +795,7 @@ const handleDelete = async (data: any) => {
       }
     )
 
-    const res = await deleteMenu(data.id)
+    const res: any = await deleteMenu(data.id)
     if (res.success) {
       ElMessage.success('删除成功')
       loadMenus()
@@ -817,7 +821,7 @@ const handleSubmit = async () => {
 
   submitLoading.value = true
   try {
-    let res
+    let res: any
     if (isEdit.value && currentEditId.value) {
       res = await updateMenu(currentEditId.value, formData.value)
     } else {

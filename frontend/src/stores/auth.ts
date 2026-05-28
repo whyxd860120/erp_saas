@@ -21,6 +21,7 @@ export interface TenantInfo {
   trialEndsAt?: string
   trialWarning?: TrialWarning | null
   initializationStatus?: string
+  isSystem?: boolean
 }
 
 export interface TrialWarning {

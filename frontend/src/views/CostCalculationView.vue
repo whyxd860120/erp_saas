@@ -223,7 +223,7 @@ const abnormalSummary = reactive({
 // 获取仓库列表
 const fetchWarehouses = async () => {
   try {
-    const res = await getWarehouses({ page: 1, limit: 1000 })
+    const res: any = await getWarehouses({ page: 1, limit: 1000 })
     if (res.success) {
       warehouses.value = res.data.items || []
     }
@@ -236,7 +236,7 @@ const fetchWarehouses = async () => {
 const handleInboundCalculate = async () => {
   inboundLoading.value = true
   try {
-    const res = await calculateInboundCost({
+    const res: any = await calculateInboundCost({
       warehouseId: inboundForm.warehouseId || undefined,
       startDate: inboundForm.startDate || undefined,
       endDate: inboundForm.endDate || undefined
@@ -266,7 +266,7 @@ const resetInboundForm = () => {
 const handleOutboundCalculate = async () => {
   outboundLoading.value = true
   try {
-    const res = await calculateOutboundCost({
+    const res: any = await calculateOutboundCost({
       warehouseId: outboundForm.warehouseId || undefined,
       startDate: outboundForm.startDate || undefined,
       endDate: outboundForm.endDate || undefined
@@ -304,7 +304,7 @@ const resetOutboundForm = () => {
 const handleAbnormalCalculate = async () => {
   abnormalLoading.value = true
   try {
-    const res = await calculateAbnormalCost({
+    const res: any = await calculateAbnormalCost({
       warehouseId: abnormalForm.warehouseId || undefined
     })
     if (res.success) {
@@ -330,7 +330,7 @@ const resetAbnormalForm = () => {
 const handleFixSingle = async (row: any) => {
   try {
     await ElMessageBox.confirm(`确定将 "${row.productName}" 的成本修复为 ¥${formatAmount(row.suggestedCost)} 吗？`, '确认修复')
-    const res = await fixAbnormalCost([{
+    const res: any = await fixAbnormalCost([{
       inventoryItemId: row.id,
       newCostPrice: row.suggestedCost
     }])
@@ -359,7 +359,7 @@ const handleFixAll = async () => {
       inventoryItemId: row.id,
       newCostPrice: row.suggestedCost
     }))
-    const res = await fixAbnormalCost(items)
+    const res: any = await fixAbnormalCost(items)
     if (res.success) {
       ElMessage.success(`成功修复 ${items.length} 条记录`)
       handleAbnormalCalculate()

@@ -530,7 +530,7 @@ watch(categoryFilterText, (val) => {
 async function loadData() {
   try {
     loading.value = true
-    const catRes = await getSupplierCategoryTree()
+    const catRes: any = await getSupplierCategoryTree()
     if (catRes.success) {
       categoryTree.value = catRes.data || []
     }
@@ -550,7 +550,7 @@ async function loadData() {
 // 加载所有供应商（限制100条）
 async function loadAllSuppliers(limit: number = 100) {
   try {
-    const res = await getSuppliers({
+    const res: any = await getSuppliers({
       page: 1,
       limit,
       ...(showInactive.value ? {} : { status: 'active' })
@@ -567,7 +567,7 @@ async function loadAllSuppliers(limit: number = 100) {
 // 按分类加载供应商
 async function loadSuppliersByCategory(categoryId: string) {
   try {
-    const res = await getSuppliers({
+    const res: any = await getSuppliers({
       page: 1,
       limit: 100,
       categoryId,
@@ -606,7 +606,7 @@ function handleSearch() {
   searchTimer = setTimeout(async () => {
     try {
       loading.value = true
-      const res = await getSuppliers({
+      const res: any = await getSuppliers({
         page: 1,
         limit: 100,
         search: searchForm.keyword.trim() || undefined,
@@ -659,7 +659,7 @@ function handleAddChildCategory() {
 async function handleEditCategory() {
   if (!selectedCategoryId.value) return
   // 从后端获取分类详情
-  getSupplierCategories().then(res => {
+  getSupplierCategories().then((res: any) => {
     if (res.success) {
       const categories = res.data || []
       const flatCategories = flattenCategories(categories)
@@ -681,7 +681,7 @@ async function handleDeleteCategory() {
   if (!selectedCategoryId.value) return
   try {
     // 获取分类名称以便确认
-    const categoriesRes = await getSupplierCategories()
+    const categoriesRes: any = await getSupplierCategories()
     let categoryName = '该分类'
     if (categoriesRes.success) {
       const categories = categoriesRes.data || []
@@ -691,7 +691,7 @@ async function handleDeleteCategory() {
     }
 
     await ElMessageBox.confirm(`确定删除分类「${categoryName}」吗？`, '提示', { type: 'warning' })
-    const res = await deleteSupplierCategory(selectedCategoryId.value)
+    const res: any = await deleteSupplierCategory(selectedCategoryId.value)
     if (res.success) {
       ElMessage.success('删除成功')
       selectedCategoryId.value = null
@@ -722,10 +722,10 @@ async function handleSubmitCategory() {
   try {
     const payload = { name: categoryForm.name, parentId: categoryForm.parentId || undefined, sortOrder: categoryForm.sortOrder }
     if (categoryIsEdit.value) {
-      const res = await updateSupplierCategory(categoryForm.id, payload)
+      const res: any = await updateSupplierCategory(categoryForm.id, payload)
       if (res.success) ElMessage.success('更新成功')
     } else {
-      const res = await createSupplierCategory(payload)
+      const res: any = await createSupplierCategory(payload)
       if (res.success) ElMessage.success('创建成功')
     }
     categoryDialogVisible.value = false
@@ -759,7 +759,7 @@ function handleCreateSupplier() {
 
 async function handleEditSupplier(row: SupplierItem) {
   try {
-    const res = await getSupplierById(row.id)
+    const res: any = await getSupplierById(row.id)
     if (res.success) {
       supplierIsEdit.value = true
       supplierDialogTitle.value = '编辑供应商'
@@ -785,7 +785,7 @@ async function handleEditSupplier(row: SupplierItem) {
 async function handleDeleteSupplier(row: SupplierItem) {
   try {
     await ElMessageBox.confirm(`确定删除供应商「${row.name}」吗？`, '提示', { type: 'warning' })
-    const res = await deleteSupplier(row.id)
+    const res: any = await deleteSupplier(row.id)
     if (res.success) {
       ElMessage.success('删除成功')
       await loadData()
@@ -815,10 +815,10 @@ async function handleSubmitSupplier() {
       status: supplierForm.status
     }
     if (supplierIsEdit.value) {
-      const res = await updateSupplier(supplierForm.id, payload)
+      const res: any = await updateSupplier(supplierForm.id, payload)
       if (res.success) ElMessage.success('更新成功')
     } else {
-      const res = await createSupplier(payload as any)
+      const res: any = await createSupplier(payload as any)
       if (res.success) ElMessage.success('创建成功')
     }
     supplierDialogVisible.value = false
@@ -884,7 +884,8 @@ async function handleImportSubmit(data: any[]) {
     return newItem
   })
 
-  return await importSuppliers(processedData)
+  const result: any = await importSuppliers(processedData)
+  return result
 }
 
 function handleImportSuccess() {

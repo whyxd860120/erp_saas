@@ -209,7 +209,7 @@
                   placeholder="请选择物料"
                   filterable
                   style="width: 100%"
-                  @change="(val) => handleProductChange(val, $index)"
+                  @change="(val: any) => handleProductChange(val, $index)"
                 >
                   <el-option
                     v-for="product in products"
@@ -323,10 +323,10 @@ const searchForm = reactive({
 })
 
 // 下拉数据
-const suppliers = ref([])
-const purchaseOrders = ref([])
-const warehouses = ref([])
-const products = ref([])
+const suppliers = ref<any[]>([])
+const purchaseOrders = ref<any[]>([])
+const warehouses = ref<any[]>([])
+const products = ref<any[]>([])
 
 // 分页
 const pagination = reactive({
@@ -379,7 +379,7 @@ const fetchPurchaseInbounds = async () => {
       ...searchForm
     }
     
-    const response = await getPurchaseInbounds(params)
+    const response: any = await getPurchaseInbounds(params)
     if (response.success) {
       tableData.value = response.data.items
       pagination.total = response.data.total
@@ -394,7 +394,7 @@ const fetchPurchaseInbounds = async () => {
 // 获取供应商列表
 const fetchSuppliers = async () => {
   try {
-    const response = await getSuppliers({ page: 1, limit: 1000, status: '' })
+    const response: any = await getSuppliers({ page: 1, limit: 10000, status: '' })
     if (response.success) {
       suppliers.value = response.data.items || []
     }
@@ -406,7 +406,7 @@ const fetchSuppliers = async () => {
 // 获取采购订单列表
 const fetchPurchaseOrders = async () => {
   try {
-    const response = await getPurchaseOrders({ page: 1, limit: 1000, status: 'confirmed' })
+    const response: any = await getPurchaseOrders({ page: 1, limit: 1000, status: 'confirmed' })
     if (response.success) {
       purchaseOrders.value = response.data.items || []
     }
@@ -418,7 +418,7 @@ const fetchPurchaseOrders = async () => {
 // 获取仓库列表
 const fetchWarehouses = async () => {
   try {
-    const response = await getWarehouses({ page: 1, limit: 1000 })
+    const response: any = await getWarehouses({ page: 1, limit: 1000 })
     if (response.success) {
       warehouses.value = response.data.items || []
     }
@@ -430,7 +430,7 @@ const fetchWarehouses = async () => {
 // 获取物料列表
 const fetchProducts = async () => {
   try {
-    const response = await getProducts({ page: 1, limit: 1000 })
+    const response: any = await getProducts({ page: 1, limit: 10000 })
     if (response.success) {
       products.value = response.data.items || []
     }
@@ -499,6 +499,18 @@ const handleCreate = async () => {
   dialogTitle.value = '新增采购入库单'
   isEdit.value = false
   resetForm()
+  
+  // 按需加载数据，确保必要数据已加载
+  if (!suppliers.value.length) {
+    await fetchSuppliers()
+  }
+  if (!products.value.length) {
+    await fetchProducts()
+  }
+  if (!warehouses.value.length) {
+    await fetchWarehouses()
+  }
+  
   dialogVisible.value = true
 
   // 打开时生成编号
@@ -518,7 +530,7 @@ const handleView = async (row: any) => {
     dialogTitle.value = '查看采购入库单'
     isEdit.value = true
     
-    const response = await getPurchaseInboundById(row.id)
+    const response: any = await getPurchaseInboundById(row.id)
     if (response.success) {
       const inbound = response.data.data
       Object.assign(formData, {

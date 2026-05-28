@@ -1064,8 +1064,12 @@ const handleRevertInit = async () => {
   try {
     await ElMessageBox.confirm(
       '确定要反初始化吗？反初始化后将可以重新设置账套参数，但所有业务数据将被清空。',
-      '反初始化',
-      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'danger' }
+      {
+        title: '反初始化',
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'error'
+      }
     )
 
     const res = await request({ url: '/api/v1/init-data/revert', method: 'post' }) as any

@@ -238,6 +238,15 @@
               确认
             </el-tag>
             <el-tag
+              v-if="row.status === 'draft'"
+              type="danger"
+              size="small"
+              @click="handleDelete(row)"
+              style="cursor: pointer; margin-right: 4px;"
+            >
+              删除
+            </el-tag>
+            <el-tag
               v-if="row.status === 'confirmed'"
               type="info"
               size="small"
@@ -592,7 +601,7 @@
           <el-button size="small" @click="handleSelectAllOutbound">全选</el-button>
         </div>
         <el-table :data="quickOutboundForm.details" border size="small" max-height="300">
-          <el-table-column type="selection" width="50" :selectable="row => row.canOutbound > 0" />
+          <el-table-column type="selection" width="50" :selectable="(row: any) => row.canOutbound > 0" />
           <el-table-column prop="product.code" label="物料编码" width="120" />
           <el-table-column prop="product.name" label="物料名称" min-width="150" />
           <el-table-column prop="product.spec" label="规格" width="100" />
@@ -843,7 +852,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus, Download, Document, Clock, Money, Wallet, Goods, Delete,
@@ -1092,7 +1101,7 @@ const fetchData = async () => {
       startDate: searchForm.dateRange?.[0],
       endDate: searchForm.dateRange?.[1]
     }
-    const response = await getSalesOrders(params)
+    const response: any = await getSalesOrders(params)
     if (response.success) {
       tableData.value = response.data.items || []
       pagination.total = response.data.total
@@ -1121,7 +1130,7 @@ const fetchData = async () => {
 // 获取客户
 const fetchCustomers = async () => {
   try {
-    const response = await getCustomers({ page: 1, limit: 1000, status: '' })
+    const response: any = await getCustomers({ page: 1, limit: 10000, status: '' })
     if (response.success) {
       customers.value = response.data.items || []
     }
@@ -1133,7 +1142,7 @@ const fetchCustomers = async () => {
 // 获取仓库
 const fetchWarehouses = async () => {
   try {
-    const response = await getWarehouses({ page: 1, limit: 1000 })
+    const response: any = await getWarehouses({ page: 1, limit: 1000 })
     if (response.success) {
       warehouses.value = response.data.items || []
     }
@@ -1145,7 +1154,7 @@ const fetchWarehouses = async () => {
 // 获取供应商
 const fetchSuppliers = async () => {
   try {
-    const response = await getSuppliers({ page: 1, limit: 1000 })
+    const response: any = await getSuppliers({ page: 1, limit: 10000 })
     if (response.success) {
       suppliers.value = response.data.items || []
     }
@@ -1157,7 +1166,7 @@ const fetchSuppliers = async () => {
 // 获取物料
 const fetchProducts = async () => {
   try {
-    const response = await getProducts({ page: 1, limit: 1000, status: '' })
+    const response: any = await getProducts({ page: 1, limit: 10000, status: '' })
     if (response.success) {
       products.value = response.data.items || []
     }
@@ -1169,7 +1178,7 @@ const fetchProducts = async () => {
 // 获取用户
 const fetchSalesmen = async () => {
   try {
-    const response = await getUsers({ page: 1, limit: 1000, status: 'active' })
+    const response: any = await getUsers({ page: 1, limit: 1000, status: 'active' })
     if (response.success) {
       salesmen.value = response.data.items || []
     }
@@ -1205,11 +1214,26 @@ const handleSelectionChange = (rows: any[]) => {
 }
 
 // 新增
-const handleCreate = () => {
+const handleCreate = async () => {
   dialogTitle.value = '新增销售订单'
   isEdit.value = false
   resetForm()
   addDefaultDetail()
+  
+  // 按需加载数据，确保必要数据已加载
+  if (!customers.value.length) {
+    await fetchCustomers()
+  }
+  if (!products.value.length) {
+    await fetchProducts()
+  }
+  if (!salesmen.value.length) {
+    await fetchSalesmen()
+  }
+  if (!warehouses.value.length) {
+    await fetchWarehouses()
+  }
+  
   dialogVisible.value = true
 }
 
@@ -1218,7 +1242,7 @@ const handleEdit = async (row: any) => {
   dialogTitle.value = '编辑销售订单'
   isEdit.value = true
   try {
-    const response = await getSalesOrderById(row.id)
+    const response: any = await getSalesOrderById(row.id)
     if (response.success) {
       const order = response.data
       Object.assign(formData, {
@@ -1251,7 +1275,7 @@ const handleEdit = async (row: any) => {
 // 查看
 const handleView = async (row: any) => {
   try {
-    const response = await getSalesOrderById(row.id)
+    const response: any = await getSalesOrderById(row.id)
     if (response.success) {
       currentOrder.value = response.data
       viewDrawer.value = true
@@ -1315,7 +1339,7 @@ const handleDelete = async (row: any) => {
 // 快速出库
 const handleQuickOutbound = (row: any) => {
   // 获取订单详情
-  getSalesOrderById(row.id).then(response => {
+  getSalesOrderById(row.id).then((response: any) => {
     if (response.success) {
       const order = response.data
       quickOutboundForm.orderId = order.id
@@ -1360,7 +1384,7 @@ const handleSelectAllOutbound = () => {
 const handlePushToPurchase = async (row: any) => {
   try {
     // 获取订单详情
-    const response = await getSalesOrderById(row.id)
+    const response: any = await getSalesOrderById(row.id)
     if (response.success) {
       const order = response.data
       pushPurchaseForm.orderId = order.id
@@ -1369,7 +1393,7 @@ const handlePushToPurchase = async (row: any) => {
       pushPurchaseForm.purchaseDate = new Date().toISOString().split('T')[0]
       
       // 获取所有仓库的库存信息
-      const inventoryResponse = await getInventory({ page: 1, limit: 10000 })
+      const inventoryResponse: any = await getInventory({ page: 1, limit: 10000 })
       const inventoryMap = new Map<string, any>()
       
       if (inventoryResponse.success && inventoryResponse.data.items) {
@@ -1597,11 +1621,12 @@ const handleImportSubmit = async (data: any[]) => {
     return newItem
   })
 
-  return await importSalesOrders(processedData)
+  const result: any = await importSalesOrders(processedData)
+  return result
 }
 
 const handleImportSuccess = () => {
-  loadData()
+  fetchData()
 }
 
 // 添加明细

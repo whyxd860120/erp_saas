@@ -12,7 +12,9 @@ export interface PurchaseOrderParams {
 
 // 创建/更新采购订单参数
 export interface CreatePurchaseOrderParams {
+  orderNo?: string
   supplierId: string
+  orderDate?: string
   items: Array<{
     productId: string
     quantity: number
