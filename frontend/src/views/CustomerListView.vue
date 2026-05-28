@@ -162,15 +162,15 @@
             </el-table-column>
             <el-table-column label="操作" width="200" fixed="right">
               <template #default="{ row }">
-                <el-button link type="primary" size="small" @click="handleEditCustomer(row)">
+                <el-tag type="primary" size="small" @click="handleEditCustomer(row)" style="cursor: pointer; margin-right: 4px;">
                   编辑
-                </el-button>
-                <el-button link type="warning" size="small" @click="handleToggleCustomerStatus(row)">
+                </el-tag>
+                <el-tag :type="row.status === 'active' ? 'warning' : 'success'" size="small" @click="handleToggleCustomerStatus(row)" style="cursor: pointer; margin-right: 4px;">
                   {{ row.status === 'active' ? '禁用' : '启用' }}
-                </el-button>
-                <el-button link type="danger" size="small" @click="handleDeleteCustomer(row)">
+                </el-tag>
+                <el-tag type="danger" size="small" @click="handleDeleteCustomer(row)" style="cursor: pointer;">
                   删除
-                </el-button>
+                </el-tag>
               </template>
             </el-table-column>
           </el-table>

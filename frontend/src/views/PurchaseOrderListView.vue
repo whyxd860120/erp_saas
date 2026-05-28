@@ -194,14 +194,16 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
+            <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer; margin-right: 4px;">
+              查看
+            </el-tag>
             <el-dropdown v-if="row.status === 'draft'" trigger="click">
-              <el-button link type="primary" size="small">
+              <el-tag type="info" size="small" style="cursor: pointer; margin-right: 4px;">
                 更多
                 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </el-button>
+              </el-tag>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item @click="handleEdit(row)">编辑</el-dropdown-item>
@@ -211,15 +213,24 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-            <el-button
+            <el-dropdown v-if="row.status === 'confirmed'" trigger="click">
+              <el-tag type="info" size="small" style="cursor: pointer; margin-right: 4px;">
+                更多
+                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+              </el-tag>
+              <template #dropdown>
+                <el-dropdown-item @click="handleUnconfirm(row)">反确认</el-dropdown-item>
+              </template>
+            </el-dropdown>
+            <el-tag
               v-if="row.status === 'confirmed'"
-              link
               type="success"
               size="small"
               @click="handleQuickInbound(row)"
+              style="cursor: pointer;"
             >
               快速入库
-            </el-button>
+            </el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -575,7 +586,7 @@ import {
 } from '@element-plus/icons-vue'
 import {
   getPurchaseOrders, getPurchaseOrderById, createPurchaseOrder,
-  updatePurchaseOrder, confirmPurchaseOrder, deletePurchaseOrder, importPurchaseOrders
+  updatePurchaseOrder, confirmPurchaseOrder, unconfirmPurchaseOrder, deletePurchaseOrder, importPurchaseOrders
 } from '@/api/purchase-order'
 import { getSuppliers } from '@/api/supplier'
 import { getProducts } from '@/api/product'
@@ -922,6 +933,20 @@ const handleCancel = async (row: any) => {
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error('取消失败')
+    }
+  }
+}
+
+// 反确认
+const handleUnconfirm = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(`确定要反确认采购订单 "${row.orderNo}" 吗？反确认后订单将回到草稿状态。`, '确认反确认', { type: 'warning' })
+    await unconfirmPurchaseOrder(row.id)
+    ElMessage.success('反确认成功')
+    fetchData()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('反确认失败')
     }
   }
 }

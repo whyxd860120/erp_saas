@@ -155,12 +155,12 @@
             </el-table-column>
             <el-table-column label="操作" width="200" fixed="right">
               <template #default="{ row }">
-                <el-button link type="primary" size="small" @click="handleEditSupplier(row)">
+                <el-tag type="primary" size="small" @click="handleEditSupplier(row)" style="cursor: pointer; margin-right: 4px;">
                   编辑
-                </el-button>
-                <el-button link type="danger" size="small" @click="handleDeleteSupplier(row)">
+                </el-tag>
+                <el-tag type="danger" size="small" @click="handleDeleteSupplier(row)" style="cursor: pointer;">
                   删除
-                </el-button>
+                </el-tag>
               </template>
             </el-table-column>
           </el-table>

@@ -5,6 +5,7 @@ import {
   createPurchaseOrder,
   updatePurchaseOrder,
   confirmPurchaseOrder,
+  unconfirmPurchaseOrder,
   deletePurchaseOrder,
   batchDeletePurchaseOrders,
   importPurchaseOrders,
@@ -46,6 +47,12 @@ router.put('/:id', authenticate, authorize(['admin', 'manager', 'staff']), tenan
  * POST /api/v1/purchase-orders/:id/confirm
  */
 router.post('/:id/confirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), confirmPurchaseOrder);
+
+/**
+ * 反确认采购订单（已确认 → 草稿）
+ * POST /api/v1/purchase-orders/:id/unconfirm
+ */
+router.post('/:id/unconfirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), unconfirmPurchaseOrder);
 
 /**
  * 批量删除采购订单（仅草稿状态）

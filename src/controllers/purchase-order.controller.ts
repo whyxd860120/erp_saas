@@ -709,6 +709,88 @@ export const confirmPurchaseOrder = async (req: Request, res: Response) => {
 };
 
 /**
+ * 反确认采购订单（已确认 → 草稿）
+ * POST /api/v1/purchase-orders/:id/unconfirm
+ */
+export const unconfirmPurchaseOrder = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.user?.tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: '未关联租户',
+      });
+    }
+
+    // 检查订单是否存在
+    const existingOrder = await prisma.purchaseOrder.findFirst({
+      where: {
+        id,
+        tenantId: req.user.tenantId,
+      },
+      include: {
+        items: true,
+        inbounds: true,
+      },
+    });
+
+    if (!existingOrder) {
+      return res.status(404).json({
+        success: false,
+        message: '采购订单不存在',
+      });
+    }
+
+    // 只有已确认状态可以反确认
+    if (existingOrder.status !== 'confirmed') {
+      return res.status(400).json({
+        success: false,
+        message: '只有已确认状态可以反确认',
+      });
+    }
+
+    // 检查是否有关联的入库单
+    if (existingOrder.inbounds.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: '已有关联入库单，无法反确认',
+      });
+    }
+
+    // 更新状态为草稿
+    const updatedOrder = await prisma.purchaseOrder.update({
+      where: { id },
+      data: { status: 'draft' },
+    });
+
+    // 记录审计日志
+    await auditLog({
+      tenantId: req.user.tenantId,
+      userId: req.user.id,
+      action: 'update',
+      module: 'purchase_order',
+      resource: id,
+      detail: JSON.stringify({ action: 'unconfirm', status: 'draft' }),
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    return res.json({
+      success: true,
+      data: updatedOrder,
+      message: '采购订单反确认成功',
+    });
+  } catch (error) {
+    console.error('反确认采购订单错误:', error);
+    return res.status(500).json({
+      success: false,
+      message: '反确认采购订单失败',
+    });
+  }
+};
+
+/**
  * 删除采购订单
  * DELETE /api/v1/purchase-orders/:id
  */

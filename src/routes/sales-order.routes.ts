@@ -5,6 +5,7 @@ import {
   createSalesOrder,
   updateSalesOrder,
   confirmSalesOrder,
+  unconfirmSalesOrder,
   deleteSalesOrder,
   batchDeleteSalesOrders,
   importSalesOrders,
@@ -46,6 +47,12 @@ router.put('/:id', authenticate, authorize(['admin', 'manager', 'staff']), tenan
  * POST /api/v1/sales-orders/:id/confirm
  */
 router.post('/:id/confirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), confirmSalesOrder);
+
+/**
+ * 反确认销售订单（已确认 → 草稿）
+ * POST /api/v1/sales-orders/:id/unconfirm
+ */
+router.post('/:id/unconfirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), unconfirmSalesOrder);
 
 /**
  * 批量删除销售订单（仅草稿状态）

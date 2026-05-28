@@ -65,6 +65,14 @@ export const confirmSalesOrder = (id: string) => {
   })
 }
 
+// 反确认销售订单
+export const unconfirmSalesOrder = (id: string) => {
+  return request({
+    url: `/api/v1/sales-orders/${id}/unconfirm`,
+    method: 'post'
+  })
+}
+
 // 删除销售订单
 export const deleteSalesOrder = (id: string) => {
   return request({

@@ -65,6 +65,14 @@ export const confirmPurchaseOrder = (id: string) => {
   })
 }
 
+// 反确认采购订单
+export const unconfirmPurchaseOrder = (id: string) => {
+  return request({
+    url: `/api/v1/purchase-orders/${id}/unconfirm`,
+    method: 'post'
+  })
+}
+
 // 删除采购订单
 export const deletePurchaseOrder = (id: string) => {
   return request({
