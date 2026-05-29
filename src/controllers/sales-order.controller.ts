@@ -1105,19 +1105,84 @@ export const importSalesOrders = async (req: Request, res: Response) => {
             tenantId,
             orderNo,
           },
+          include: {
+            items: true
+          }
         });
 
         if (existingOrder) {
-          console.log(`订单号 ${orderNo} 已存在，跳过`);
-          // 找到这个订单的所有行号
-          const affectedRows = items.map((item, index) => 
-            item.orderNo === orderNo ? index + 1 : -1
-          ).filter(row => row > 0);
+          console.log(`订单号 ${orderNo} 已存在，尝试合并明细`);
           
-          affectedRows.forEach(row => {
-            errors.push({ row, message: `订单号 ${orderNo} 已存在，请修改订单号后重试` });
-          });
-          continue;
+          try {
+            // 计算新明细的金额
+            let newTotalAmount = 0;
+            const newItemsData = orderItems.map(item => {
+              const quantity = parseInt(item.quantity) || 0;
+              const unitPrice = parseFloat(item.unitPrice) || 0;
+              const amount = quantity * unitPrice;
+              newTotalAmount += amount;
+
+              return {
+                productId: item.productId,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                amount: amount,
+              };
+            });
+
+            // 计算现有订单的明细金额
+            const existingTotalAmount = existingOrder.items.reduce((sum, item) => {
+              return sum + Number(item.amount);
+            }, 0);
+
+            // 更新订单，添加新明细
+            const updatedOrder = await prisma.salesOrder.update({
+              where: { id: existingOrder.id },
+              data: {
+                totalAmount: existingTotalAmount + newTotalAmount,
+                items: {
+                  create: newItemsData
+                }
+              },
+              include: {
+                customer: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                  },
+                },
+                items: {
+                  include: {
+                    product: {
+                      select: {
+                        id: true,
+                        code: true,
+                        name: true,
+                        spec: true,
+                        unit: true,
+                      },
+                    },
+                  },
+                },
+              },
+            });
+
+            successItems.push(updatedOrder);
+            console.log(`订单 ${orderNo} 明细合并成功`);
+            continue;
+          } catch (mergeError) {
+            console.error(`合并订单 ${orderNo} 明细失败:`, mergeError);
+            // 找到这个订单的所有行号
+            const affectedRows = items.map((item, index) => 
+              item.orderNo === orderNo ? index + 1 : -1
+            ).filter(row => row > 0);
+            
+            affectedRows.forEach(row => {
+              errors.push({ row, message: `合并订单 ${orderNo} 明细失败: ${mergeError instanceof Error ? mergeError.message : '未知错误'}` });
+            });
+            continue;
+          }
         }
 
         // 计算总金额
