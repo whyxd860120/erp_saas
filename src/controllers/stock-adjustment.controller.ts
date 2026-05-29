@@ -114,9 +114,20 @@ export const confirmStockAdjustment = async (req: Request, res: Response) => {
             });
           }
         } else if (detail.adjustQty > 0) {
-          // 新增库存
-          await tx.inventoryItem.create({
-            data: {
+          // 新增库存 - 使用 upsert 避免并发时的唯一约束冲突
+          await tx.inventoryItem.upsert({
+            where: {
+              tenantId_productId_warehouseId_batchNo: {
+                tenantId: adjustment.tenantId,
+                productId: detail.productId,
+                warehouseId: adjustment.warehouseId,
+                batchNo: detail.batchNo || '',
+              },
+            },
+            update: {
+              quantity: { increment: detail.adjustQty },
+            },
+            create: {
               tenantId: adjustment.tenantId,
               productId: detail.productId,
               warehouseId: adjustment.warehouseId,

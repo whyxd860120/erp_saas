@@ -6,6 +6,7 @@ export interface PurchaseInboundParams {
   limit?: number
   status?: string
   orderId?: string
+  supplierId?: string
   warehouseId?: string
   startDate?: string
   endDate?: string
@@ -27,9 +28,11 @@ export interface PurchaseInboundDetail {
 export interface CreatePurchaseInboundParams {
   inboundNo?: string
   orderId?: string
+  supplierId?: string
   warehouseId: string
   inboundDate?: string
   remark?: string
+  logisticsCost?: number
   details: PurchaseInboundDetail[]
 }
 

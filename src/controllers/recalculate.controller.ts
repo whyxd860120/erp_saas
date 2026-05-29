@@ -169,8 +169,21 @@ export const recalculateInventory = async (req: Request, res: Response) => {
           }
           details.push({ productId, warehouseId: whId, batchNo, oldQty, newQty: targetQty, diff: targetQty - oldQty });
         } else {
-          await tx.inventoryItem.create({
-            data: {
+          // 使用 upsert 避免并发时的唯一约束冲突
+          await tx.inventoryItem.upsert({
+            where: {
+              tenantId_productId_warehouseId_batchNo: {
+                tenantId,
+                productId,
+                warehouseId: whId,
+                batchNo: batchNo || '',
+              },
+            },
+            update: {
+              quantity: targetQty,
+              costPrice: 0,
+            },
+            create: {
               tenantId,
               productId,
               warehouseId: whId,

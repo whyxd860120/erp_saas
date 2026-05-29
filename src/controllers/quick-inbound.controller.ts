@@ -230,9 +230,20 @@ export const quickInbound = async (req: Request, res: Response) => {
             },
           });
         } else {
-          // 创建新库存记录
-          await tx.inventoryItem.create({
-            data: {
+          // 使用 upsert 避免并发时的唯一约束冲突
+          await tx.inventoryItem.upsert({
+            where: {
+              tenantId_productId_warehouseId_batchNo: {
+                tenantId: req.user!.tenantId!,
+                productId: detail.productId,
+                warehouseId,
+                batchNo: '',
+              },
+            },
+            update: {
+              quantity: { increment: detail.quantity },
+            },
+            create: {
               tenantId: req.user!.tenantId!,
               productId: detail.productId,
               warehouseId,

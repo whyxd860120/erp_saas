@@ -669,6 +669,7 @@ model Supplier {
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   category            SupplierCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   purchaseOrders      PurchaseOrder[]
+  purchaseInbounds    PurchaseInbound[]
   paymentPayments     PaymentPayment[]
   supplierEvaluations SupplierEvaluation[]
 
@@ -1057,6 +1058,7 @@ model PurchaseInbound {
   tenantId    String
   inboundNo   String // 入库单编号（租户内唯一）
   orderId     String? // 关联采购订单ID（可为空，支持直填入库）
+  supplierId  String? // 供应商ID（直填入库时使用，有关联订单则从订单获取）
   warehouseId String // 仓库ID
   inboundDate DateTime @default(now()) // 入库日期
   totalAmount Decimal  @default(0) // 总金额
@@ -1071,6 +1073,7 @@ model PurchaseInbound {
 
   tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   order     PurchaseOrder?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  supplier  Supplier?               @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   warehouse Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   creator   User?                   @relation("PurchaseInboundCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   details   PurchaseInboundDetail[]
@@ -1078,6 +1081,7 @@ model PurchaseInbound {
   @@unique([tenantId, inboundNo])
   @@index([tenantId, inboundDate])
   @@index([orderId])
+  @@index([supplierId])
   @@index([warehouseId])
   @@index([type])
   @@index([qcStatus])

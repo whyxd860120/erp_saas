@@ -39,6 +39,7 @@ export const getPurchaseInbounds = async (req: Request, res: Response) => {
       limit = '10',
       status,
       orderId,
+      supplierId,
       warehouseId,
       startDate,
       endDate,
@@ -60,6 +61,10 @@ export const getPurchaseInbounds = async (req: Request, res: Response) => {
 
     if (orderId) {
       where.orderId = orderId;
+    }
+
+    if (supplierId) {
+      where.supplierId = supplierId;
     }
 
     if (warehouseId) {
@@ -99,6 +104,13 @@ export const getPurchaseInbounds = async (req: Request, res: Response) => {
                   name: true,
                 },
               },
+            },
+          },
+          supplier: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
             },
           },
           warehouse: {
@@ -180,6 +192,15 @@ export const getPurchaseInboundById = async (req: Request, res: Response) => {
                 phone: true,
               },
             },
+          },
+        },
+        supplier: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            contact: true,
+            phone: true,
           },
         },
         warehouse: {
@@ -287,6 +308,7 @@ export const createPurchaseInbound = async (req: Request, res: Response) => {
     const {
       inboundNo,
       orderId,
+      supplierId,
       warehouseId,
       inboundDate = new Date(),
       remark,
@@ -434,6 +456,7 @@ export const createPurchaseInbound = async (req: Request, res: Response) => {
           tenantId: req.user!.tenantId!,
           inboundNo: generatedInboundNo,
           orderId,
+          supplierId: supplierId || undefined,
           warehouseId,
           inboundDate: new Date(inboundDate),
           totalAmount,
@@ -597,9 +620,22 @@ export const confirmPurchaseInbound = async (req: Request, res: Response) => {
             },
           });
         } else {
-          // 创建新库存记录
-          await tx.inventoryItem.create({
-            data: {
+          // 使用 upsert 避免并发时的唯一约束冲突
+          const totalCost = detail.unitPrice * detail.quantity;
+          await tx.inventoryItem.upsert({
+            where: {
+              tenantId_productId_warehouseId_batchNo: {
+                tenantId: req.user!.tenantId!,
+                productId: detail.productId,
+                warehouseId: existingInbound.warehouseId,
+                batchNo: detail.batchNo || '',
+              },
+            },
+            update: {
+              quantity: { increment: detail.quantity },
+              costPrice: totalCost, // 简化为当前单价，后续可通过重算校正
+            },
+            create: {
               tenantId: req.user!.tenantId!,
               productId: detail.productId,
               warehouseId: existingInbound.warehouseId,
@@ -880,6 +916,7 @@ export const updatePurchaseInbound = async (req: Request, res: Response) => {
     const {
       inboundNo,
       orderId,
+      supplierId,
       warehouseId,
       inboundDate,
       remark,
@@ -976,6 +1013,7 @@ export const updatePurchaseInbound = async (req: Request, res: Response) => {
     const updateData: any = {};
     if (inboundNo !== undefined) updateData.inboundNo = inboundNo;
     if (orderId !== undefined) updateData.orderId = orderId;
+    if (supplierId !== undefined) updateData.supplierId = supplierId;
     if (warehouseId !== undefined) updateData.warehouseId = warehouseId;
     if (inboundDate !== undefined) updateData.inboundDate = new Date(inboundDate);
     if (remark !== undefined) updateData.remark = remark;
@@ -1366,8 +1404,22 @@ export const importPurchaseInbounds = async (req: Request, res: Response) => {
                     },
                   });
                 } else {
-                  await tx.inventoryItem.create({
-                    data: {
+                  // 使用 upsert 避免并发时的唯一约束冲突
+                  const totalCost = item.unitPrice * item.quantity;
+                  await tx.inventoryItem.upsert({
+                    where: {
+                      tenantId_productId_warehouseId_batchNo: {
+                        tenantId,
+                        productId: item.productId,
+                        warehouseId: existingInbound.warehouseId,
+                        batchNo: item.batchNo || '',
+                      },
+                    },
+                    update: {
+                      quantity: { increment: item.quantity },
+                      costPrice: totalCost,
+                    },
+                    create: {
                       tenantId,
                       productId: item.productId,
                       warehouseId: existingInbound.warehouseId,
@@ -1484,6 +1536,7 @@ export const importPurchaseInbounds = async (req: Request, res: Response) => {
               tenantId,
               inboundNo,
               orderId: firstItem.orderId,
+              supplierId: firstItem.supplierId || undefined,
               warehouseId: firstItem.warehouseId,
               inboundDate,
               remark: firstItem.remark || '',
@@ -1553,8 +1606,22 @@ export const importPurchaseInbounds = async (req: Request, res: Response) => {
                 },
               });
             } else {
-              await tx.inventoryItem.create({
-                data: {
+              // 使用 upsert 避免并发时的唯一约束冲突
+              const totalCost = detail.unitPrice * detail.quantity;
+              await tx.inventoryItem.upsert({
+                where: {
+                  tenantId_productId_warehouseId_batchNo: {
+                    tenantId,
+                    productId: detail.productId,
+                    warehouseId: firstItem.warehouseId,
+                    batchNo: detail.batchNo || '',
+                  },
+                },
+                update: {
+                  quantity: { increment: detail.quantity },
+                  costPrice: totalCost,
+                },
+                create: {
                   tenantId,
                   productId: detail.productId,
                   warehouseId: firstItem.warehouseId,

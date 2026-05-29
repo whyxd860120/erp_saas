@@ -136,7 +136,7 @@
         </el-table-column>
         <el-table-column label="供应商" min-width="150">
           <template #default="{ row }">
-            <span>{{ row.order?.supplier?.name || '-' }}</span>
+            <span>{{ row.supplier?.name || row.order?.supplier?.name || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="入库日期" width="110">
@@ -287,12 +287,13 @@
             </el-col>
           </el-row>
           <el-row :gutter="16">
-            <el-col :span="24">
+            <el-col :span="12">
               <el-form-item label="采购订单">
                 <el-select
                   v-model="formData.purchaseOrderId"
                   placeholder="请选择采购订单（可选）"
                   filterable
+                  clearable
                   @change="handleOrderChange"
                   style="width: 100%;"
                 >
@@ -301,6 +302,24 @@
                     :key="order.id"
                     :label="order.orderNo"
                     :value="order.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="供应商" prop="supplierId">
+                <el-select
+                  v-model="formData.supplierId"
+                  placeholder="请选择供应商"
+                  filterable
+                  clearable
+                  style="width: 100%;"
+                >
+                  <el-option
+                    v-for="supplier in suppliers"
+                    :key="supplier.id"
+                    :label="supplier.name"
+                    :value="supplier.id"
                   />
                 </el-select>
               </el-form-item>
@@ -676,6 +695,7 @@ const importColumns = [
   { prop: 'inboundNo', label: '入库单号', required: true, unique: false },
   { prop: 'inboundDate', label: '入库日期', required: true },
   { prop: 'warehouseName', label: '仓库名称', required: true },
+  { prop: 'supplierName', label: '供应商名称' },
   { prop: 'orderNo', label: '采购订单号' },
   { prop: 'productCode', label: '物料编码', required: true },
   { prop: 'productName', label: '物料名称', required: true },
@@ -693,6 +713,7 @@ const importFormatTips = [
   '入库单号：必填，用于合并同一入库单的多个明细行',
   '入库日期：必填，格式：YYYY-MM-DD',
   '仓库名称：必填，填写仓库名称',
+  '供应商名称：可选，填写供应商名称（如未填写且有关联采购订单，则从订单获取）',
   '采购订单号：可选，填写关联的采购订单号',
   '物料编码：必填，填写物料编码',
   '物料名称：必填，填写物料名称',
@@ -712,8 +733,8 @@ const importFormatTips = [
   '多明细入库单导入示例：',
   '入库单号相同的行会合并为一个入库单',
   '例如：入库单号 PI001 有2个物料明细',
-  '第1行：PI001, 2026-04-20, 主仓库, PO001, P001, 产品A, , 10, 100, 1000, , , , 备注1',
-  '第2行：PI001, 2026-04-20, 主仓库, PO001, P002, 产品B, , 5, 200, 1000, , , , 备注2',
+  '第1行：PI001, 2026-04-20, 主仓库, 供应商A, PO001, P001, 产品A, , 10, 100, 1000, , , , 备注1',
+  '第2行：PI001, 2026-04-20, 主仓库, 供应商A, PO001, P002, 产品B, , 5, 200, 1000, , , , 备注2',
   '这2行会合并为一个入库单 PI001，包含2个明细'
 ]
 
@@ -1081,8 +1102,8 @@ const handleEdit = async (row: any) => {
     if (response.success) {
       const inbound = response.data
 
-      // 确保当前供应商在选项列表中
-      const supplierObj = inbound.order?.supplier
+      // 确保当前供应商在选项列表中（优先使用入库单自身的supplier，其次使用订单的supplier）
+      const supplierObj = inbound.supplier || inbound.order?.supplier
       if (supplierObj && !suppliers.value.find((s: any) => s.id === supplierObj.id)) {
         suppliers.value = [supplierObj, ...suppliers.value]
       }
@@ -1100,7 +1121,7 @@ const handleEdit = async (row: any) => {
         id: inbound.id,
         orderNo: inbound.inboundNo,
         purchaseOrderId: inbound.orderId,
-        supplierId: inbound.order?.supplier?.id || '',
+        supplierId: inbound.supplierId || inbound.order?.supplier?.id || '',
         inboundDate: inbound.inboundDate,
         warehouseId: inbound.warehouseId,
         remark: inbound.remark || '',
@@ -1186,6 +1207,7 @@ const doSubmit = async (isConfirm: boolean) => {
     const submitData: any = {
       inboundNo: formData.orderNo,
       orderId: formData.purchaseOrderId || undefined,
+      supplierId: formData.supplierId || undefined,
       inboundDate: formData.inboundDate,
       warehouseId: formData.warehouseId,
       remark: formData.remark,
@@ -1413,6 +1435,7 @@ const handleImportSubmit = async (data: any[]) => {
   const warehouseMap = new Map<string, string>()
   const productMap = new Map<string, string>()
   const orderMap = new Map<string, string>()
+  const supplierMap = new Map<string, string>()
 
   try {
     const warehouseResponse: any = await getWarehouses({ page: 1, limit: 10000, status: '' })
@@ -1444,6 +1467,16 @@ const handleImportSubmit = async (data: any[]) => {
     console.error('获取采购订单列表失败:', error)
   }
 
+  try {
+    const supplierResponse: any = await getSuppliers({ page: 1, limit: 10000 })
+    if (supplierResponse.success) {
+      const allSuppliers = supplierResponse.data.items || []
+      allSuppliers.forEach((s: any) => supplierMap.set(s.name, s.id))
+    }
+  } catch (error) {
+    console.error('获取供应商列表失败:', error)
+  }
+
   const processedData = data.map(item => {
     const newItem: any = { ...item }
 
@@ -1460,6 +1493,14 @@ const handleImportSubmit = async (data: any[]) => {
     } else if (item.orderNo) {
       console.warn(`采购订单 "${item.orderNo}" 不存在，已跳过设置订单`)
       delete newItem.orderNo
+    }
+
+    if (item.supplierName && supplierMap.has(item.supplierName)) {
+      newItem.supplierId = supplierMap.get(item.supplierName)
+      delete newItem.supplierName
+    } else if (item.supplierName) {
+      console.warn(`供应商 "${item.supplierName}" 不存在，已跳过设置供应商`)
+      delete newItem.supplierName
     }
 
     if (item.productCode && productMap.has(item.productCode)) {
