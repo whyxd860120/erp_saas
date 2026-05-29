@@ -1,0 +1,151 @@
+// ==================== 微信商城模型 ====================
+// 独立 schema，复用同一数据库
+
+// 微信用户绑定（关联 ERP User）
+model ShopUser {
+  id          String   @id @default(cuid())
+  tenantId    String   // 所属租户（商城归属）
+  openid      String   @unique // 微信 openid
+  unionid     String?  // 微信 unionid
+  nickname    String?  // 微信昵称
+  avatarUrl   String?  // 微信头像
+  mobile      String?  // 手机号
+  gender      Int?     // 0未知 1男 2女
+  country     String?  // 国家
+  province    String?  // 省份
+  city        String?  // 城市
+  sessionKey  String?  // 微信 session_key
+  lastLoginAt DateTime?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  addresses ShopAddress[]
+  cartItems ShopCartItem[]
+  orders    ShopOrder[]
+
+  @@index([tenantId])
+  @@index([openid])
+  @@map("shop_users")
+}
+
+// 收货地址
+model ShopAddress {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   // 收货人
+  mobile      String   // 手机号
+  province    String   // 省份
+  city        String   // 城市
+  district    String   // 区县
+  detail      String   // 详细地址
+  isDefault   Boolean  @default(false)
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   ShopUser     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders ShopOrder[]
+
+  @@index([userId])
+  @@map("shop_addresses")
+}
+
+// 购物车
+model ShopCartItem {
+  id          String   @id @default(cuid())
+  userId      String
+  productId   String   // 关联 ERP Product
+  quantity    Int      @default(1)
+  selected    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    ShopUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("shop_cart_items")
+}
+
+// 商城订单
+model ShopOrder {
+  id            String    @id @default(cuid())
+  tenantId      String
+  orderNo       String    // 商城订单号
+  userId        String
+  addressId     String?   // 收货地址快照
+  addressSnapshot Json?   // 下单时地址快照
+  totalAmount   Decimal   @default(0) // 商品总额
+  freightAmount Decimal   @default(0) // 运费
+  finalAmount   Decimal   @default(0) // 实付金额
+  status        String    @default("pending") // pending, paid, shipped, completed, cancelled, refunding, refunded
+  payMethod     String?   // 支付方式: wechat
+  payTime       DateTime?
+  payTradeNo    String?   // 微信支付交易号
+  expressCompany String?  // 快递公司
+  expressNo     String?   // 快递单号
+  shipTime      DateTime?
+  finishTime    DateTime?
+  cancelReason  String?   // 取消原因
+  buyerRemark   String?   // 买家备注
+  sellerRemark  String?   // 卖家备注
+  // 关联 ERP 销售订单（下单后自动同步）
+  erpSalesOrderId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user    ShopUser        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  address ShopAddress?    @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  items   ShopOrderItem[]
+
+  @@unique([tenantId, orderNo])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([erpSalesOrderId])
+  @@map("shop_orders")
+}
+
+// 商城订单明细
+model ShopOrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String
+  productSnapshot Json? // 下单时商品快照（名称/图片/规格）
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0)
+  amount      Decimal  @default(0)
+  createdAt   DateTime @default(now())
+
+  order   ShopOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("shop_order_items")
+}
+
+// 商品上架配置（控制哪些产品在商城中展示）
+model ShopProduct {
+  id            String   @id @default(cuid())
+  tenantId      String
+  productId     String   @unique // 关联 Product
+  // 商城展示字段
+  shopTitle     String?  // 商城标题（可不同于 ERP 名称）
+  shopDesc      String?  @db.Text // 商城描述/详情
+  shopImages    Json?    // 商城展示图片列表（多图）
+  shopPrice     Decimal? // 商城售价（可不同于 ERP salePrice）
+  isOnSale      Boolean  @default(false) // 是否上架
+  sortOrder     Int      @default(0)
+  sales         Int      @default(0) // 累计销量
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([isOnSale])
+  @@map("shop_products")
+}
