@@ -1286,6 +1286,17 @@ const handleEdit = async (row: any) => {
   dialogTitle.value = '编辑销售订单'
   isEdit.value = true
   try {
+    // 确保数据已加载
+    if (!customers.value.length) {
+      await fetchCustomers()
+    }
+    if (!products.value.length) {
+      await fetchProducts()
+    }
+    if (!salesmen.value.length) {
+      await fetchSalesmen()
+    }
+    
     const response: any = await getSalesOrderById(row.id)
     if (response.success) {
       const order = response.data
@@ -1675,8 +1686,8 @@ const handleImportSubmit = async (data: any[]) => {
       delete newItem.salesmanName
       console.log(`导入 - 业务员匹配成功: ${item.salesmanName} -> ${newItem.salesmanId}`)
     } else if (item.salesmanName) {
-      newItem.salesmanError = `业务员 "${item.salesmanName}" 不存在`
-      console.warn(`导入 - 业务员匹配失败: "${item.salesmanName}"，可用业务员:`, Array.from(salesmanMap.keys()))
+      // 业务员不存在，不阻止导入，只是记录警告
+      console.warn(`导入 - 业务员 "${item.salesmanName}" 不存在，已跳过设置业务员`)
     }
 
     if (item.productCode && productMap.has(item.productCode)) {
