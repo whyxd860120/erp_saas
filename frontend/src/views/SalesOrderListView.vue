@@ -1625,8 +1625,18 @@ const handleImportSubmit = async (data: any[]) => {
   const salesmanMap = new Map<string, string>()
 
   customers.value.forEach(c => customerMap.set(c.name, c.id))
-  products.value.forEach(p => productMap.set(p.code, p.id))
   salesmen.value.forEach(s => salesmanMap.set(s.name, s.id))
+
+  // 获取所有物料数据用于导入验证
+  try {
+    const response: any = await getProducts({ page: 1, limit: 10000, status: '' })
+    if (response.success) {
+      const allProducts = response.data.items || []
+      allProducts.forEach(p => productMap.set(p.code, p.id))
+    }
+  } catch (error) {
+    console.error('获取物料列表失败:', error)
+  }
 
   const processedData = data.map(item => {
     const newItem: any = { ...item }
