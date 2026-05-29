@@ -681,6 +681,7 @@ import {
 } from '@/api/purchase-order'
 import { getSuppliers } from '@/api/supplier'
 import { getProducts } from '@/api/product'
+import { getUsers } from '@/api/user'
 import { getStatusColor, getPurchaseOrderStatusText } from '@/utils/status.util'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
@@ -704,6 +705,7 @@ const helpDialogVisible = ref(false)
 const tableData = ref<any[]>([])
 const suppliers = ref<any[]>([])
 const products = ref<any[]>([])
+const salesmen = ref<any[]>([])
 
 // 导入配置
 const importColumns = [
@@ -716,6 +718,7 @@ const importColumns = [
   { prop: 'productSpec', label: '物料规格' },
   { prop: 'quantity', label: '数量', required: true },
   { prop: 'unitPrice', label: '单价' },
+  { prop: 'amount', label: '金额' },
   { prop: 'remark', label: '备注' }
 ]
 
@@ -723,19 +726,26 @@ const importFormatTips = [
   '订单单号：必填，唯一标识，不可重复',
   '订单日期：必填，格式：YYYY-MM-DD',
   '供应商名称：必填，填写供应商名称',
+  '业务员：选填，填写业务员姓名，不存在时仅记录警告',
   '物料编码：必填，填写物料编码',
   '物料名称：必填，填写物料名称',
   '物料规格：选填，填写物料规格',
   '数量：必填，数字格式',
   '单价：选填，数字格式',
+  '金额：选填，数字格式，优先使用金额计算',
   '备注：选填',
+  '',
+  '金额计算规则：',
+  '1. 如果填写了金额和数量，则金额优先，单价=金额/数量',
+  '2. 如果只填写了单价和数量，则金额=单价×数量',
+  '3. 业务员不存在时不阻止导入，仅记录警告',
   '',
   '多明细订单导入示例：',
   '订单单号相同的行会合并为一个订单',
   '例如：订单号 PO001 有3个物料明细',
-  '第1行：PO001, 2026-04-20, 供应商A, , P001, 产品A, , 10, 100, 备注1',
-  '第2行：PO001, 2026-04-20, 供应商A, , P002, 产品B, , 5, 200, 备注2',
-  '第3行：PO001, 2026-04-20, 供应商A, , P003, 产品C, , 8, 150, 备注3',
+  '第1行：PO001, 2026-04-20, 供应商A, 张三, P001, 产品A, , 10, 100, 1000, 备注1',
+  '第2行：PO001, 2026-04-20, 供应商A, 张三, P002, 产品B, , 5, 200, 1000, 备注2',
+  '第3行：PO001, 2026-04-20, 供应商A, 张三, P003, 产品C, , 8, 150, 1200, 备注3',
   '这3行会合并为一个订单 PO001，包含3个明细'
 ]
 
@@ -988,6 +998,13 @@ const handleEdit = async (row: any) => {
   dialogTitle.value = '编辑采购订单'
   isEdit.value = true
   try {
+    if (!suppliers.value.length) {
+      await fetchSuppliers()
+    }
+    if (!products.value.length) {
+      await fetchProducts()
+    }
+
     const response: any = await getPurchaseOrderById(row.id)
     if (response.success) {
       const order = response.data.data
@@ -1151,7 +1168,16 @@ const handleImportSubmit = async (data: any[]) => {
   const productMap = new Map<string, string>()
   const salesmanMap = new Map<string, string>()
 
-  // 获取所有供应商数据用于导入验证
+  try {
+    const response: any = await getUsers({ page: 1, limit: 10000 })
+    if (response.success) {
+      salesmen.value = response.data.items || []
+      salesmen.value.forEach(s => salesmanMap.set(s.name, s.id))
+    }
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+  }
+
   try {
     const response: any = await getSuppliers({ page: 1, limit: 10000, status: '' })
     if (response.success) {
@@ -1162,9 +1188,6 @@ const handleImportSubmit = async (data: any[]) => {
     console.error('获取供应商列表失败:', error)
   }
 
-  salesmen.value.forEach(s => salesmanMap.set(s.name, s.id))
-
-  // 获取所有物料数据用于导入验证
   try {
     const response: any = await getProducts({ page: 1, limit: 10000, status: '' })
     if (response.success) {
@@ -1188,8 +1211,9 @@ const handleImportSubmit = async (data: any[]) => {
     if (item.salesmanName && salesmanMap.has(item.salesmanName)) {
       newItem.salesmanId = salesmanMap.get(item.salesmanName)
       delete newItem.salesmanName
+      console.log(`导入 - 业务员匹配成功: ${item.salesmanName} -> ${newItem.salesmanId}`)
     } else if (item.salesmanName) {
-      newItem.salesmanError = `业务员 "${item.salesmanName}" 不存在`
+      console.warn(`导入 - 业务员 "${item.salesmanName}" 不存在，已跳过设置业务员`)
     }
 
     if (item.productCode && productMap.has(item.productCode)) {
@@ -1198,6 +1222,28 @@ const handleImportSubmit = async (data: any[]) => {
     } else if (item.productCode) {
       newItem.productError = `物料编码 "${item.productCode}" 不存在`
     }
+
+    const quantity = parseFloat(item.quantity) || 0
+    const excelAmount = parseFloat(item.amount) || 0
+    const excelUnitPrice = parseFloat(item.unitPrice) || 0
+
+    let amount: number
+    let unitPrice: number
+
+    if (excelAmount > 0 && quantity > 0) {
+      amount = excelAmount
+      unitPrice = excelUnitPrice > 0 ? excelUnitPrice : (amount / quantity)
+    } else if (quantity > 0 && excelUnitPrice > 0) {
+      unitPrice = excelUnitPrice
+      amount = quantity * unitPrice
+    } else {
+      unitPrice = 0
+      amount = 0
+    }
+
+    newItem.quantity = quantity
+    newItem.unitPrice = unitPrice
+    newItem.amount = amount
 
     return newItem
   })

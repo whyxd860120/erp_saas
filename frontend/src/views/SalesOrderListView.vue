@@ -360,8 +360,8 @@
           </el-row>
           <el-row :gutter="16">
             <el-col :span="8">
-              <el-form-item label="销售员">
-                <el-select v-model="formData.salesmanId" placeholder="请选择销售员" clearable filterable style="width: 100%;">
+              <el-form-item label="业务员">
+                <el-select v-model="formData.salesmanId" placeholder="请选择业务员" clearable filterable style="width: 100%;">
                   <el-option
                     v-for="user in salesmen"
                     :key="user.id"
@@ -747,7 +747,7 @@
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="客户">{{ currentOrder.customer?.name }}</el-descriptions-item>
-            <el-descriptions-item label="销售员">{{ currentOrder.salesman?.name || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="业务员">{{ currentOrder.salesman?.name || '-' }}</el-descriptions-item>
             <el-descriptions-item label="制单人">{{ currentOrder.creator?.name }}</el-descriptions-item>
             <el-descriptions-item label="制单时间">{{ formatDateTime(currentOrder.createdAt) }}</el-descriptions-item>
           </el-descriptions>
@@ -938,19 +938,26 @@ const importFormatTips = [
   '订单单号：必填，唯一标识，不可重复',
   '订单日期：必填，格式：YYYY-MM-DD',
   '客户名称：必填，填写客户名称',
+  '业务员：选填，填写业务员姓名，不存在时仅记录警告',
   '物料编码：必填，填写物料编码',
   '物料名称：必填，填写物料名称',
   '物料规格：选填，填写物料规格',
   '数量：必填，数字格式',
   '单价：选填，数字格式',
+  '金额：选填，数字格式，优先使用金额计算',
   '备注：选填',
+  '',
+  '金额计算规则：',
+  '1. 如果填写了金额和数量，则金额优先，单价=金额/数量',
+  '2. 如果只填写了单价和数量，则金额=单价×数量',
+  '3. 业务员不存在时不阻止导入，仅记录警告',
   '',
   '多明细订单导入示例：',
   '订单单号相同的行会合并为一个订单',
   '例如：订单号 SO001 有3个物料明细',
-  '第1行：SO001, 2026-04-20, 李润军, , P001, 产品A, , 10, 100, 备注1',
-  '第2行：SO001, 2026-04-20, 李润军, , P002, 产品B, , 5, 200, 备注2',
-  '第3行：SO001, 2026-04-20, 李润军, , P003, 产品C, , 8, 150, 备注3',
+  '第1行：SO001, 2026-04-20, 李润军, 张三, P001, 产品A, , 10, 100, 1000, 备注1',
+  '第2行：SO001, 2026-04-20, 李润军, 张三, P002, 产品B, , 5, 200, 1000, 备注2',
+  '第3行：SO001, 2026-04-20, 李润军, 张三, P003, 产品C, , 8, 150, 1200, 备注3',
   '这3行会合并为一个订单 SO001，包含3个明细'
 ]
 
@@ -1655,7 +1662,16 @@ const handleImportSubmit = async (data: any[]) => {
     console.error('获取客户列表失败:', error)
   }
 
-  salesmen.value.forEach(s => salesmanMap.set(s.name, s.id))
+  // 获取所有用户数据用于业务员匹配
+  try {
+    const response: any = await getUsers({ page: 1, limit: 10000 })
+    if (response.success) {
+      salesmen.value = response.data.items || []
+      salesmen.value.forEach(s => salesmanMap.set(s.name, s.id))
+    }
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+  }
   
   console.log('导入销售订单 - 业务员映射:', Array.from(salesmanMap.entries()))
   console.log('导入销售订单 - 可用业务员列表:', salesmen.value)
@@ -1696,6 +1712,28 @@ const handleImportSubmit = async (data: any[]) => {
     } else if (item.productCode) {
       newItem.productError = `物料编码 "${item.productCode}" 不存在`
     }
+
+    const quantity = parseFloat(item.quantity) || 0
+    const excelAmount = parseFloat(item.amount) || 0
+    const excelUnitPrice = parseFloat(item.unitPrice) || 0
+
+    let amount: number
+    let unitPrice: number
+
+    if (excelAmount > 0 && quantity > 0) {
+      amount = excelAmount
+      unitPrice = excelUnitPrice > 0 ? excelUnitPrice : (amount / quantity)
+    } else if (quantity > 0 && excelUnitPrice > 0) {
+      unitPrice = excelUnitPrice
+      amount = quantity * unitPrice
+    } else {
+      unitPrice = 0
+      amount = 0
+    }
+
+    newItem.quantity = quantity
+    newItem.unitPrice = unitPrice
+    newItem.amount = amount
 
     return newItem
   })
@@ -1867,7 +1905,7 @@ const helpData = computed(() => {
           title: '新增销售订单',
           steps: [
             '点击"新增销售订单"按钮',
-            '选择客户和销售员',
+            '选择客户和业务员',
             '添加物料明细，选择物料、输入数量和单价',
             '设置订单日期、到期日期等基本信息',
             '点击"保存草稿"保存订单，或点击"提交"直接确认订单'

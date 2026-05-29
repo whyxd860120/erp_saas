@@ -1114,12 +1114,26 @@ export const importSalesOrders = async (req: Request, res: Response) => {
           console.log(`订单号 ${orderNo} 已存在，尝试合并明细`);
           
           try {
-            // 计算新明细的金额
+            // 计算新明细的金额（优先使用前端传入的金额）
             let newTotalAmount = 0;
             const newItemsData = orderItems.map(item => {
-              const quantity = parseInt(item.quantity) || 0;
-              const unitPrice = parseFloat(item.unitPrice) || 0;
-              const amount = quantity * unitPrice;
+              const quantity = parseFloat(item.quantity) || 0;
+              const excelAmount = parseFloat(item.amount) || 0;
+              const excelUnitPrice = parseFloat(item.unitPrice) || 0;
+              
+              let amount: number;
+              let unitPrice: number;
+              
+              if (excelAmount > 0 && quantity > 0) {
+                amount = excelAmount;
+                unitPrice = excelUnitPrice > 0 ? excelUnitPrice : (amount / quantity);
+              } else if (quantity > 0 && excelUnitPrice > 0) {
+                unitPrice = excelUnitPrice;
+                amount = quantity * unitPrice;
+              } else {
+                unitPrice = 0;
+                amount = 0;
+              }
               newTotalAmount += amount;
 
               return {
