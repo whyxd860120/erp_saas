@@ -1374,52 +1374,137 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
               return sum + Number(item.amount);
             }, 0);
 
-            // 更新出库单，添加新明细，并确保状态为已确认
-            const updatedOutbound = await prisma.salesOutbound.update({
-              where: { id: existingOutbound.id },
-              data: {
-                totalAmount: existingTotalAmount + newTotalAmount,
-                status: 'confirmed',
-                creatorId: req.user.id,
-                details: {
-                  create: newItemsData
+            // 更新出库单，添加新明细，并确保状态为已确认（事务：更新单据 + 扣减库存）
+            const updatedOutbound = await prisma.$transaction(async (tx) => {
+              const result = await tx.salesOutbound.update({
+                where: { id: existingOutbound.id },
+                data: {
+                  totalAmount: existingTotalAmount + newTotalAmount,
+                  status: 'confirmed',
+                  creatorId: req.user.id,
+                  details: {
+                    create: newItemsData
+                  }
+                },
+                include: {
+                  order: {
+                    select: {
+                      id: true,
+                      orderNo: true,
+                      customer: {
+                        select: {
+                          id: true,
+                          code: true,
+                          name: true,
+                        },
+                      },
+                    },
+                  },
+                  warehouse: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                    },
+                  },
+                  details: {
+                    include: {
+                      product: {
+                        select: {
+                          id: true,
+                          code: true,
+                          name: true,
+                          spec: true,
+                          unit: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              });
+
+              // 只对新合并的明细扣减库存
+              for (const item of newItemsData) {
+                const inventory = await tx.inventoryItem.findFirst({
+                  where: {
+                    tenantId,
+                    productId: item.productId,
+                    warehouseId: existingOutbound.warehouseId,
+                    batchNo: item.batchNo || null,
+                  },
+                });
+
+                if (!inventory || inventory.quantity < item.quantity) {
+                  throw new Error(`商品库存不足: ${item.productId}，当前库存: ${inventory?.quantity || 0}，需要: ${item.quantity}`);
                 }
-              },
-              include: {
-                order: {
-                  select: {
-                    id: true,
-                    orderNo: true,
-                    customer: {
-                      select: {
-                        id: true,
-                        code: true,
-                        name: true,
-                      },
+
+                await tx.inventoryItem.update({
+                  where: { id: inventory.id },
+                  data: {
+                    quantity: inventory.quantity - item.quantity,
+                  },
+                });
+
+                // 记录库存变动日志
+                await tx.inventoryLog.create({
+                  data: {
+                    tenantId,
+                    productId: item.productId,
+                    warehouseId: existingOutbound.warehouseId,
+                    batchNo: item.batchNo,
+                    changeType: 'sales_outbound',
+                    changeQty: -item.quantity,
+                    beforeQty: inventory.quantity,
+                    afterQty: inventory.quantity - item.quantity,
+                    relatedOrderNo: outboundNo,
+                    remark: `销售出库(导入合并): ${outboundNo}`,
+                  },
+                });
+
+                // 如果关联销售订单，更新订单明细的已出库数量
+                if (existingOutbound.orderId) {
+                  const orderItem = await tx.salesOrderItem.findFirst({
+                    where: {
+                      orderId: existingOutbound.orderId,
+                      productId: item.productId,
                     },
-                  },
-                },
-                warehouse: {
-                  select: {
-                    id: true,
-                    code: true,
-                    name: true,
-                  },
-                },
-                details: {
-                  include: {
-                    product: {
-                      select: {
-                        id: true,
-                        code: true,
-                        name: true,
-                        spec: true,
-                        unit: true,
+                  });
+
+                  if (orderItem) {
+                    const newShippedQty = orderItem.shippedQty + item.quantity;
+                    const newStatus = newShippedQty >= orderItem.quantity ? 'completed' : 'partial';
+
+                    await tx.salesOrderItem.update({
+                      where: { id: orderItem.id },
+                      data: {
+                        shippedQty: newShippedQty,
+                        status: newStatus,
                       },
-                    },
-                  },
-                },
-              },
+                    });
+
+                    const pendingItems = await tx.salesOrderItem.findMany({
+                      where: {
+                        orderId: existingOutbound.orderId,
+                        status: { not: 'completed' },
+                      },
+                    });
+
+                    if (pendingItems.length === 0) {
+                      await tx.salesOrder.update({
+                        where: { id: existingOutbound.orderId },
+                        data: { status: 'completed' },
+                      });
+                    } else {
+                      await tx.salesOrder.update({
+                        where: { id: existingOutbound.orderId },
+                        data: { status: 'partial' },
+                      });
+                    }
+                  }
+                }
+              }
+
+              return result;
             });
 
             successItems.push(updatedOutbound);
@@ -1457,57 +1542,143 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
           };
         });
 
-        const outbound = await prisma.salesOutbound.create({
-          data: {
-            tenantId,
-            outboundNo,
-            orderId: firstItem.orderId,
-            warehouseId: firstItem.warehouseId,
-            customerId: firstItem.customerId,
-            outboundDate,
-            remark: firstItem.remark || '',
-            status: 'confirmed',
-            totalAmount: totalAmount,
-            creatorId: req.user.id,
-            details: {
-              create: itemsData
+        // 使用事务：创建出库单 + 扣减库存 + 记录日志 + 更新订单
+        const outbound = await prisma.$transaction(async (tx) => {
+          const newOutbound = await tx.salesOutbound.create({
+            data: {
+              tenantId,
+              outboundNo,
+              orderId: firstItem.orderId,
+              warehouseId: firstItem.warehouseId,
+              customerId: firstItem.customerId,
+              outboundDate,
+              remark: firstItem.remark || '',
+              status: 'confirmed',
+              totalAmount: totalAmount,
+              creatorId: req.user.id,
+              details: {
+                create: itemsData
+              }
+            },
+            include: {
+              order: {
+                select: {
+                  id: true,
+                  orderNo: true,
+                  customer: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+              warehouse: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true,
+                },
+              },
+              details: {
+                include: {
+                  product: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                      spec: true,
+                      unit: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          // 扣减库存
+          for (const detail of itemsData) {
+            const inventory = await tx.inventoryItem.findFirst({
+              where: {
+                tenantId,
+                productId: detail.productId,
+                warehouseId: firstItem.warehouseId,
+                batchNo: detail.batchNo || null,
+              },
+            });
+
+            if (!inventory || inventory.quantity < detail.quantity) {
+              throw new Error(`商品库存不足: ${detail.productId}，当前库存: ${inventory?.quantity || 0}，需要: ${detail.quantity}`);
             }
-          },
-          include: {
-            order: {
-              select: {
-                id: true,
-                orderNo: true,
-                customer: {
-                  select: {
-                    id: true,
-                    code: true,
-                    name: true,
-                  },
+
+            await tx.inventoryItem.update({
+              where: { id: inventory.id },
+              data: {
+                quantity: inventory.quantity - detail.quantity,
+              },
+            });
+
+            // 记录库存变动日志
+            await tx.inventoryLog.create({
+              data: {
+                tenantId,
+                productId: detail.productId,
+                warehouseId: firstItem.warehouseId,
+                batchNo: detail.batchNo,
+                changeType: 'sales_outbound',
+                changeQty: -detail.quantity,
+                beforeQty: inventory.quantity,
+                afterQty: inventory.quantity - detail.quantity,
+                relatedOrderNo: outboundNo,
+                remark: `销售出库: ${outboundNo}`,
+              },
+            });
+
+            // 如果关联销售订单，更新订单明细的已出库数量
+            if (firstItem.orderId) {
+              const orderItem = await tx.salesOrderItem.findFirst({
+                where: {
+                  orderId: firstItem.orderId,
+                  productId: detail.productId,
                 },
-              },
-            },
-            warehouse: {
-              select: {
-                id: true,
-                code: true,
-                name: true,
-              },
-            },
-            details: {
-              include: {
-                product: {
-                  select: {
-                    id: true,
-                    code: true,
-                    name: true,
-                    spec: true,
-                    unit: true,
+              });
+
+              if (orderItem) {
+                const newShippedQty = orderItem.shippedQty + detail.quantity;
+                const newStatus = newShippedQty >= orderItem.quantity ? 'completed' : 'partial';
+
+                await tx.salesOrderItem.update({
+                  where: { id: orderItem.id },
+                  data: {
+                    shippedQty: newShippedQty,
+                    status: newStatus,
                   },
-                },
-              },
-            },
-          },
+                });
+
+                const pendingItems = await tx.salesOrderItem.findMany({
+                  where: {
+                    orderId: firstItem.orderId,
+                    status: { not: 'completed' },
+                  },
+                });
+
+                if (pendingItems.length === 0) {
+                  await tx.salesOrder.update({
+                    where: { id: firstItem.orderId },
+                    data: { status: 'completed' },
+                  });
+                } else {
+                  await tx.salesOrder.update({
+                    where: { id: firstItem.orderId },
+                    data: { status: 'partial' },
+                  });
+                }
+              }
+            }
+          }
+
+          return newOutbound;
         });
 
         successItems.push(outbound);

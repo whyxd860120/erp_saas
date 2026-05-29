@@ -1295,52 +1295,149 @@ export const importPurchaseInbounds = async (req: Request, res: Response) => {
               return sum + Number(item.amount);
             }, 0);
 
-            // 更新入库单，添加新明细，并确保状态为已确认
-            const updatedInbound = await prisma.purchaseInbound.update({
-              where: { id: existingInbound.id },
-              data: {
-                totalAmount: existingTotalAmount + newTotalAmount,
-                status: 'confirmed',
-                creatorId: req.user.id,
-                details: {
-                  create: newItemsData
+            // 更新入库单，添加新明细，并确保状态为已确认（事务：更新单据 + 更新库存）
+            const updatedInbound = await prisma.$transaction(async (tx) => {
+              const result = await tx.purchaseInbound.update({
+                where: { id: existingInbound.id },
+                data: {
+                  totalAmount: existingTotalAmount + newTotalAmount,
+                  status: 'confirmed',
+                  creatorId: req.user.id,
+                  details: {
+                    create: newItemsData
+                  }
+                },
+                include: {
+                  order: {
+                    select: {
+                      id: true,
+                      orderNo: true,
+                      supplier: {
+                        select: {
+                          id: true,
+                          code: true,
+                          name: true,
+                        },
+                      },
+                    },
+                  },
+                  warehouse: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                    },
+                  },
+                  details: {
+                    include: {
+                      product: {
+                        select: {
+                          id: true,
+                          code: true,
+                          name: true,
+                          spec: true,
+                          unit: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              });
+
+              // 只对新合并的明细更新库存
+              for (const item of newItemsData) {
+                const existingInventory = await tx.inventoryItem.findFirst({
+                  where: {
+                    tenantId,
+                    productId: item.productId,
+                    warehouseId: existingInbound.warehouseId,
+                    batchNo: item.batchNo || null,
+                  },
+                });
+
+                if (existingInventory) {
+                  const totalCost = item.unitPrice * item.quantity;
+                  const newCostPrice = (existingInventory.costPrice * existingInventory.quantity + totalCost) / (existingInventory.quantity + item.quantity);
+                  await tx.inventoryItem.update({
+                    where: { id: existingInventory.id },
+                    data: {
+                      quantity: existingInventory.quantity + item.quantity,
+                      costPrice: newCostPrice,
+                    },
+                  });
+                } else {
+                  await tx.inventoryItem.create({
+                    data: {
+                      tenantId,
+                      productId: item.productId,
+                      warehouseId: existingInbound.warehouseId,
+                      batchNo: item.batchNo,
+                      quantity: item.quantity,
+                      costPrice: item.unitPrice,
+                    },
+                  });
                 }
-              },
-              include: {
-                order: {
-                  select: {
-                    id: true,
-                    orderNo: true,
-                    supplier: {
-                      select: {
-                        id: true,
-                        code: true,
-                        name: true,
-                      },
+
+                // 记录库存变动日志
+                await tx.inventoryLog.create({
+                  data: {
+                    tenantId,
+                    productId: item.productId,
+                    warehouseId: existingInbound.warehouseId,
+                    batchNo: item.batchNo,
+                    changeType: 'purchase_inbound',
+                    changeQty: item.quantity,
+                    beforeQty: existingInventory ? existingInventory.quantity : 0,
+                    afterQty: existingInventory ? existingInventory.quantity + item.quantity : item.quantity,
+                    relatedOrderNo: inboundNo,
+                    remark: `采购入库(导入合并): ${inboundNo}`,
+                  },
+                });
+
+                // 如果关联采购订单，更新订单明细的已入库数量
+                if (existingInbound.orderId) {
+                  const orderItem = await tx.purchaseOrderItem.findFirst({
+                    where: {
+                      orderId: existingInbound.orderId,
+                      productId: item.productId,
                     },
-                  },
-                },
-                warehouse: {
-                  select: {
-                    id: true,
-                    code: true,
-                    name: true,
-                  },
-                },
-                details: {
-                  include: {
-                    product: {
-                      select: {
-                        id: true,
-                        code: true,
-                        name: true,
-                        spec: true,
-                        unit: true,
+                  });
+
+                  if (orderItem) {
+                    const newReceivedQty = orderItem.receivedQty + item.quantity;
+                    const newStatus = newReceivedQty >= orderItem.quantity ? 'completed' : 'partial';
+
+                    await tx.purchaseOrderItem.update({
+                      where: { id: orderItem.id },
+                      data: {
+                        receivedQty: newReceivedQty,
+                        status: newStatus,
                       },
-                    },
-                  },
-                },
-              },
+                    });
+
+                    const pendingItems = await tx.purchaseOrderItem.findMany({
+                      where: {
+                        orderId: existingInbound.orderId,
+                        status: { not: 'completed' },
+                      },
+                    });
+
+                    if (pendingItems.length === 0) {
+                      await tx.purchaseOrder.update({
+                        where: { id: existingInbound.orderId },
+                        data: { status: 'completed' },
+                      });
+                    } else {
+                      await tx.purchaseOrder.update({
+                        where: { id: existingInbound.orderId },
+                        data: { status: 'partial' },
+                      });
+                    }
+                  }
+                }
+              }
+
+              return result;
             });
 
             successItems.push(updatedInbound);
@@ -1380,56 +1477,154 @@ export const importPurchaseInbounds = async (req: Request, res: Response) => {
           };
         });
 
-        const inbound = await prisma.purchaseInbound.create({
-          data: {
-            tenantId,
-            inboundNo,
-            orderId: firstItem.orderId,
-            warehouseId: firstItem.warehouseId,
-            inboundDate,
-            remark: firstItem.remark || '',
-            status: 'confirmed',
-            totalAmount: totalAmount,
-            creatorId: req.user.id,
-            details: {
-              create: itemsData
+        // 使用事务：创建入库单 + 更新库存 + 记录日志 + 更新订单
+        const inbound = await prisma.$transaction(async (tx) => {
+          const newInbound = await tx.purchaseInbound.create({
+            data: {
+              tenantId,
+              inboundNo,
+              orderId: firstItem.orderId,
+              warehouseId: firstItem.warehouseId,
+              inboundDate,
+              remark: firstItem.remark || '',
+              status: 'confirmed',
+              totalAmount: totalAmount,
+              creatorId: req.user.id,
+              details: {
+                create: itemsData
+              }
+            },
+            include: {
+              order: {
+                select: {
+                  id: true,
+                  orderNo: true,
+                  supplier: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+              warehouse: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true,
+                },
+              },
+              details: {
+                include: {
+                  product: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                      spec: true,
+                      unit: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          // 更新库存
+          for (const detail of itemsData) {
+            const existingInventory = await tx.inventoryItem.findFirst({
+              where: {
+                tenantId,
+                productId: detail.productId,
+                warehouseId: firstItem.warehouseId,
+                batchNo: detail.batchNo || null,
+              },
+            });
+
+            if (existingInventory) {
+              const totalCost = detail.unitPrice * detail.quantity;
+              const newCostPrice = (existingInventory.costPrice * existingInventory.quantity + totalCost) / (existingInventory.quantity + detail.quantity);
+              await tx.inventoryItem.update({
+                where: { id: existingInventory.id },
+                data: {
+                  quantity: existingInventory.quantity + detail.quantity,
+                  costPrice: newCostPrice,
+                },
+              });
+            } else {
+              await tx.inventoryItem.create({
+                data: {
+                  tenantId,
+                  productId: detail.productId,
+                  warehouseId: firstItem.warehouseId,
+                  batchNo: detail.batchNo,
+                  quantity: detail.quantity,
+                  costPrice: detail.unitPrice,
+                },
+              });
             }
-          },
-          include: {
-            order: {
-              select: {
-                id: true,
-                orderNo: true,
-                supplier: {
-                  select: {
-                    id: true,
-                    code: true,
-                    name: true,
-                  },
+
+            // 记录库存变动日志
+            await tx.inventoryLog.create({
+              data: {
+                tenantId,
+                productId: detail.productId,
+                warehouseId: firstItem.warehouseId,
+                batchNo: detail.batchNo,
+                changeType: 'purchase_inbound',
+                changeQty: detail.quantity,
+                beforeQty: existingInventory ? existingInventory.quantity : 0,
+                afterQty: existingInventory ? existingInventory.quantity + detail.quantity : detail.quantity,
+                relatedOrderNo: inboundNo,
+                remark: `采购入库: ${inboundNo}`,
+              },
+            });
+
+            // 如果关联采购订单，更新订单明细的已入库数量
+            if (firstItem.orderId) {
+              const orderItem = await tx.purchaseOrderItem.findFirst({
+                where: {
+                  orderId: firstItem.orderId,
+                  productId: detail.productId,
                 },
-              },
-            },
-            warehouse: {
-              select: {
-                id: true,
-                code: true,
-                name: true,
-              },
-            },
-            details: {
-              include: {
-                product: {
-                  select: {
-                    id: true,
-                    code: true,
-                    name: true,
-                    spec: true,
-                    unit: true,
+              });
+
+              if (orderItem) {
+                const newReceivedQty = orderItem.receivedQty + detail.quantity;
+                const newStatus = newReceivedQty >= orderItem.quantity ? 'completed' : 'partial';
+
+                await tx.purchaseOrderItem.update({
+                  where: { id: orderItem.id },
+                  data: {
+                    receivedQty: newReceivedQty,
+                    status: newStatus,
                   },
-                },
-              },
-            },
-          },
+                });
+
+                const pendingItems = await tx.purchaseOrderItem.findMany({
+                  where: {
+                    orderId: firstItem.orderId,
+                    status: { not: 'completed' },
+                  },
+                });
+
+                if (pendingItems.length === 0) {
+                  await tx.purchaseOrder.update({
+                    where: { id: firstItem.orderId },
+                    data: { status: 'completed' },
+                  });
+                } else {
+                  await tx.purchaseOrder.update({
+                    where: { id: firstItem.orderId },
+                    data: { status: 'partial' },
+                  });
+                }
+              }
+            }
+          }
+
+          return newInbound;
         });
 
         successItems.push(inbound);
