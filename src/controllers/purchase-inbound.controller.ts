@@ -1301,6 +1301,7 @@ export const importPurchaseInbounds = async (req: Request, res: Response) => {
               data: {
                 totalAmount: existingTotalAmount + newTotalAmount,
                 status: 'confirmed',
+                creatorId: req.user.id,
                 details: {
                   create: newItemsData
                 }
@@ -1389,6 +1390,7 @@ export const importPurchaseInbounds = async (req: Request, res: Response) => {
             remark: firstItem.remark || '',
             status: 'confirmed',
             totalAmount: totalAmount,
+            creatorId: req.user.id,
             details: {
               create: itemsData
             }
