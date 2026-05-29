@@ -1060,6 +1060,11 @@ export const importPurchaseOrders = async (req: Request, res: Response) => {
 
       console.log(`创建订单 ${orderNo}, 供应商ID: ${item.supplierId}, 物料ID: ${item.productId}`);
 
+      // 确保数量是整数
+      const quantity = parseInt(item.quantity) || 0;
+      const unitPrice = parseFloat(item.unitPrice) || 0;
+      const amount = quantity * unitPrice;
+
       const order = await prisma.purchaseOrder.create({
         data: {
           tenantId,
@@ -1068,13 +1073,13 @@ export const importPurchaseOrders = async (req: Request, res: Response) => {
           orderDate: new Date(),
           remark: item.remark || '',
           status: 'draft',
-          totalAmount: (item.quantity || 0) * (item.unitPrice || 0),
+          totalAmount: amount,
           items: {
             create: {
               productId: item.productId,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice || 0,
-              amount: (item.quantity || 0) * (item.unitPrice || 0),
+              quantity: quantity,
+              unitPrice: unitPrice,
+              amount: amount,
             }
           }
         }

@@ -1085,6 +1085,11 @@ export const importSalesOrders = async (req: Request, res: Response) => {
 
       console.log(`创建订单 ${orderNo}, 客户ID: ${item.customerId}, 物料ID: ${item.productId}`);
 
+      // 确保数量是整数
+      const quantity = parseInt(item.quantity) || 0;
+      const unitPrice = parseFloat(item.unitPrice) || 0;
+      const amount = quantity * unitPrice;
+
       const order = await prisma.salesOrder.create({
         data: {
           tenantId,
@@ -1093,14 +1098,14 @@ export const importSalesOrders = async (req: Request, res: Response) => {
           orderDate,
           remark: item.remark || '',
           status: 'draft',
-          totalAmount: (item.quantity || 0) * (item.unitPrice || 0),
+          totalAmount: amount,
           salesmanId: item.salesmanId,
           items: {
             create: {
               productId: item.productId,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice || 0,
-              amount: (item.quantity || 0) * (item.unitPrice || 0),
+              quantity: quantity,
+              unitPrice: unitPrice,
+              amount: amount,
             }
           }
         }
