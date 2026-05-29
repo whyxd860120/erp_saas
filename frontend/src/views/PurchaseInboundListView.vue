@@ -644,28 +644,35 @@ const handleView = async (row: any) => {
     
     const response: any = await getPurchaseInboundById(row.id)
     if (response.success) {
-      const inbound = response.data.data
+      const inbound = response.data
       Object.assign(formData, {
         id: inbound.id,
-        orderNo: inbound.orderNo,
-        purchaseOrderId: inbound.purchaseOrderId,
-        supplierId: inbound.supplierId,
+        inboundNo: inbound.inboundNo,
+        orderId: inbound.orderId,
+        supplierId: inbound.order?.supplier?.id || '',
         inboundDate: new Date(inbound.inboundDate),
         warehouseId: inbound.warehouseId,
-        remark: inbound.remark,
+        totalAmount: inbound.totalAmount,
+        logisticsCost: inbound.logisticsCost || 0,
+        remark: inbound.remark || '',
         details: inbound.details?.map((detail: any) => ({
           id: detail.id,
           productId: detail.productId,
-          plannedQty: detail.plannedQty,
-          inboundQty: detail.inboundQty,
+          productName: detail.product?.name || '',
+          productCode: detail.product?.code || '',
+          spec: detail.product?.spec || '',
+          unit: detail.product?.unit || '',
+          plannedQty: detail.plannedQty || 0,
+          inboundQty: detail.inboundQty || 0,
           quantity: 0,
-          unitPrice: detail.unitPrice
+          unitPrice: detail.unitPrice || 0
         })) || []
       })
       dialogVisible.value = true
     }
   } catch (error) {
     console.error('获取采购入库单详情失败:', error)
+    ElMessage.error('获取采购入库单详情失败')
   }
 }
 

@@ -759,28 +759,36 @@ const handleView = async (row: any) => {
     
     const response: any = await getSalesOutboundById(row.id)
     if (response.success) {
-      const outbound = response.data.data
+      const outbound = response.data
       Object.assign(formData, {
         id: outbound.id,
-        orderNo: outbound.orderNo,
-        salesOrderId: outbound.salesOrderId,
-        customerId: outbound.customerId,
+        outboundNo: outbound.outboundNo,
+        orderId: outbound.orderId,
+        customerId: outbound.order?.customer?.id || '',
         outboundDate: new Date(outbound.outboundDate),
         warehouseId: outbound.warehouseId,
-        remark: outbound.remark,
+        salesmanId: outbound.salesmanId || '',
+        totalAmount: outbound.totalAmount,
+        logisticsCost: outbound.logisticsCost || 0,
+        remark: outbound.remark || '',
         details: outbound.details?.map((detail: any) => ({
           id: detail.id,
           productId: detail.productId,
-          plannedQty: detail.plannedQty,
-          outboundQty: detail.outboundQty,
+          productName: detail.product?.name || '',
+          productCode: detail.product?.code || '',
+          spec: detail.product?.spec || '',
+          unit: detail.product?.unit || '',
+          plannedQty: detail.plannedQty || 0,
+          outboundQty: detail.outboundQty || 0,
           quantity: 0,
-          unitPrice: detail.unitPrice
+          unitPrice: detail.unitPrice || 0
         })) || []
       })
       dialogVisible.value = true
     }
   } catch (error) {
     console.error('获取销售出库单详情失败:', error)
+    ElMessage.error('获取销售出库单详情失败')
   }
 }
 
