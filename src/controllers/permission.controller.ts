@@ -98,6 +98,12 @@ export const defaultPermissions = [
   { name: '查看库存', code: 'inventory:read', type: 'button', parentCode: 'inventory_query', sortOrder: 1 },
   { name: '库存调整', code: 'inventory:adjust', type: 'button', parentCode: 'inventory_query', sortOrder: 2 },
 
+  // 微信商城
+  { name: '微信商城', code: 'shop', type: 'menu', icon: 'ShoppingBag', sortOrder: 55 },
+  { name: '商城商品', code: 'shop_product', type: 'menu', path: '/shop-products', icon: 'Goods', parentCode: 'shop', sortOrder: 1 },
+  { name: '商城订单', code: 'shop_order', type: 'menu', path: '/shop-orders', icon: 'Tickets', parentCode: 'shop', sortOrder: 2 },
+  { name: '商城用户', code: 'shop_user', type: 'menu', path: '/shop-users', icon: 'UserFilled', parentCode: 'shop', sortOrder: 3 },
+
   // 用户与权限
   { name: '用户与权限', code: 'user_permission', type: 'menu', icon: 'User', sortOrder: 60 },
   { name: '用户管理', code: 'user', type: 'menu', path: '/users', icon: 'Avatar', parentCode: 'user_permission', sortOrder: 1 },

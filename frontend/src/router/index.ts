@@ -231,6 +231,25 @@ const router = createRouter({
           name: 'Webhooks',
           component: () => import('@/views/WebhookListView.vue'),
           meta: { title: 'Webhook', requiresAuth: true, requiresAdmin: true }
+        },
+        // 微信商城管理
+        {
+          path: 'shop-products',
+          name: 'ShopProducts',
+          component: () => import('@/views/shop/ShopProductListView.vue'),
+          meta: { title: '商城商品', requiresAuth: true, requiresAdmin: true }
+        },
+        {
+          path: 'shop-orders',
+          name: 'ShopOrders',
+          component: () => import('@/views/shop/ShopOrderListView.vue'),
+          meta: { title: '商城订单', requiresAuth: true, requiresAdmin: true }
+        },
+        {
+          path: 'shop-users',
+          name: 'ShopUsers',
+          component: () => import('@/views/shop/ShopUserListView.vue'),
+          meta: { title: '商城用户', requiresAuth: true, requiresAdmin: true }
         }
       ]
     },

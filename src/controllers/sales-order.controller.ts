@@ -1305,6 +1305,7 @@ export default {
   createSalesOrder,
   updateSalesOrder,
   confirmSalesOrder,
+  unconfirmSalesOrder,
   deleteSalesOrder,
   batchDeleteSalesOrders,
   importSalesOrders,

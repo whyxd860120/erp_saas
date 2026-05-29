@@ -695,6 +695,168 @@ export const confirmSalesOutbound = async (req: Request, res: Response) => {
 };
 
 /**
+ * 反确认销售出库单（已确认 → 草稿，同时扣减库存）
+ * POST /api/v1/sales-outbounds/:id/unconfirm
+ */
+export const unconfirmSalesOutbound = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.user?.tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: '未关联租户',
+      });
+    }
+
+    // 检查出库单是否存在
+    const existingOutbound = await prisma.salesOutbound.findFirst({
+      where: {
+        id,
+        tenantId: req.user.tenantId,
+      },
+      include: {
+        details: true,
+        warehouse: true,
+      },
+    });
+
+    if (!existingOutbound) {
+      return res.status(404).json({
+        success: false,
+        message: '销售出库单不存在',
+      });
+    }
+
+    // 只有已确认状态可以反确认
+    if (existingOutbound.status !== 'confirmed') {
+      return res.status(400).json({
+        success: false,
+        message: '只有已确认状态可以反确认',
+      });
+    }
+
+    // 反确认出库单（事务：更新状态 + 扣减库存 + 更新订单已出库数量）
+    const unconfirmedOutbound = await prisma.$transaction(async (tx) => {
+      // 1. 更新出库单状态为草稿
+      const updatedOutbound = await tx.salesOutbound.update({
+        where: { id },
+        data: { status: 'draft' },
+      });
+
+      // 2. 扣减库存（实际上是增加库存，因为出库是减少库存）
+      for (const detail of existingOutbound.details) {
+        // 查找库存记录
+        const inventory = await tx.inventoryItem.findFirst({
+          where: {
+            tenantId: req.user!.tenantId!,
+            productId: detail.productId,
+            warehouseId: existingOutbound.warehouseId,
+            batchNo: detail.batchNo || null,
+          },
+        });
+
+        if (inventory) {
+          // 增加库存（出库时扣减，反确认时加回）
+          await tx.inventoryItem.update({
+            where: { id: inventory.id },
+            data: {
+              quantity: inventory.quantity + detail.quantity,
+            },
+          });
+
+          // 3. 记录库存变动日志（正数表示增加）
+          await tx.inventoryLog.create({
+            data: {
+              tenantId: req.user!.tenantId!,
+              productId: detail.productId,
+              warehouseId: existingOutbound.warehouseId,
+              batchNo: detail.batchNo,
+              changeType: 'sales_outbound_unconfirm',
+              changeQty: detail.quantity,
+              beforeQty: inventory.quantity,
+              afterQty: inventory.quantity + detail.quantity,
+              relatedOrderNo: existingOutbound.outboundNo,
+              remark: `反确认出库: ${existingOutbound.outboundNo}`,
+            },
+          });
+        }
+
+        // 4. 如果关联销售订单，更新订单明细的已出库数量
+        if (existingOutbound.orderId) {
+          const orderItem = await tx.salesOrderItem.findFirst({
+            where: {
+              orderId: existingOutbound.orderId,
+              productId: detail.productId,
+            },
+          });
+
+          if (orderItem) {
+            const newShippedQty = Math.max(0, orderItem.shippedQty - detail.quantity);
+            const newStatus = newShippedQty === 0 ? 'draft' : (newShippedQty >= orderItem.quantity ? 'completed' : 'partial');
+
+            await tx.salesOrderItem.update({
+              where: { id: orderItem.id },
+              data: {
+                shippedQty: newShippedQty,
+                status: newStatus,
+              },
+            });
+
+            // 检查并更新订单状态
+            const pendingItems = await tx.salesOrderItem.findMany({
+              where: {
+                orderId: existingOutbound.orderId,
+                status: { in: ['confirmed', 'partial'] },
+              },
+            });
+
+            // 如果有部分出库的明细，更新订单状态
+            if (pendingItems.length > 0 || newShippedQty > 0) {
+              await tx.salesOrder.update({
+                where: { id: existingOutbound.orderId },
+                data: { status: 'partial' },
+              });
+            } else {
+              await tx.salesOrder.update({
+                where: { id: existingOutbound.orderId },
+                data: { status: 'confirmed' },
+              });
+            }
+          }
+        }
+      }
+
+      return updatedOutbound;
+    });
+
+    // 记录审计日志
+    await auditLog({
+      tenantId: req.user.tenantId,
+      userId: req.user.id,
+      action: 'update',
+      module: 'sales_outbound',
+      resource: id,
+      detail: JSON.stringify({ action: 'unconfirm', status: 'draft' }),
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    return res.json({
+      success: true,
+      data: unconfirmedOutbound,
+      message: '销售出库单反确认成功，库存已恢复',
+    });
+  } catch (error) {
+    console.error('反确认销售出库单错误:', error);
+    return res.status(500).json({
+      success: false,
+      message: '反确认销售出库单失败',
+    });
+  }
+};
+
+/**
  * 删除销售出库单（仅草稿状态）
  * DELETE /api/v1/sales-outbounds/:id
  */
@@ -767,5 +929,6 @@ export default {
   getSalesOutboundById,
   createSalesOutbound,
   confirmSalesOutbound,
+  unconfirmSalesOutbound,
   deleteSalesOutbound,
 };

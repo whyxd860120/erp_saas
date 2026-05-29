@@ -157,6 +157,11 @@
             {{ row.warehouse?.name || '-' }}
           </template>
         </el-table-column>
+        <el-table-column label="制单人" width="120">
+          <template #default="{ row }">
+            {{ formatDate(row.createdAt) || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" link @click="handleView(row)">
@@ -1126,6 +1131,14 @@ onMounted(async () => {
 
 .search-card :deep(.el-card__body) {
   padding: 16px;
+}
+
+.search-card :deep(.el-select) {
+  width: 100%;
+}
+
+.search-card :deep(.el-select .el-input__wrapper) {
+  width: 100%;
 }
 
 .search-item {

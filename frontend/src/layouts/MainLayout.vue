@@ -44,6 +44,7 @@ const topMenuItems = [
   { key: 'dashboard', label: '仪表盘', icon: 'Odometer' },
   { key: 'supply', label: '供应链', icon: 'Connection' },
   { key: 'basic', label: '基础资料', icon: 'Files' },
+  { key: 'shop', label: '微信商城', icon: 'ShoppingBag' },
   { key: 'workflow', label: '工作流', icon: 'Guide' },
   { key: 'settings', label: '设置', icon: 'Setting' },
   { key: 'logs', label: '日志', icon: 'Document' },
@@ -100,10 +101,16 @@ const topMenuChildren = computed(() => {
   const helpChildren = [
     { title: '帮助与支持', index: '/help' }
   ]
+  const shopChildren = [
+    { title: '商品管理', index: '/shop-products' },
+    { title: '订单管理', index: '/shop-orders' },
+    { title: '用户管理', index: '/shop-users' }
+  ]
 
   return {
     supply: supplyChildren,
     basic: basicChildren,
+    shop: shopChildren,
     workflow: workflowChildren,
     settings: settingsChildren,
     logs: logsChildren,
@@ -163,6 +170,12 @@ const allMenuConfig: any[] = [
   { title: '物料管理', icon: 'Goods', index: '/products' },
   { title: '仓库管理', icon: 'House', index: '/warehouses' },
   { title: '账户管理', icon: 'Wallet', index: '/accounts' },
+  // 微信商城
+  { title: '微信商城', icon: 'ShoppingBag', children: [
+    { title: '商品管理', index: '/shop-products' },
+    { title: '订单管理', index: '/shop-orders' },
+    { title: '用户管理', index: '/shop-users' }
+  ]},
   // 工作流
   { title: '工作流管理', icon: 'Connection', index: '/workflows', requiresAdmin: true },
   { title: '审批中心', icon: 'CircleCheck', index: '/approvals' },
@@ -289,6 +302,11 @@ const leftMenuItems = computed(() => {
       { index: '/accounts', title: '账户管理', icon: 'Wallet' }
     ]}
   ]
+  const shopMenu = [
+    { index: '/shop-products', title: '商品管理', icon: 'Goods' },
+    { index: '/shop-orders', title: '订单管理', icon: 'Tickets' },
+    { index: '/shop-users', title: '用户管理', icon: 'UserFilled' }
+  ]
   const workflowMenu = [
     { index: '/workflows', title: '工作流管理', icon: 'Connection', requiresAdmin: true },
     { index: '/approvals', title: '审批中心', icon: 'CircleCheck' }
@@ -323,6 +341,7 @@ const leftMenuItems = computed(() => {
     dashboard: [{ index: '/', title: '仪表盘', icon: 'Odometer' }],
     supply: supplyMenu,
     basic: basicMenu,
+    shop: shopMenu,
     workflow: workflowMenu,
     settings: settingsMenu,
     logs: logsMenu,

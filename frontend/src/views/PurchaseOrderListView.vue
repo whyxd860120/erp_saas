@@ -141,12 +141,12 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm">
         <el-row :gutter="16">
-          <el-col :xs="24" :sm="12" :md="5">
+          <el-col :xs="24" :sm="12" :md="4">
             <el-form-item label="单据编号" class="search-item">
               <el-input v-model="searchForm.keyword" placeholder="单据编号" clearable style="width: 100%;" @keyup.enter="handleSearch" />
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="9">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="供应商" class="search-item">
               <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable style="width: 100%;" @change="handleSearch">
                 <el-option
@@ -158,7 +158,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="12" :md="7">
             <el-form-item label="单据状态" class="search-item">
               <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 100%;" @change="handleSearch">
                 <el-option label="草稿" value="draft" />
@@ -169,7 +169,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="5">
             <el-form-item label="日期范围" class="search-item">
               <el-date-picker
                 v-model="searchForm.dateRange"
@@ -186,9 +186,6 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
         <div class="search-actions">
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
-          <el-button link type="primary" @click="showAdvanced = !showAdvanced">
-            {{ showAdvanced ? '收起' : '更多' }}条件
-          </el-button>
         </div>
       </el-form>
     </el-card>
@@ -249,7 +246,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="制单人" width="100">
+        <el-table-column label="制单人" width="120">
           <template #default="{ row }">
             {{ row.creator?.name || '-' }}
           </template>
@@ -257,12 +254,16 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
         <el-table-column label="关联单据" width="150">
           <template #default="{ row }">
             <div class="relation-links">
-              <el-tag v-if="row.inbounds?.length" size="small" type="success">
-                入库单 {{ row.inbounds.length }}
-              </el-tag>
-              <el-tag v-if="row.payments?.length" size="small" type="warning">
-                付款单 {{ row.payments.length }}
-              </el-tag>
+              <div v-if="row.inbounds?.length">
+                <el-tag v-for="inbound in row.inbounds" :key="inbound.id" size="small" type="success" style="margin-right: 4px; margin-bottom: 4px;">
+                  入库单 {{ inbound.inboundNo }}
+                </el-tag>
+              </div>
+              <div v-if="row.payments?.length">
+                <el-tag v-for="payment in row.payments" :key="payment.id" size="small" type="warning" style="margin-right: 4px; margin-bottom: 4px;">
+                  付款单 {{ payment.paymentNo }}
+                </el-tag>
+              </div>
             </div>
           </template>
         </el-table-column>
@@ -531,12 +532,13 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
                   :min="0"
                   :precision="2"
                   style="width: 100%;"
+                  @change="calculateAmounts"
                 />
               </el-form-item>
             </el-col>
             <el-col :span="8">
-              <el-form-item label="订单总额">
-                <el-input :value="'¥' + formatAmount(formData.totalAmount)" disabled class="total-amount" />
+              <el-form-item label="实际金额">
+                <el-input :value="'¥' + formatAmount(formData.finalAmount)" disabled class="total-amount" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -573,7 +575,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
         <!-- 物料明细 -->
         <div class="detail-section">
           <h4>物料明细</h4>
-          <el-table :data="currentOrder.details" border size="small">
+          <el-table :data="currentOrder.items" border size="small">
             <el-table-column type="index" label="序号" width="60" />
             <el-table-column prop="product.code" label="物料编码" width="120" />
             <el-table-column prop="product.name" label="物料名称" min-width="150" />
@@ -588,10 +590,11 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
             </el-table-column>
           </el-table>
           <div class="detail-summary">
-            <span>物料总额：¥{{ formatAmount(currentOrder.goodsAmount) }}</span>
-            <span>税额：¥{{ formatAmount(currentOrder.taxAmount) }}</span>
+            <span>物料总额：¥{{ formatAmount(getGoodsAmount()) }}</span>
+            <span>税额：¥{{ formatAmount(getTotalTaxAmount()) }}</span>
+            <span>物流/快递费用：¥{{ formatAmount(currentOrder.logisticsCost || 0) }}</span>
             <span>优惠：¥{{ formatAmount(currentOrder.discountAmount || 0) }}</span>
-            <span class="total">单据总额：¥{{ formatAmount(currentOrder.totalAmount) }}</span>
+            <span class="total">订单总额：¥{{ formatAmount(currentOrder.finalAmount || currentOrder.totalAmount) }}</span>
           </div>
         </div>
 
@@ -603,11 +606,13 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
               <el-table :data="currentOrder.inbounds" border size="small">
                 <el-table-column prop="inboundNo" label="入库单号" width="150" />
                 <el-table-column prop="inboundDate" label="入库日期" width="120" />
-                <el-table-column prop="quantity" label="入库数量" width="100" align="right" />
+                <el-table-column label="入库金额" width="120" align="right">
+                  <template #default="{ row }">¥{{ formatAmount(row.totalAmount) }}</template>
+                </el-table-column>
                 <el-table-column label="状态" width="100">
                   <template #default="{ row }">
-                    <el-tag :type="row.status === 'completed' ? 'success' : 'warning'" size="small">
-                      {{ row.status === 'completed' ? '已完成' : '进行中' }}
+                    <el-tag :type="row.status === 'completed' ? 'success' : (row.status === 'confirmed' ? 'warning' : 'info')" size="small">
+                      {{ row.status === 'completed' ? '已完成' : (row.status === 'confirmed' ? '已入库' : '草稿') }}
                     </el-tag>
                   </template>
                 </el-table-column>
@@ -876,12 +881,14 @@ const formData = reactive({
   orderDate: new Date().toISOString().split('T')[0],
   supplierId: '',
   remark: '',
+  discountRate: 0,
   discountAmount: 0,
   logisticsCost: 0,
   details: [] as any[],
   goodsAmount: 0,
   taxAmount: 0,
-  totalAmount: 0
+  totalAmount: 0,
+  finalAmount: 0
 })
 
 // 计算金额
@@ -896,7 +903,9 @@ const calculateAmounts = () => {
   })
   formData.goodsAmount = Number(goodsAmount)
   formData.taxAmount = Number(taxAmount)
-  formData.totalAmount = Number(goodsAmount + taxAmount + (formData.logisticsCost || 0))
+  const total = goodsAmount + taxAmount + (formData.logisticsCost || 0)
+  formData.totalAmount = Number(total)
+  formData.finalAmount = Number(total - (formData.discountAmount || 0))
 }
 
 // 获取物料属性
@@ -923,6 +932,22 @@ const formatDate = (date: string | Date) => {
 const formatDateTime = (date: string | Date) => {
   if (!date) return '-'
   return new Date(date).toLocaleString('zh-CN')
+}
+
+// 计算物料总额
+const getGoodsAmount = () => {
+  if (!currentOrder.value?.items) return 0
+  return currentOrder.value.items.reduce((sum: number, item: any) => {
+    return sum + (Number(item.amount) || 0)
+  }, 0)
+}
+
+// 计算总税额
+const getTotalTaxAmount = () => {
+  if (!currentOrder.value?.items) return 0
+  return currentOrder.value.items.reduce((sum: number, item: any) => {
+    return sum + (Number(item.taxAmount) || 0)
+  }, 0)
 }
 
 const getStatusType = (status: string) => {
@@ -1104,7 +1129,7 @@ const handleEdit = async (row: any) => {
 
     const response: any = await getPurchaseOrderById(row.id)
     if (response.success) {
-      const order = response.data.data
+      const order = response.data
       Object.assign(formData, {
         id: order.id,
         orderNo: order.orderNo,
@@ -1112,13 +1137,13 @@ const handleEdit = async (row: any) => {
         supplierId: order.supplierId,
         remark: order.remark || '',
         discountAmount: order.discountAmount || 0,
-        details: order.details?.map((d: any) => ({
+        details: order.items?.map((d: any) => ({
           id: d.id,
           productId: d.productId,
-          quantity: d.quantity,
-          unitPrice: d.unitPrice,
-          taxRate: d.taxRate || 0,
-          amount: d.amount
+          quantity: Number(d.quantity),
+          unitPrice: Number(d.unitPrice),
+          taxRate: Number(d.taxRate || 0),
+          amount: Number(d.amount)
         })) || []
       })
       calculateAmounts()
@@ -1505,6 +1530,8 @@ const submitOrder = async (confirmed: boolean) => {
       supplierId: formData.supplierId,
       orderDate: formData.orderDate,
       remark: formData.remark,
+      logisticsCost: formData.logisticsCost,
+      discountRate: formData.discountRate,
       discountAmount: formData.discountAmount,
       items: formData.details.map(d => ({
         productId: d.productId,
@@ -1539,11 +1566,14 @@ const resetForm = () => {
   formData.orderDate = new Date().toISOString().split('T')[0]
   formData.supplierId = ''
   formData.remark = ''
+  formData.discountRate = 0
   formData.discountAmount = 0
+  formData.logisticsCost = 0
   formData.details = []
   formData.goodsAmount = 0
   formData.taxAmount = 0
   formData.totalAmount = 0
+  formData.finalAmount = 0
 }
 
 // 关闭对话框
@@ -1781,8 +1811,21 @@ const fetchWarehouses = async () => {
   color: #909399;
 }
 .search-card {
-  margin-bottom: 20px;
+  margin: 0 20px 16px;
 }
+
+.search-card :deep(.el-card__body) {
+  padding: 16px;
+}
+
+.search-card :deep(.el-select) {
+  width: 100%;
+}
+
+.search-card :deep(.el-select .el-input__wrapper) {
+  width: 100%;
+}
+
 .search-card .search-actions {
   display: flex;
   gap: 8px;
@@ -1872,5 +1915,14 @@ const fetchWarehouses = async () => {
 }
 :deep(.el-table .amount) {
   font-weight: 600;
+}
+
+/* 修复搜索表单中的选择框宽度问题 */
+.search-card :deep(.el-select) {
+  width: 100%;
+}
+
+.search-card :deep(.el-select .el-input__wrapper) {
+  width: 100%;
 }
 </style>

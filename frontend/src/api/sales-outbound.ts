@@ -65,6 +65,14 @@ export const confirmSalesOutbound = (id: string) => {
   })
 }
 
+// 反确认销售出库单
+export const unconfirmSalesOutbound = (id: string) => {
+  return request({
+    url: `/api/v1/sales-outbounds/${id}/unconfirm`,
+    method: 'post'
+  })
+}
+
 // 删除销售出库单
 export const deleteSalesOutbound = (id: string) => {
   return request({

@@ -4,6 +4,7 @@ import {
   getPurchaseInboundById,
   createPurchaseInbound,
   confirmPurchaseInbound,
+  unconfirmPurchaseInbound,
   deletePurchaseInbound,
 } from '../controllers/purchase-inbound.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
@@ -12,26 +13,33 @@ import { checkFiscalPeriod } from '../middlewares/fiscal-period.middleware';
 const router = Router();
 
 /**
- * 获取采购入库单列�? * GET /api/v1/purchase-inbounds
+ * 获取采购入库单列�? * GET /api/v1/purchase-inbounds
  * Query: page, limit, status, orderId, warehouseId, startDate, endDate, search
  */
 router.get('/', authenticate, tenantIsolation(), getPurchaseInbounds);
 
 /**
- * 获取采购入库单详�? * GET /api/v1/purchase-inbounds/:id
+ * 获取采购入库单详�? * GET /api/v1/purchase-inbounds/:id
  */
 router.get('/:id', authenticate, tenantIsolation(), getPurchaseInboundById);
 
 /**
- * 创建采购入库�? * POST /api/v1/purchase-inbounds
+ * 创建采购入库�? * POST /api/v1/purchase-inbounds
  * Body: { inboundNo, orderId?, warehouseId, inboundDate?, remark?, details: [{ productId, quantity, unitPrice, batchNo?, productionDate?, expiryDate? }] }
  */
 router.post('/', authenticate, authorize(['admin', 'manager', 'staff']), tenantIsolation(), checkFiscalPeriod('inboundDate'), createPurchaseInbound);
 
 /**
- * 确认采购入库单（草稿 �?已确认，同时更新库存�? * POST /api/v1/purchase-inbounds/:id/confirm
+ * 确认采购入库单（草稿 → 已确认，同时更新库存）
+ * POST /api/v1/purchase-inbounds/:id/confirm
  */
 router.post('/:id/confirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('inboundDate'), confirmPurchaseInbound);
+
+/**
+ * 反确认采购入库单（已确认 → 草稿，同时扣减库存）
+ * POST /api/v1/purchase-inbounds/:id/unconfirm
+ */
+router.post('/:id/unconfirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('inboundDate'), unconfirmPurchaseInbound);
 
 /**
  * 删除采购入库单（仅草稿状态）

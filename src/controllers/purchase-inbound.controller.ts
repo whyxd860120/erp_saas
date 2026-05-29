@@ -688,6 +688,176 @@ export const confirmPurchaseInbound = async (req: Request, res: Response) => {
 };
 
 /**
+ * 反确认采购入库单（已确认 → 草稿，同时扣减库存）
+ * POST /api/v1/purchase-inbounds/:id/unconfirm
+ */
+export const unconfirmPurchaseInbound = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.user?.tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: '未关联租户',
+      });
+    }
+
+    // 检查入库单是否存在
+    const existingInbound = await prisma.purchaseInbound.findFirst({
+      where: {
+        id,
+        tenantId: req.user.tenantId,
+      },
+      include: {
+        details: true,
+        warehouse: true,
+      },
+    });
+
+    if (!existingInbound) {
+      return res.status(404).json({
+        success: false,
+        message: '采购入库单不存在',
+      });
+    }
+
+    // 只有已确认状态可以反确认
+    if (existingInbound.status !== 'confirmed') {
+      return res.status(400).json({
+        success: false,
+        message: '只有已确认状态可以反确认',
+      });
+    }
+
+    // 反确认入库单（事务：更新状态 + 扣减库存 + 更新订单已入库数量）
+    const unconfirmedInbound = await prisma.$transaction(async (tx) => {
+      // 1. 更新入库单状态为草稿
+      const updatedInbound = await tx.purchaseInbound.update({
+        where: { id },
+        data: { status: 'draft' },
+      });
+
+      // 2. 扣减库存
+      for (const detail of existingInbound.details) {
+        // 查找库存记录
+        const existingInventory = await tx.inventoryItem.findFirst({
+          where: {
+            tenantId: req.user!.tenantId!,
+            productId: detail.productId,
+            warehouseId: existingInbound.warehouseId,
+            batchNo: detail.batchNo || null,
+          },
+        });
+
+        if (existingInventory) {
+          // 扣减库存
+          const newQty = existingInventory.quantity - detail.quantity;
+          await tx.inventoryItem.update({
+            where: { id: existingInventory.id },
+            data: {
+              quantity: newQty > 0 ? newQty : 0,
+            },
+          });
+
+          // 如果库存为0，删除库存记录
+          if (newQty <= 0) {
+            await tx.inventoryItem.delete({
+              where: { id: existingInventory.id },
+            });
+          }
+        }
+
+        // 3. 记录库存变动日志（负数表示减少）
+        await tx.inventoryLog.create({
+          data: {
+            tenantId: req.user!.tenantId!,
+            productId: detail.productId,
+            warehouseId: existingInbound.warehouseId,
+            batchNo: detail.batchNo,
+            changeType: 'purchase_inbound_unconfirm',
+            changeQty: -detail.quantity,
+            beforeQty: existingInventory ? existingInventory.quantity : 0,
+            afterQty: existingInventory ? Math.max(0, existingInventory.quantity - detail.quantity) : 0,
+            relatedOrderNo: existingInbound.inboundNo,
+            remark: `反确认入库: ${existingInbound.inboundNo}`,
+          },
+        });
+
+        // 4. 如果关联采购订单，更新订单明细的已入库数量
+        if (existingInbound.orderId) {
+          const orderItem = await tx.purchaseOrderItem.findFirst({
+            where: {
+              orderId: existingInbound.orderId,
+              productId: detail.productId,
+            },
+          });
+
+          if (orderItem) {
+            const newReceivedQty = Math.max(0, orderItem.receivedQty - detail.quantity);
+            const newStatus = newReceivedQty === 0 ? 'draft' : (newReceivedQty >= orderItem.quantity ? 'completed' : 'partial');
+
+            await tx.purchaseOrderItem.update({
+              where: { id: orderItem.id },
+              data: {
+                receivedQty: newReceivedQty,
+                status: newStatus,
+              },
+            });
+
+            // 检查并更新订单状态
+            const pendingItems = await tx.purchaseOrderItem.findMany({
+              where: {
+                orderId: existingInbound.orderId,
+                status: { in: ['confirmed', 'partial'] },
+              },
+            });
+
+            // 如果有部分入库的明细，更新订单状态
+            if (pendingItems.length > 0 || newReceivedQty > 0) {
+              await tx.purchaseOrder.update({
+                where: { id: existingInbound.orderId },
+                data: { status: 'partial' },
+              });
+            } else {
+              await tx.purchaseOrder.update({
+                where: { id: existingInbound.orderId },
+                data: { status: 'confirmed' },
+              });
+            }
+          }
+        }
+      }
+
+      return updatedInbound;
+    });
+
+    // 记录审计日志
+    await auditLog({
+      tenantId: req.user.tenantId,
+      userId: req.user.id,
+      action: 'update',
+      module: 'purchase_inbound',
+      resource: id,
+      detail: JSON.stringify({ action: 'unconfirm', status: 'draft' }),
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    return res.json({
+      success: true,
+      data: unconfirmedInbound,
+      message: '采购入库单反确认成功，库存已扣减',
+    });
+  } catch (error) {
+    console.error('反确认采购入库单错误:', error);
+    return res.status(500).json({
+      success: false,
+      message: '反确认采购入库单失败',
+    });
+  }
+};
+
+/**
  * 删除采购入库单（仅草稿状态）
  * DELETE /api/v1/purchase-inbounds/:id
  */
@@ -760,5 +930,6 @@ export default {
   getPurchaseInboundById,
   createPurchaseInbound,
   confirmPurchaseInbound,
+  unconfirmPurchaseInbound,
   deletePurchaseInbound,
 };

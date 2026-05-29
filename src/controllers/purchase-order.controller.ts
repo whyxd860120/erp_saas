@@ -100,6 +100,28 @@ export const getPurchaseOrders = async (req: Request, res: Response) => {
               name: true,
             },
           },
+          items: {
+            select: {
+              quantity: true,
+              receivedQty: true,
+              amount: true,
+            },
+          },
+          inbounds: {
+            select: {
+              id: true,
+              inboundNo: true,
+              status: true,
+              totalAmount: true,
+            },
+          },
+          payments: {
+            select: {
+              id: true,
+              paymentNo: true,
+              status: true,
+            },
+          },
           _count: {
             select: {
               items: true,
@@ -113,10 +135,26 @@ export const getPurchaseOrders = async (req: Request, res: Response) => {
       prisma.purchaseOrder.count({ where }),
     ]);
 
+    // 处理订单数据，计算入库数量和金额
+    const processedOrders = orders.map(order => {
+      const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      const inboundQuantity = order.items.reduce((sum, item) => sum + (item.receivedQty || 0), 0);
+      const inboundAmount = order.inbounds
+        .filter((inbound: any) => inbound.status === 'confirmed')
+        .reduce((sum, inbound) => sum + (inbound.totalAmount || 0), 0);
+
+      return {
+        ...order,
+        totalQuantity,
+        inboundQuantity,
+        inboundAmount,
+      };
+    });
+
     return res.json({
       success: true,
       data: {
-        items: orders,
+        items: processedOrders,
         total,
         page: pageNum,
         limit: limitNum,
@@ -275,6 +313,8 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
       orderDate = new Date(),
       remark,
       logisticsCost = 0,
+      discountRate = 0,
+      discountAmount = 0,
       items,
     } = req.body;
 
@@ -342,6 +382,7 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
     }
 
     // 验证商品明细
+    let totalTaxAmount = 0;
     for (const item of items) {
       if (!item.productId || !item.quantity || !item.unitPrice) {
         return res.status(400).json({
@@ -365,12 +406,17 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
         });
       }
 
-      // 计算金额
+      // 计算金额和税额
       item.amount = item.quantity * item.unitPrice;
+      item.taxRate = item.taxRate || 0;
+      item.taxAmount = (item.amount * item.taxRate) / 100;
+      totalTaxAmount += item.taxAmount;
     }
 
-    // 计算总金额（包含物流费用）
-    const totalAmount = items.reduce((sum: number, item: any) => sum + item.amount, 0) + (logisticsCost || 0);
+    // 计算总金额
+    const goodsAmount = items.reduce((sum: number, item: any) => sum + item.amount, 0);
+    const totalAmount = goodsAmount + totalTaxAmount + (logisticsCost || 0);
+    const finalAmount = totalAmount - (discountAmount || 0);
 
     // 创建采购订单（事务）
     const order = await prisma.$transaction(async (tx) => {
@@ -383,6 +429,9 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
           orderDate: new Date(orderDate),
           totalAmount,
           logisticsCost,
+          discountRate,
+          discountAmount,
+          finalAmount,
           status: 'draft',
           remark,
         },
@@ -396,6 +445,8 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
             productId: item.productId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
+            taxRate: item.taxRate || 0,
+            taxAmount: item.taxAmount || 0,
             amount: item.amount,
             receivedQty: 0,
             status: 'pending',
@@ -472,6 +523,8 @@ export const updatePurchaseOrder = async (req: Request, res: Response) => {
       orderDate,
       remark,
       logisticsCost,
+      discountRate,
+      discountAmount,
       items,
     } = req.body;
 
@@ -547,10 +600,13 @@ export const updatePurchaseOrder = async (req: Request, res: Response) => {
     if (orderDate !== undefined) updateData.orderDate = new Date(orderDate);
     if (remark !== undefined) updateData.remark = remark;
     if (logisticsCost !== undefined) updateData.logisticsCost = logisticsCost;
+    if (discountRate !== undefined) updateData.discountRate = discountRate;
+    if (discountAmount !== undefined) updateData.discountAmount = discountAmount;
 
     // 如果有明细，更新明细
     if (items && Array.isArray(items)) {
-      // 验证商品明细
+      // 验证商品明细并计算金额
+      let totalTaxAmount = 0;
       for (const item of items) {
         if (!item.productId || !item.quantity || !item.unitPrice) {
           return res.status(400).json({
@@ -574,13 +630,22 @@ export const updatePurchaseOrder = async (req: Request, res: Response) => {
           });
         }
 
-        // 计算金额
+        // 计算金额和税额
         item.amount = item.quantity * item.unitPrice;
+        item.taxRate = item.taxRate || 0;
+        item.taxAmount = (item.amount * item.taxRate) / 100;
+        totalTaxAmount += item.taxAmount;
       }
 
       // 计算总金额
-      const totalAmount = items.reduce((sum: number, item: any) => sum + item.amount, 0);
+      const goodsAmount = items.reduce((sum: number, item: any) => sum + item.amount, 0);
+      const finalLogisticsCost = logisticsCost !== undefined ? logisticsCost : existingOrder.logisticsCost || 0;
+      const totalAmount = goodsAmount + totalTaxAmount + finalLogisticsCost;
+      const finalDiscountAmount = discountAmount !== undefined ? discountAmount : existingOrder.discountAmount || 0;
+      const finalAmount = totalAmount - finalDiscountAmount;
+      
       updateData.totalAmount = totalAmount;
+      updateData.finalAmount = finalAmount;
 
       // 更新订单和明细（事务）
       await prisma.$transaction(async (tx) => {
@@ -603,6 +668,8 @@ export const updatePurchaseOrder = async (req: Request, res: Response) => {
               productId: item.productId,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
+              taxRate: item.taxRate || 0,
+              taxAmount: item.taxAmount || 0,
               amount: item.amount,
               receivedQty: 0,
               status: 'pending',
@@ -994,6 +1061,7 @@ export default {
   createPurchaseOrder,
   updatePurchaseOrder,
   confirmPurchaseOrder,
+  unconfirmPurchaseOrder,
   deletePurchaseOrder,
   batchDeletePurchaseOrders,
   importPurchaseOrders,

@@ -67,6 +67,14 @@ export const confirmPurchaseInbound = (id: string) => {
   })
 }
 
+// 反确认采购入库单
+export const unconfirmPurchaseInbound = (id: string) => {
+  return request({
+    url: `/api/v1/purchase-inbounds/${id}/unconfirm`,
+    method: 'post'
+  })
+}
+
 // 删除采购入库单
 export const deletePurchaseInbound = (id: string) => {
   return request({

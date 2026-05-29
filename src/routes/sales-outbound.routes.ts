@@ -4,6 +4,7 @@ import {
   getSalesOutboundById,
   createSalesOutbound,
   confirmSalesOutbound,
+  unconfirmSalesOutbound,
   deleteSalesOutbound,
 } from '../controllers/sales-outbound.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
@@ -32,9 +33,16 @@ router.get('/:id', authenticate, tenantIsolation(), getSalesOutboundById);
 router.post('/', authenticate, authorize(['admin', 'manager', 'staff']), tenantIsolation(), checkFiscalPeriod('outboundDate'), createSalesOutbound);
 
 /**
- * 确认销售出库单（草�?�?已确认，同时更新库存�? * POST /api/v1/sales-outbounds/:id/confirm
+ * 确认销售出库单（草稿 → 已确认，同时更新库存）
+ * POST /api/v1/sales-outbounds/:id/confirm
  */
 router.post('/:id/confirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('outboundDate'), confirmSalesOutbound);
+
+/**
+ * 反确认销售出库单（已确认 → 草稿，同时恢复库存）
+ * POST /api/v1/sales-outbounds/:id/unconfirm
+ */
+router.post('/:id/unconfirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('outboundDate'), unconfirmSalesOutbound);
 
 /**
  * 删除销售出库单（仅草稿状态）

@@ -161,19 +161,28 @@
             <el-button type="primary" size="small" link @click="handleView(row)">
               查看
             </el-button>
-            <el-button 
+            <el-button
               v-if="row.status === 'draft'"
-              type="warning" 
-              size="small" 
+              type="warning"
+              size="small"
               link
               @click="handleConfirm(row)"
             >
               确认
             </el-button>
-            <el-button 
+            <el-button
+              v-if="row.status === 'confirmed'"
+              type="info"
+              size="small"
+              link
+              @click="handleUnconfirm(row)"
+            >
+              反确认
+            </el-button>
+            <el-button
               v-if="row.status === 'draft'"
-              type="danger" 
-              size="small" 
+              type="danger"
+              size="small"
               link
               @click="handleDelete(row)"
             >
@@ -427,7 +436,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, QuestionFilled, Download, Document, Clock, Money, Wallet } from '@element-plus/icons-vue'
-import { getSalesOutbounds, getSalesOutboundById, createSalesOutbound, updateSalesOutbound, confirmSalesOutbound, deleteSalesOutbound } from '@/api/sales-outbound'
+import { getSalesOutbounds, getSalesOutboundById, createSalesOutbound, updateSalesOutbound, confirmSalesOutbound, unconfirmSalesOutbound, deleteSalesOutbound } from '@/api/sales-outbound'
 import { getSalesOrders } from '@/api/sales-order'
 import { getCustomers } from '@/api/customer'
 import { getUsers } from '@/api/user'
@@ -796,7 +805,7 @@ const handleView = async (row: any) => {
 const handleConfirm = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `确定要确认销售出库单 "${row.orderNo}" 吗？`,
+      `确定要确认销售出库单 "${row.outboundNo}" 吗？`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -815,11 +824,35 @@ const handleConfirm = async (row: any) => {
   }
 }
 
+// 反确认出库单
+const handleUnconfirm = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要反确认销售出库单 "${row.outboundNo}" 吗？反确认后库存将恢复。`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await unconfirmSalesOutbound(row.id)
+    ElMessage.success('反确认成功')
+    fetchSalesOutbounds()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('反确认销售出库单失败:', error)
+      ElMessage.error('反确认失败')
+    }
+  }
+}
+
 // 删除
 const handleDelete = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除销售出库单 "${row.orderNo}" 吗？`,
+      `确定要删除销售出库单 "${row.outboundNo}" 吗？`,
       '提示',
       {
         confirmButtonText: '确定',

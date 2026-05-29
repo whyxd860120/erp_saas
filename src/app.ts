@@ -36,6 +36,8 @@ import otherInboundRoutes from './routes/other-inbound.routes';
 import otherOutboundRoutes from './routes/other-outbound.routes';
 import stockTransferRoutes from './routes/stock-transfer.routes';
 import workflowRoutes from './routes/workflow.routes';
+import shopRoutes from './routes/shop/shop.routes';
+import shopManageRoutes from './routes/shop/manage.routes';
 import { initPermissions } from './controllers/permission.controller';
 import { errorHandler } from './middlewares/error.middleware';
 import { auditLogger } from './middlewares/audit.middleware';
@@ -210,6 +212,8 @@ app.use('/api/v1/other-inbound', otherInboundRoutes);
 app.use('/api/v1/other-outbound', otherOutboundRoutes);
 app.use('/api/v1/stock-transfers', stockTransferRoutes);
 app.use('/api/v1/workflows', workflowRoutes);
+app.use('/api/v1/shop', shopRoutes);
+app.use('/api/v1/shop/manage', shopManageRoutes);
 
 // 404处理
 app.use((req: Request, res: Response) => {

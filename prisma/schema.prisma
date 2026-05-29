@@ -926,6 +926,9 @@ model PurchaseOrder {
   expectDate     DateTime? // 预计到货日期
   totalAmount    Decimal   @default(0) // 总金额
   logisticsCost  Decimal   @default(0) // 物流/快递费用
+  discountRate   Decimal   @default(0) // 整单折扣率
+  discountAmount Decimal   @default(0) // 折扣金额
+  finalAmount    Decimal   @default(0) // 实际金额
   status         String    @default("draft") // draft, pending, approved, partial, completed, cancelled, rejected
   approvalStatus String    @default("pending") // 审批状态: pending, approved, rejected
   approvedAt     DateTime? // 审批时间
@@ -957,6 +960,8 @@ model PurchaseOrderItem {
   productId   String // 商品ID
   quantity    Int      @default(0) // 数量
   unitPrice   Decimal  @default(0) // 单价
+  taxRate     Decimal  @default(0) // 税率(%)
+  taxAmount   Decimal  @default(0) // 税额
   amount      Decimal  @default(0) // 金额（数量×单价）
   receivedQty Int      @default(0) // 已入库数量
   returnedQty Int      @default(0) // 已退回数量
