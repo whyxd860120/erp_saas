@@ -61,7 +61,12 @@
             </el-tag>
           </template>
         </el-table-column>
-销售订单的管理界面销售管理里面，销售订单界面，嗯，下边搜索条件有客户还有状态。这两个搜索条件，它的后边的太窄了，放不开放不下那些字儿        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="默认" width="80">
+          <template #default="{ row }">
+            <el-tag v-if="row.isDefault" type="success">默认</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" @click="handleEdit(row)">
               编辑
@@ -119,14 +124,17 @@
         <el-form-item label="账号" prop="accountNo">
           <el-input v-model="formData.accountNo" placeholder="请输入账号" />
         </el-form-item>
-        <el-form-item label="初始余额" prop="balance">
-          <el-input-number v-model="formData.balance" :precision="2" :step="100" />
+        <el-form-item label="当前余额" prop="balance">
+          <el-input-number v-model="formData.balance" :precision="2" :step="100" :disabled="isEdit" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="formData.status">
             <el-radio label="active">启用</el-radio>
             <el-radio label="inactive">停用</el-radio>
           </el-radio-group>
+        </el-form-item>
+        <el-form-item label="设为默认" prop="isDefault">
+          <el-switch v-model="formData.isDefault" />
         </el-form-item>
       </el-form>
       
@@ -192,7 +200,8 @@ const formData = reactive({
   bankName: '',
   accountNo: '',
   balance: 0,
-  status: 'active'
+  status: 'active',
+  isDefault: false
 })
 
 // 表单验证规则
@@ -340,6 +349,7 @@ const resetForm = () => {
   formData.accountNo = ''
   formData.balance = 0
   formData.status = 'active'
+  formData.isDefault = false
 }
 
 // 关闭对话框

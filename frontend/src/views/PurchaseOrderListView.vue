@@ -142,13 +142,13 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
       <el-form :inline="true" :model="searchForm">
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12" :md="5">
-            <el-form-item label="单据编号" class="search-item">
-              <el-input v-model="searchForm.keyword" placeholder="订单号/供应商" clearable style="width: 100%;" />
+            <el-form-item label="单据编号/供应商" class="search-item">
+              <el-input v-model="searchForm.keyword" placeholder="订单号/供应商" clearable style="width: 100%;" @keyup.enter="handleSearch" />
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="7">
             <el-form-item label="供应商" class="search-item">
-              <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable style="width: 220px;">
+              <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable style="width: 100%;" @change="handleSearch">
                 <el-option
                   v-for="supplier in suppliers"
                   :key="supplier.id"
@@ -160,7 +160,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
           </el-col>
           <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="单据状态" class="search-item">
-              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 180px;">
+              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 100%;" @change="handleSearch">
                 <el-option label="草稿" value="draft" />
                 <el-option label="已确认" value="confirmed" />
                 <el-option label="部分入库" value="partial" />
@@ -649,6 +649,87 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
       </div>
     </el-drawer>
 
+    <!-- 快速入库对话框 -->
+    <el-dialog v-model="quickInboundDialogVisible" title="快速入库" width="900px">
+      <el-form :model="quickInboundForm" label-width="80px">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="订单编号">
+              <el-input v-model="quickInboundForm.orderNo" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="入库仓库" required>
+              <el-select v-model="quickInboundForm.warehouseId" placeholder="请选择仓库" style="width: 100%;">
+                <el-option
+                  v-for="warehouse in warehouses"
+                  :key="warehouse.id"
+                  :label="warehouse.name"
+                  :value="warehouse.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="入库日期">
+              <el-date-picker
+                v-model="quickInboundForm.inboundDate"
+                type="date"
+                placeholder="选择日期"
+                value-format="YYYY-MM-DD"
+                style="width: 100%;"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="入库方式">
+              <el-radio-group v-model="quickInboundForm.inboundType">
+                <el-radio value="all">整单入库</el-radio>
+                <el-radio value="partial">部分入库</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+
+      <!-- 物料明细 -->
+      <div class="quick-inbound-details">
+        <div class="detail-header">
+          <span>物料明细</span>
+          <el-button size="small" @click="handleSelectAllInbound">全选</el-button>
+        </div>
+        <el-table :data="quickInboundForm.details" border size="small" max-height="300">
+          <el-table-column type="selection" width="50" :selectable="(row: any) => row.canInbound > 0" />
+          <el-table-column prop="product.code" label="物料编码" width="120" />
+          <el-table-column prop="product.name" label="物料名称" min-width="150" />
+          <el-table-column prop="product.spec" label="规格" width="100" />
+          <el-table-column prop="product.unit" label="单位" width="60" />
+          <el-table-column prop="orderQuantity" label="订单数量" width="80" align="right" />
+          <el-table-column prop="inboundQuantity" label="已入库数量" width="90" align="right" />
+          <el-table-column prop="canInbound" label="可入库数量" width="90" align="right" />
+          <el-table-column label="本次入库数量" width="120" align="right">
+            <template #default="{ row }">
+              <el-input-number
+                v-model="row.quantity"
+                :min="0"
+                :max="row.canInbound"
+                :disabled="quickInboundForm.inboundType === 'all'"
+                size="small"
+                style="width: 100%;"
+              />
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <template #footer>
+        <el-button @click="quickInboundDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleConfirmQuickInbound" :loading="quickInboundLoading">确认入库</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 导入对话框 -->
     <CommonImportDialog
       v-model="importDialogVisible"
@@ -682,6 +763,8 @@ import {
 import { getSuppliers } from '@/api/supplier'
 import { getProducts } from '@/api/product'
 import { getUsers } from '@/api/user'
+import { getWarehouses, getDefaultWarehouse } from '@/api/warehouse'
+import { createPurchaseInbound } from '@/api/purchase-inbound'
 import { getStatusColor, getPurchaseOrderStatusText } from '@/utils/status.util'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
@@ -701,11 +784,25 @@ const currentOrder = ref<any>(null)
 const importDialogVisible = ref(false)
 const helpDialogVisible = ref(false)
 
+// 快速入库
+const quickInboundDialogVisible = ref(false)
+const quickInboundLoading = ref(false)
+const quickInboundForm = reactive({
+  orderId: '',
+  orderNo: '',
+  warehouseId: '',
+  inboundDate: new Date().toISOString().split('T')[0],
+  inboundType: 'all',
+  details: [] as any[]
+})
+
 // 数据
 const tableData = ref<any[]>([])
 const suppliers = ref<any[]>([])
 const products = ref<any[]>([])
 const salesmen = ref<any[]>([])
+const warehouses = ref<any[]>([])
+const defaultWarehouseId = ref<string>('')
 
 // 导入配置
 const importColumns = [
@@ -1112,7 +1209,94 @@ const handleDelete = async (row: any) => {
 
 // 快速入库
 const handleQuickInbound = (row: any) => {
-  ElMessage.info('快速入库功能开发中')
+  // 获取订单详情
+  getPurchaseOrderById(row.id).then((response: any) => {
+    if (response.success) {
+      const order = response.data
+      quickInboundForm.orderId = order.id
+      quickInboundForm.orderNo = order.orderNo
+      quickInboundForm.warehouseId = defaultWarehouseId.value || ''
+      quickInboundForm.inboundDate = new Date().toISOString().split('T')[0]
+      quickInboundForm.inboundType = 'all'
+      
+      // 构建入库明细
+      quickInboundForm.details = order.items.map((item: any) => {
+        const orderQuantity = Number(item.quantity) || 0
+        const inboundQuantity = Number(item.inboundQuantity) || 0
+        const canInbound = orderQuantity - inboundQuantity
+        
+        return {
+          id: item.id,
+          productId: item.productId,
+          product: item.product,
+          orderQuantity,
+          inboundQuantity,
+          canInbound,
+          quantity: canInbound > 0 ? canInbound : 0,
+          unitPrice: Number(item.unitPrice) || 0
+        }
+      })
+      
+      quickInboundDialogVisible.value = true
+    }
+  })
+}
+
+// 全选入库明细
+const handleSelectAllInbound = () => {
+  quickInboundForm.details.forEach(detail => {
+    if (detail.canInbound > 0) {
+      detail.quantity = detail.canInbound
+    }
+  })
+}
+
+// 确认快速入库
+const handleConfirmQuickInbound = async () => {
+  if (!quickInboundForm.warehouseId) {
+    ElMessage.warning('请选择入库仓库')
+    return
+  }
+
+  // 检查是否有入库数量
+  const hasInboundQuantity = quickInboundForm.details.some(d => d.quantity > 0)
+  if (!hasInboundQuantity) {
+    ElMessage.warning('请设置入库数量')
+    return
+  }
+
+  try {
+    quickInboundLoading.value = true
+
+    // 构建入库单明细（只包含有入库数量的物料）
+    const details = quickInboundForm.details
+      .filter(d => d.quantity > 0)
+      .map(item => ({
+        productId: item.productId,
+        quantity: Number(item.quantity) || 0,
+        unitPrice: Number(item.unitPrice) || 0
+      }))
+
+    // 创建入库单
+    await createPurchaseInbound({
+      orderId: quickInboundForm.orderId,
+      warehouseId: quickInboundForm.warehouseId,
+      inboundDate: quickInboundForm.inboundDate,
+      remark: quickInboundForm.inboundType === 'all' 
+        ? `由订单 ${quickInboundForm.orderNo} 整单入库`
+        : `由订单 ${quickInboundForm.orderNo} 部分入库`,
+      details
+    })
+
+    ElMessage.success('快速入库成功')
+    quickInboundDialogVisible.value = false
+    fetchData()
+  } catch (error) {
+    console.error('快速入库失败:', error)
+    ElMessage.error('快速入库失败')
+  } finally {
+    quickInboundLoading.value = false
+  }
 }
 
 // 批量确认
@@ -1499,9 +1683,35 @@ const handleHelp = () => {
 
 // 初始化
 onMounted(async () => {
-  // 只加载列表数据，其他数据按需加载
-  await fetchData()
+  // 加载列表数据和基础数据
+  await Promise.all([
+    fetchData(),
+    fetchWarehouses(),
+    fetchSuppliers()
+  ])
 })
+
+// 获取仓库列表
+const fetchWarehouses = async () => {
+  try {
+    const response: any = await getWarehouses({ page: 1, limit: 100, status: 'active' })
+    if (response.success) {
+      warehouses.value = response.data.items || []
+      
+      // 尝试获取默认仓库
+      try {
+        const defaultResponse: any = await getDefaultWarehouse()
+        if (defaultResponse.success && defaultResponse.data) {
+          defaultWarehouseId.value = defaultResponse.data.id
+        }
+      } catch (e) {
+        console.error('获取默认仓库失败:', e)
+      }
+    }
+  } catch (error) {
+    console.error('获取仓库列表失败:', error)
+  }
+}
 </script>
 
 <style scoped>

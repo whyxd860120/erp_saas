@@ -59,6 +59,11 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="默认" width="80">
+          <template #default="{ row }">
+            <el-tag v-if="row.isDefault" type="success">默认</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" @click="handleEdit(row)">
@@ -122,6 +127,9 @@
             <el-radio label="inactive">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="设为默认" prop="isDefault">
+          <el-switch v-model="formData.isDefault" />
+        </el-form-item>
       </el-form>
       
       <template #footer>
@@ -169,6 +177,7 @@ interface Warehouse {
   manager?: string
   phone?: string
   status: string
+  isDefault?: boolean
 }
 
 declare const XLSX: any
@@ -231,7 +240,8 @@ const formData = reactive({
   address: '',
   manager: '',
   phone: '',
-  status: 'active'
+  status: 'active',
+  isDefault: false
 })
 
 // 表单验证规则
@@ -371,6 +381,7 @@ const resetForm = () => {
   formData.manager = ''
   formData.phone = ''
   formData.status = 'active'
+  formData.isDefault = false
 }
 
 // 关闭对话框

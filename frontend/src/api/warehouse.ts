@@ -13,6 +13,7 @@ export interface CreateWarehouseParams {
   address?: string
   manager?: string
   status?: string
+  isDefault?: boolean
 }
 
 export const getWarehouses = (params?: WarehouseParams) =>
@@ -20,6 +21,9 @@ export const getWarehouses = (params?: WarehouseParams) =>
 
 export const getWarehouseById = (id: string) =>
   request({ url: `/api/v1/warehouses/${id}`, method: 'get' })
+
+export const getDefaultWarehouse = () =>
+  request({ url: '/api/v1/warehouses/default', method: 'get' })
 
 export const createWarehouse = (data: CreateWarehouseParams) =>
   request({ url: '/api/v1/warehouses', method: 'post', data })

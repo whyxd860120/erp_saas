@@ -6,6 +6,7 @@ import {
   updateAccount,
   deleteAccount,
   adjustBalance,
+  getDefaultAccount,
 } from '../controllers/account.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
 
@@ -45,9 +46,16 @@ router.put('/:id', authenticate, authorize(['admin', 'manager']), tenantIsolatio
 router.delete('/:id', authenticate, authorize(['admin']), tenantIsolation(true), deleteAccount);
 
 /**
- * 调整账户余额（管理员�? * POST /api/v1/accounts/:id/adjust-balance
+ * 调整账户余额（管理员）
+ * POST /api/v1/accounts/:id/adjust-balance
  * Body: { amount, remark? }
  */
 router.post('/:id/adjust-balance', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), adjustBalance);
+
+/**
+ * 获取默认账户
+ * GET /api/v1/accounts/default
+ */
+router.get('/default', authenticate, tenantIsolation(true), getDefaultAccount);
 
 export default router;

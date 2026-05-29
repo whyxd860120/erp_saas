@@ -73,12 +73,12 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm">
         <el-row :gutter="16">
-          <el-col :xs="24" :sm="12" :md="5">
+          <el-col :xs="24" :sm="12" :md="4">
             <el-form-item label="单据编号" class="search-item">
               <el-input v-model="searchForm.keyword" placeholder="订单号/客户" clearable style="width: 100%;" @keyup.enter="handleSearch" />
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="7">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="客户" class="search-item">
               <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable style="width: 100%;" @change="handleSearch">
                 <el-option
@@ -864,7 +864,7 @@ import { getSalesOrders, getSalesOrderById, createSalesOrder,
 import { createSalesOutbound } from '@/api/sales-outbound'
 import { createPurchaseOrder, getPurchaseOrders } from '@/api/purchase-order'
 import { getInventory } from '@/api/inventory'
-import { getWarehouses } from '@/api/warehouse'
+import { getWarehouses, getDefaultWarehouse } from '@/api/warehouse'
 import { getCustomers } from '@/api/customer'
 import { getProducts } from '@/api/product'
 import { getUsers } from '@/api/user'
@@ -895,6 +895,7 @@ const products = ref<any[]>([])
 const salesmen = ref<any[]>([])
 const warehouses = ref<any[]>([])
 const suppliers = ref<any[]>([])
+const defaultWarehouseId = ref<string>('')
 
 // 快速出库
 const quickOutboundDialogVisible = ref(false)
@@ -1169,9 +1170,19 @@ const searchCustomers = async (keyword: string) => {
 // 获取仓库
 const fetchWarehouses = async () => {
   try {
-    const response: any = await getWarehouses({ page: 1, limit: 100 })
+    const response: any = await getWarehouses({ page: 1, limit: 100, status: 'active' })
     if (response.success) {
       warehouses.value = response.data.items || []
+      
+      // 尝试获取默认仓库
+      try {
+        const defaultResponse: any = await getDefaultWarehouse()
+        if (defaultResponse.success && defaultResponse.data) {
+          defaultWarehouseId.value = defaultResponse.data.id
+        }
+      } catch (e) {
+        console.error('获取默认仓库失败:', e)
+      }
     }
   } catch (error) {
     console.error('获取仓库失败:', error)
@@ -1405,7 +1416,7 @@ const handleQuickOutbound = (row: any) => {
       const order = response.data
       quickOutboundForm.orderId = order.id
       quickOutboundForm.orderNo = order.orderNo
-      quickOutboundForm.warehouseId = ''
+      quickOutboundForm.warehouseId = defaultWarehouseId.value || ''
       quickOutboundForm.outboundDate = new Date().toISOString().split('T')[0]
       quickOutboundForm.outboundType = 'all'
       
@@ -1892,8 +1903,13 @@ const handleCurrentChange = (val: number) => {
 
 // 初始化
 onMounted(async () => {
-  // 只加载列表数据，其他数据按需加载
-  await fetchData()
+  // 加载列表数据和基础数据
+  await Promise.all([
+    fetchData(),
+    fetchCustomers(),
+    fetchWarehouses(),
+    fetchSuppliers()
+  ])
 })
 
 // 帮助数据

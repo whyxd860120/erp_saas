@@ -139,6 +139,7 @@ export const createWarehouse = async (req: Request, res: Response) => {
       address,
       manager,
       remark,
+      isDefault,
     } = req.body;
 
     // 验证参数
@@ -164,6 +165,18 @@ export const createWarehouse = async (req: Request, res: Response) => {
       });
     }
 
+    // 如果设置为默认仓库，先把其他仓库的isDefault设为false
+    if (isDefault) {
+      await prisma.warehouse.updateMany({
+        where: {
+          tenantId: req.user.tenantId,
+        },
+        data: {
+          isDefault: false,
+        },
+      });
+    }
+
     // 创建仓库
     const warehouse = await prisma.warehouse.create({
       data: {
@@ -173,6 +186,7 @@ export const createWarehouse = async (req: Request, res: Response) => {
         address,
         manager,
         remark,
+        isDefault: isDefault || false,
         status: 'active',
       },
     });
@@ -217,6 +231,7 @@ export const updateWarehouse = async (req: Request, res: Response) => {
       manager,
       status,
       remark,
+      isDefault,
     } = req.body;
 
     if (!req.user?.tenantId) {
@@ -267,6 +282,20 @@ export const updateWarehouse = async (req: Request, res: Response) => {
     if (manager !== undefined) updateData.manager = manager;
     if (status !== undefined) updateData.status = status;
     if (remark !== undefined) updateData.remark = remark;
+    if (isDefault !== undefined) updateData.isDefault = isDefault;
+
+    // 如果设置为默认仓库，先把其他仓库的isDefault设为false
+    if (isDefault) {
+      await prisma.warehouse.updateMany({
+        where: {
+          tenantId: req.user.tenantId,
+          id: { not: id },
+        },
+        data: {
+          isDefault: false,
+        },
+      });
+    }
 
     // 更新仓库
     const updatedWarehouse = await prisma.warehouse.update({
@@ -531,6 +560,40 @@ export const importWarehouses = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * 获取默认仓库
+ * GET /api/v1/warehouses/default
+ */
+export const getDefaultWarehouse = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: '未关联租户',
+      });
+    }
+
+    const warehouse = await prisma.warehouse.findFirst({
+      where: {
+        tenantId: req.user.tenantId,
+        isDefault: true,
+        status: 'active',
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: warehouse,
+    });
+  } catch (error) {
+    console.error('获取默认仓库错误:', error);
+    return res.status(500).json({
+      success: false,
+      message: '获取默认仓库失败',
+    });
+  }
+};
+
 export default {
   getWarehouses,
   getWarehouseById,
@@ -538,4 +601,5 @@ export default {
   updateWarehouse,
   deleteWarehouse,
   importWarehouses,
+  getDefaultWarehouse,
 };

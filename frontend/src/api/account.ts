@@ -12,6 +12,7 @@ export interface CreateAccountParams {
   name: string
   type: string
   status?: string
+  isDefault?: boolean
 }
 
 export const getAccounts = (params?: AccountParams) =>
@@ -19,6 +20,9 @@ export const getAccounts = (params?: AccountParams) =>
 
 export const getAccountById = (id: string) =>
   request({ url: `/api/v1/accounts/${id}`, method: 'get' })
+
+export const getDefaultAccount = () =>
+  request({ url: '/api/v1/accounts/default', method: 'get' })
 
 export const createAccount = (data: CreateAccountParams) =>
   request({ url: '/api/v1/accounts', method: 'post', data })

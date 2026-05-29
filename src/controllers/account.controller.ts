@@ -140,6 +140,7 @@ export const createAccount = async (req: Request, res: Response) => {
       name,
       type,
       remark,
+      isDefault,
     } = req.body;
 
     // 验证参数
@@ -174,6 +175,18 @@ export const createAccount = async (req: Request, res: Response) => {
       });
     }
 
+    // 如果设置为默认账户，先把其他账户的isDefault设为false
+    if (isDefault) {
+      await prisma.account.updateMany({
+        where: {
+          tenantId: req.user.tenantId,
+        },
+        data: {
+          isDefault: false,
+        },
+      });
+    }
+
     // 创建账户
     const account = await prisma.account.create({
       data: {
@@ -183,6 +196,7 @@ export const createAccount = async (req: Request, res: Response) => {
         type,
         balance: 0,
         remark,
+        isDefault: isDefault || false,
         status: 'active',
       },
     });
@@ -226,6 +240,7 @@ export const updateAccount = async (req: Request, res: Response) => {
       type,
       status,
       remark,
+      isDefault,
     } = req.body;
 
     if (!req.user?.tenantId) {
@@ -286,6 +301,20 @@ export const updateAccount = async (req: Request, res: Response) => {
     if (type !== undefined) updateData.type = type;
     if (status !== undefined) updateData.status = status;
     if (remark !== undefined) updateData.remark = remark;
+    if (isDefault !== undefined) updateData.isDefault = isDefault;
+
+    // 如果设置为默认账户，先把其他账户的isDefault设为false
+    if (isDefault) {
+      await prisma.account.updateMany({
+        where: {
+          tenantId: req.user.tenantId,
+          id: { not: id },
+        },
+        data: {
+          isDefault: false,
+        },
+      });
+    }
 
     // 更新账户
     const updatedAccount = await prisma.account.update({
@@ -499,6 +528,40 @@ export const adjustBalance = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * 获取默认账户
+ * GET /api/v1/accounts/default
+ */
+export const getDefaultAccount = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: '未关联租户',
+      });
+    }
+
+    const account = await prisma.account.findFirst({
+      where: {
+        tenantId: req.user.tenantId,
+        isDefault: true,
+        status: 'active',
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: account,
+    });
+  } catch (error) {
+    console.error('获取默认账户错误:', error);
+    return res.status(500).json({
+      success: false,
+      message: '获取默认账户失败',
+    });
+  }
+};
+
 export default {
   getAccounts,
   getAccountById,
@@ -506,4 +569,5 @@ export default {
   updateAccount,
   deleteAccount,
   adjustBalance,
+  getDefaultAccount,
 };

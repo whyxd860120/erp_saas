@@ -6,6 +6,7 @@ import {
   updateWarehouse,
   deleteWarehouse,
   importWarehouses,
+  getDefaultWarehouse,
 } from '../controllers/warehouse.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
 import { checkFeature } from '../middlewares/feature.middleware';
@@ -51,5 +52,11 @@ router.delete('/:id', authenticate, authorize(['admin']), tenantIsolation(true),
  * Body: [{ code, name, address?, manager?, remark? }, ...]
  */
 router.post('/import', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), checkFeature('multiWarehouse'), importWarehouses);
+
+/**
+ * 获取默认仓库
+ * GET /api/v1/warehouses/default
+ */
+router.get('/default', authenticate, tenantIsolation(true), checkFeature('multiWarehouse'), getDefaultWarehouse);
 
 export default router;
