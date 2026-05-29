@@ -67,7 +67,7 @@
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12" :md="5">
             <el-form-item label="入库单号" class="search-item">
-              <el-input v-model="searchForm.orderNo" placeholder="入库单号" clearable style="width: 100%;" />
+              <el-input v-model="searchForm.orderNo" placeholder="入库单号" clearable style="width: 100%;" @keyup.enter="handleSearch" />
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="7">
@@ -101,6 +101,7 @@
                 end-placeholder="结束日期"
                 value-format="YYYY-MM-DD"
                 style="width: 100%;"
+                @change="handleSearch"
               />
             </el-form-item>
           </el-col>
@@ -579,7 +580,7 @@ const fetchPurchaseInbounds = async () => {
 // 获取供应商列表
 const fetchSuppliers = async () => {
   try {
-    const response: any = await getSuppliers({ page: 1, limit: 10000, status: '' })
+    const response: any = await getSuppliers({ page: 1, limit: 10000 })
     if (response.success) {
       suppliers.value = response.data.items || []
     }
@@ -1028,6 +1029,8 @@ const handleHelp = () => {
 
 // 初始化
 onMounted(async () => {
+  // 加载供应商列表用于搜索
+  await fetchSuppliers()
   // 只加载列表数据，其他数据按需加载
   await fetchPurchaseInbounds()
 })
