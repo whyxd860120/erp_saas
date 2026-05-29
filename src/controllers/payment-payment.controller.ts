@@ -93,6 +93,12 @@ export const getPaymentPayments = async (req: Request, res: Response) => {
               name: true,
             },
           },
+          creator: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
         skip,
         take: limitNum,
@@ -163,6 +169,12 @@ export const getPaymentPaymentById = async (req: Request, res: Response) => {
             code: true,
             name: true,
             type: true,
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },
@@ -290,6 +302,7 @@ export const createPaymentPayment = async (req: Request, res: Response) => {
           amount: amountNum,
           status: 'draft',
           remark,
+          creatorId: req.user.id,
         },
       });
 

@@ -120,6 +120,12 @@ export const getSalesOrders = async (req: Request, res: Response) => {
               name: true,
             },
           },
+          creator: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           items: {
             select: {
               quantity: true,
@@ -469,6 +475,7 @@ export const createSalesOrder = async (req: Request, res: Response) => {
           orderNo: generatedOrderNo,
           customerId,
           salesmanId,
+          creatorId: req.user.id,
           orderDate: new Date(orderDate),
           totalAmount,
           status: 'draft',
@@ -514,6 +521,12 @@ export const createSalesOrder = async (req: Request, res: Response) => {
           select: {
             id: true,
             code: true,
+            name: true,
+          },
+        },
+        creator: {
+          select: {
+            id: true,
             name: true,
           },
         },

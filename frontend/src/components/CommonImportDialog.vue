@@ -544,7 +544,147 @@ function downloadTemplate(type: 'excel' | 'csv') {
       return ''
     })
   ]
-}   else {
+} else if (props.title.includes('采购入库')) {
+  // 采购入库：生成多明细示例
+  examples = [
+    props.columns.map(c => {
+      if (c.prop === 'inboundNo') return 'PI001'
+      if (c.prop === 'inboundDate') return '2026-04-20'
+      if (c.prop === 'warehouseName') return '主仓库'
+      if (c.prop === 'orderNo') return 'PO001'
+      if (c.prop === 'productCode') return 'P001'
+      if (c.prop === 'productName') return '产品A'
+      if (c.prop === 'productSpec') return '规格A'
+      if (c.prop === 'quantity') return '10'
+      if (c.prop === 'unitPrice') return '100'
+      if (c.prop === 'amount') return '1000'
+      if (c.prop === 'batchNo') return 'B20260420'
+      if (c.prop === 'productionDate') return '2026-04-01'
+      if (c.prop === 'expiryDate') return '2027-04-01'
+      if (c.prop === 'remark') return '备注1'
+      return ''
+    }),
+    props.columns.map(c => {
+      if (c.prop === 'inboundNo') return 'PI001'
+      if (c.prop === 'inboundDate') return '2026-04-20'
+      if (c.prop === 'warehouseName') return '主仓库'
+      if (c.prop === 'orderNo') return 'PO001'
+      if (c.prop === 'productCode') return 'P002'
+      if (c.prop === 'productName') return '产品B'
+      if (c.prop === 'productSpec') return '规格B'
+      if (c.prop === 'quantity') return '5'
+      if (c.prop === 'unitPrice') return '200'
+      if (c.prop === 'amount') return '1000'
+      if (c.prop === 'batchNo') return 'B20260420'
+      if (c.prop === 'productionDate') return '2026-04-02'
+      if (c.prop === 'expiryDate') return '2027-04-02'
+      if (c.prop === 'remark') return '备注2'
+      return ''
+    }),
+    props.columns.map(c => {
+      if (c.prop === 'inboundNo') return 'PI001'
+      if (c.prop === 'inboundDate') return '2026-04-20'
+      if (c.prop === 'warehouseName') return '主仓库'
+      if (c.prop === 'orderNo') return 'PO001'
+      if (c.prop === 'productCode') return 'P003'
+      if (c.prop === 'productName') return '产品C'
+      if (c.prop === 'productSpec') return '规格C'
+      if (c.prop === 'quantity') return '8'
+      if (c.prop === 'unitPrice') return '150'
+      if (c.prop === 'amount') return '1200'
+      if (c.prop === 'batchNo') return 'B20260420'
+      if (c.prop === 'productionDate') return '2026-04-03'
+      if (c.prop === 'expiryDate') return '2027-04-03'
+      if (c.prop === 'remark') return '备注3'
+      return ''
+    }),
+    props.columns.map(c => {
+      if (c.prop === 'inboundNo') return 'PI002'
+      if (c.prop === 'inboundDate') return '2026-04-21'
+      if (c.prop === 'warehouseName') return '副仓库'
+      if (c.prop === 'orderNo') return 'PO002'
+      if (c.prop === 'productCode') return 'P004'
+      if (c.prop === 'productName') return '产品D'
+      if (c.prop === 'productSpec') return '规格D'
+      if (c.prop === 'quantity') return '20'
+      if (c.prop === 'unitPrice') return '50'
+      if (c.prop === 'amount') return '1000'
+      if (c.prop === 'batchNo') return 'B20260421'
+      if (c.prop === 'productionDate') return '2026-04-04'
+      if (c.prop === 'expiryDate') return '2027-04-04'
+      if (c.prop === 'remark') return ''
+      return ''
+    })
+  ]
+} else if (props.title.includes('销售出库')) {
+  // 销售出库：生成多明细示例
+  examples = [
+    props.columns.map(c => {
+      if (c.prop === 'outboundNo') return 'SO001'
+      if (c.prop === 'outboundDate') return '2026-04-20'
+      if (c.prop === 'warehouseName') return '主仓库'
+      if (c.prop === 'customerName') return '客户A'
+      if (c.prop === 'orderNo') return 'SO001'
+      if (c.prop === 'productCode') return 'P001'
+      if (c.prop === 'productName') return '产品A'
+      if (c.prop === 'productSpec') return '规格A'
+      if (c.prop === 'quantity') return '10'
+      if (c.prop === 'unitPrice') return '100'
+      if (c.prop === 'amount') return '1000'
+      if (c.prop === 'batchNo') return 'B20260420'
+      if (c.prop === 'remark') return '备注1'
+      return ''
+    }),
+    props.columns.map(c => {
+      if (c.prop === 'outboundNo') return 'SO001'
+      if (c.prop === 'outboundDate') return '2026-04-20'
+      if (c.prop === 'warehouseName') return '主仓库'
+      if (c.prop === 'customerName') return '客户A'
+      if (c.prop === 'orderNo') return 'SO001'
+      if (c.prop === 'productCode') return 'P002'
+      if (c.prop === 'productName') return '产品B'
+      if (c.prop === 'productSpec') return '规格B'
+      if (c.prop === 'quantity') return '5'
+      if (c.prop === 'unitPrice') return '200'
+      if (c.prop === 'amount') return '1000'
+      if (c.prop === 'batchNo') return 'B20260420'
+      if (c.prop === 'remark') return '备注2'
+      return ''
+    }),
+    props.columns.map(c => {
+      if (c.prop === 'outboundNo') return 'SO001'
+      if (c.prop === 'outboundDate') return '2026-04-20'
+      if (c.prop === 'warehouseName') return '主仓库'
+      if (c.prop === 'customerName') return '客户A'
+      if (c.prop === 'orderNo') return 'SO001'
+      if (c.prop === 'productCode') return 'P003'
+      if (c.prop === 'productName') return '产品C'
+      if (c.prop === 'productSpec') return '规格C'
+      if (c.prop === 'quantity') return '8'
+      if (c.prop === 'unitPrice') return '150'
+      if (c.prop === 'amount') return '1200'
+      if (c.prop === 'batchNo') return 'B20260420'
+      if (c.prop === 'remark') return '备注3'
+      return ''
+    }),
+    props.columns.map(c => {
+      if (c.prop === 'outboundNo') return 'SO002'
+      if (c.prop === 'outboundDate') return '2026-04-21'
+      if (c.prop === 'warehouseName') return '副仓库'
+      if (c.prop === 'customerName') return '客户B'
+      if (c.prop === 'orderNo') return 'SO002'
+      if (c.prop === 'productCode') return 'P004'
+      if (c.prop === 'productName') return '产品D'
+      if (c.prop === 'productSpec') return '规格D'
+      if (c.prop === 'quantity') return '20'
+      if (c.prop === 'unitPrice') return '50'
+      if (c.prop === 'amount') return '1000'
+      if (c.prop === 'batchNo') return 'B20260421'
+      if (c.prop === 'remark') return ''
+      return ''
+    })
+  ]
+} else {
     // 其他类型：生成单行示例
     const example = props.columns.map(c => {
       if (c.prop === 'code') return 'EX001'

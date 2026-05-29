@@ -108,6 +108,12 @@ export const getPurchaseInbounds = async (req: Request, res: Response) => {
               name: true,
             },
           },
+          creator: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           _count: {
             select: {
               details: true,
@@ -180,6 +186,12 @@ export const getPurchaseInboundById = async (req: Request, res: Response) => {
           select: {
             id: true,
             code: true,
+            name: true,
+          },
+        },
+        creator: {
+          select: {
+            id: true,
             name: true,
           },
         },
@@ -428,6 +440,7 @@ export const createPurchaseInbound = async (req: Request, res: Response) => {
           logisticsCost,
           status: 'draft',
           remark,
+          creatorId: req.user.id,
         },
       });
 

@@ -100,6 +100,12 @@ export const getPurchaseOrders = async (req: Request, res: Response) => {
               name: true,
             },
           },
+          creator: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           items: {
             select: {
               quantity: true,
@@ -444,6 +450,7 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
           tenantId: req.user!.tenantId!,
           orderNo: finalOrderNo,
           supplierId,
+          creatorId: req.user.id,
           orderDate: new Date(orderDate),
           totalAmount,
           logisticsCost,

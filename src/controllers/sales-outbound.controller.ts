@@ -100,10 +100,29 @@ export const getSalesOutbounds = async (req: Request, res: Response) => {
               },
             },
           },
+          customer: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+            },
+          },
+          salesman: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           warehouse: {
             select: {
               id: true,
               code: true,
+              name: true,
+            },
+          },
+          creator: {
+            select: {
+              id: true,
               name: true,
             },
           },
@@ -175,10 +194,29 @@ export const getSalesOutboundById = async (req: Request, res: Response) => {
             },
           },
         },
+        customer: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+        salesman: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         warehouse: {
           select: {
             id: true,
             code: true,
+            name: true,
+          },
+        },
+        creator: {
+          select: {
+            id: true,
             name: true,
           },
         },
@@ -341,6 +379,9 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
       });
     }
 
+    let finalCustomerId = customerId;
+    let finalSalesmanId = salesmanId;
+    
     // 如果关联销售订单，检查是否存在
     if (orderId) {
       const order = await prisma.salesOrder.findFirst({
@@ -363,6 +404,14 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
           success: false,
           message: '只有已确认或部分出库的订单可以出库',
         });
+      }
+      
+      // 从销售订单中获取客户和业务员，如果前端没有提供
+      if (!finalCustomerId) {
+        finalCustomerId = order.customerId;
+      }
+      if (!finalSalesmanId) {
+        finalSalesmanId = order.salesmanId;
       }
     }
 
@@ -436,14 +485,15 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
           tenantId: req.user!.tenantId!,
           outboundNo: generatedOutboundNo,
           orderId,
-          customerId,
-          salesmanId,
+          customerId: finalCustomerId,
+          salesmanId: finalSalesmanId,
           warehouseId,
           outboundDate: new Date(outboundDate),
           totalAmount,
           logisticsCost,
           status: 'confirmed',
           remark,
+          creatorId: req.user.id,
         },
       });
 
@@ -453,12 +503,61 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
           data: {
             outboundId: newOutbound.id,
             productId: detail.productId,
+            plannedQty: detail.quantity,
+            outboundQty: detail.quantity,
             quantity: detail.quantity,
             unitPrice: detail.unitPrice,
             amount: detail.amount,
             batchNo: detail.batchNo,
           },
         });
+      }
+
+      // 如果关联了销售订单，更新订单状态
+      if (orderId) {
+        // 获取销售订单及其所有明细
+        const salesOrder = await tx.salesOrder.findFirst({
+          where: { id: orderId, tenantId: req.user!.tenantId! },
+          include: {
+            items: true,
+            outbounds: {
+              where: { status: 'confirmed' },
+              include: { details: true }
+            }
+          }
+        });
+
+        if (salesOrder) {
+          // 计算总数量
+          const totalQuantity = salesOrder.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+          
+          // 计算已出库数量（包括本次创建的）
+          let outboundQuantity = details.reduce((sum, detail) => sum + (detail.quantity || 0), 0);
+          
+          for (const outbound of salesOrder.outbounds) {
+            if (outbound.details) {
+              for (const detail of outbound.details) {
+                outboundQuantity += detail.quantity || 0;
+              }
+            }
+          }
+
+          // 判断订单状态
+          let newStatus: string;
+          if (outboundQuantity >= totalQuantity) {
+            newStatus = 'completed'; // 全部出库
+          } else if (outboundQuantity > 0) {
+            newStatus = 'partial'; // 部分出库
+          } else {
+            newStatus = salesOrder.status; // 保持原状态
+          }
+
+          // 更新销售订单状态
+          await tx.salesOrder.update({
+            where: { id: orderId },
+            data: { status: newStatus }
+          });
+        }
       }
 
       return newOutbound;

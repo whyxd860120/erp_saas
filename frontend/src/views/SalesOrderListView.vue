@@ -208,81 +208,88 @@
         <el-table-column label="操作" width="320" fixed="right" align="right">
           <template #default="{ row }">
             <div class="action-buttons">
-            <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer;">
-              查看
-            </el-tag>
             <el-tag
-              v-if="row.status === 'draft'"
-              type="warning"
-              size="small"
-              @click="handleEdit(row)"
-              style="cursor: pointer;"
-            >
-              编辑
-            </el-tag>
-            <el-tag
-              v-if="row.status === 'draft'"
-              type="success"
-              size="small"
-              @click="handleCopy(row)"
-              style="cursor: pointer;"
-            >
-              复制
-            </el-tag>
-            <el-tag
-              v-if="row.status === 'draft'"
-              type="info"
-              size="small"
-              @click="handleConfirm(row)"
-              style="cursor: pointer;"
-            >
-              审核
-            </el-tag>
-            <el-tag
-              v-if="row.status === 'draft'"
-              type="danger"
-              size="small"
-              @click="handleDelete(row)"
-              style="cursor: pointer;"
-            >
-              删除
-            </el-tag>
-            <el-tag
-              v-if="row.status === 'confirmed'"
-              type="success"
-              size="small"
-              @click="handleCopy(row)"
-              style="cursor: pointer;"
-            >
-              复制
-            </el-tag>
-            <el-tag
-              v-if="row.status === 'confirmed'"
-              type="warning"
-              size="small"
-              @click="handleUnconfirm(row)"
-              style="cursor: pointer;"
-            >
-              反审核
-            </el-tag>
-            <el-tag
-              v-if="row.status === 'confirmed' || row.status === 'partial'"
-              type="warning"
-              size="small"
-              @click="handleQuickOutbound(row)"
-              style="cursor: pointer;"
-            >
-              快速出库
-            </el-tag>
-            <el-tag
-              v-if="row.status === 'confirmed'"
               type="primary"
               size="small"
-              @click="handlePushToPurchase(row)"
+              @click="handleView(row)"
               style="cursor: pointer;"
             >
-              下推采购
+              查看
             </el-tag>
+            <template v-if="row.status !== 'completed'">
+              <el-tag
+                v-if="row.status === 'draft'"
+                type="warning"
+                size="small"
+                @click="handleEdit(row)"
+                style="cursor: pointer;"
+              >
+                编辑
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'draft'"
+                type="success"
+                size="small"
+                @click="handleCopy(row)"
+                style="cursor: pointer;"
+              >
+                复制
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'draft'"
+                type="info"
+                size="small"
+                @click="handleConfirm(row)"
+                style="cursor: pointer;"
+              >
+                审核
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'draft'"
+                type="danger"
+                size="small"
+                @click="handleDelete(row)"
+                style="cursor: pointer;"
+              >
+                删除
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'confirmed'"
+                type="success"
+                size="small"
+                @click="handleCopy(row)"
+                style="cursor: pointer;"
+              >
+                复制
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'confirmed'"
+                type="warning"
+                size="small"
+                @click="handleUnconfirm(row)"
+                style="cursor: pointer;"
+              >
+                反审核
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'confirmed' || row.status === 'partial'"
+                type="warning"
+                size="small"
+                @click="handleQuickOutbound(row)"
+                style="cursor: pointer;"
+              >
+                快速出库
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'confirmed'"
+                type="primary"
+                size="small"
+                @click="handlePushToPurchase(row)"
+                style="cursor: pointer;"
+              >
+                下推采购
+              </el-tag>
+            </template>
             </div>
           </template>
         </el-table-column>
@@ -919,6 +926,8 @@ const quickOutboundLoading = ref(false)
 const quickOutboundForm = reactive({
   orderId: '',
   orderNo: '',
+  customerId: '',
+  salesmanId: '',
   warehouseId: '',
   outboundDate: new Date().toISOString().split('T')[0],
   outboundType: 'all',
@@ -1461,6 +1470,8 @@ const handleQuickOutbound = (row: any) => {
       quickOutboundForm.warehouseId = defaultWarehouseId.value || ''
       quickOutboundForm.outboundDate = new Date().toISOString().split('T')[0]
       quickOutboundForm.outboundType = 'all'
+      quickOutboundForm.customerId = order.customer?.id || ''
+      quickOutboundForm.salesmanId = order.salesman?.id || ''
       
       // 构建出库明细
       quickOutboundForm.details = order.items.map((item: any) => {
@@ -1669,6 +1680,8 @@ const handleConfirmQuickOutbound = async () => {
     // 创建出库单
     await createSalesOutbound({
       orderId: quickOutboundForm.orderId,
+      customerId: quickOutboundForm.customerId,
+      salesmanId: quickOutboundForm.salesmanId,
       warehouseId: quickOutboundForm.warehouseId,
       outboundDate: quickOutboundForm.outboundDate,
       remark: quickOutboundForm.outboundType === 'all' 
