@@ -322,7 +322,7 @@
       :close-on-click-modal="false"
       @close="handleDialogClose"
     >
-      <div class="order-form">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px" class="order-form">
         <!-- 单据信息 -->
         <div class="form-section">
           <div class="section-title">
@@ -563,7 +563,7 @@
             </el-col>
           </el-row>
         </div>
-      </div>
+      </el-form>
 
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -877,6 +877,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import {
   Plus, Download, Document, Clock, Money, Wallet, Goods, Delete,
   ArrowDown, Upload, Setting
@@ -908,6 +909,7 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('新增销售订单')
 const isEdit = ref(false)
 const currentOrder = ref<any>(null)
+const formRef = ref<FormInstance>()
 const importDialogVisible = ref(false)
 const helpDialogVisible = ref(false)
 
@@ -1034,6 +1036,16 @@ const formData = reactive({
   discountAmount: 0,
   totalAmount: 0
 })
+
+// 表单验证规则
+const formRules: FormRules = {
+  orderDate: [
+    { required: true, message: '请选择单据日期', trigger: 'change' }
+  ],
+  customerId: [
+    { required: true, message: '请选择客户', trigger: 'change' }
+  ]
+}
 
 // 计算金额
 const calculateAmounts = () => {
@@ -1369,6 +1381,21 @@ const handleEdit = async (row: any) => {
     const response: any = await getSalesOrderById(row.id)
     if (response.success) {
       const order = response.data
+
+      // 确保当前客户在选项列表中（remote select 需要匹配）
+      if (order.customer && !customers.value.find((c: any) => c.id === order.customerId)) {
+        customers.value = [order.customer, ...customers.value]
+      }
+
+      // 确保当前物料在选项列表中
+      const allProducts = [...products.value]
+      ;(order.items || []).forEach((item: any) => {
+        if (item.product && !allProducts.find((p: any) => p.id === item.productId)) {
+          allProducts.push(item.product)
+        }
+      })
+      products.value = allProducts
+
       Object.assign(formData, {
         id: order.id,
         orderNo: order.orderNo,
@@ -1377,7 +1404,7 @@ const handleEdit = async (row: any) => {
         salesmanId: order.salesmanId || '',
         dueDate: order.dueDate || '',
         remark: order.remark || '',
-        extraDiscount: order.extraDiscount || 0,
+        extraDiscount: Number(order.extraDiscount) || 0,
         details: order.items?.map((d: any) => ({
           id: d.id,
           productId: d.productId,

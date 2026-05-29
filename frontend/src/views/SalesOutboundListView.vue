@@ -160,6 +160,11 @@
             {{ row.warehouse?.name || '-' }}
           </template>
         </el-table-column>
+        <el-table-column label="制单人" width="120">
+          <template #default="{ row }">
+            {{ row.creator?.name || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="260" fixed="right" align="right">
           <template #default="{ row }">
             <div class="action-buttons">
@@ -241,7 +246,7 @@
       :close-on-click-modal="false"
       @close="handleDialogClose"
     >
-      <div class="outbound-form">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px" class="outbound-form">
         <!-- 单据信息 -->
         <div class="form-section">
           <div class="section-title">
@@ -504,7 +509,7 @@
             </el-col>
           </el-row>
         </div>
-      </div>
+      </el-form>
 
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -583,7 +588,7 @@
     <!-- 导入对话框 -->
     <CommonImportDialog
       v-model="importDialogVisible"
-      module-name="销售出库单"
+      title="销售出库单"
       :columns="importColumns"
       :format-tips="importFormatTips"
       :import-fn="handleImportSubmit"
@@ -1060,6 +1065,22 @@ const handleEdit = async (row: any) => {
     const response: any = await getSalesOutboundById(row.id)
     if (response.success) {
       const outbound = response.data
+
+      // 确保当前客户在选项列表中
+      const customerObj = outbound.customer || outbound.order?.customer
+      if (customerObj && !customers.value.find((c: any) => c.id === customerObj.id)) {
+        customers.value = [customerObj, ...customers.value]
+      }
+
+      // 确保当前物料在选项列表中
+      const allProducts = [...products.value]
+      ;(outbound.details || []).forEach((detail: any) => {
+        if (detail.product && !allProducts.find((p: any) => p.id === detail.productId)) {
+          allProducts.push(detail.product)
+        }
+      })
+      products.value = allProducts
+
       Object.assign(formData, {
         id: outbound.id,
         orderNo: outbound.outboundNo,
@@ -1069,21 +1090,21 @@ const handleEdit = async (row: any) => {
         warehouseId: outbound.warehouseId,
         salesmanId: outbound.salesman?.id || outbound.salesmanId || '',
         remark: outbound.remark || '',
-        logisticsCost: outbound.logisticsCost || 0,
-        extraDiscount: outbound.extraDiscount || 0,
-        goodsAmount: outbound.goodsAmount || 0,
-        totalAmount: outbound.totalAmount || 0,
+        logisticsCost: Number(outbound.logisticsCost) || 0,
+        extraDiscount: Number(outbound.extraDiscount) || 0,
+        goodsAmount: Number(outbound.goodsAmount) || 0,
+        totalAmount: Number(outbound.totalAmount) || 0,
         details: outbound.details?.map((detail: any) => ({
           id: detail.id,
           productId: detail.productId,
           product: detail.product,
-          plannedQty: detail.plannedQty || 0,
-          outboundQty: detail.outboundQty || 0,
-          quantity: detail.quantity,
-          unitPrice: detail.unitPrice || 0,
-          taxRate: detail.taxRate || 0,
-          taxAmount: detail.taxAmount || 0,
-          amount: detail.amount || 0
+          plannedQty: Number(detail.plannedQty) || 0,
+          outboundQty: Number(detail.outboundQty) || 0,
+          quantity: Number(detail.quantity) || 0,
+          unitPrice: Number(detail.unitPrice) || 0,
+          taxRate: Number(detail.taxRate) || 0,
+          taxAmount: Number(detail.taxAmount) || 0,
+          amount: Number(detail.amount) || 0
         })) || []
       })
       

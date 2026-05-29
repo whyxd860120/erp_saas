@@ -418,8 +418,12 @@ model User {
   auditLogs               AuditLog[]
   userRoles               UserRole[]
   customers               Customer[] // 管理的客户（作为业务员）
-  salesOrders             SalesOrder[] // 管理的销售订单（作为业务员）
-  salesOutbounds          SalesOutbound[] // 管理的销售出库单（作为业务员）
+  salesOrders             SalesOrder[]   @relation("SalesOrderSalesman") // 管理的销售订单（作为业务员）
+  createdSalesOrders      SalesOrder[]   @relation("SalesOrderCreator") // 作为创建者的销售订单
+  salesOutbounds          SalesOutbound[] @relation("SalesOutboundSalesman") // 管理的销售出库单（作为业务员）
+  createdSalesOutbounds   SalesOutbound[] @relation("SalesOutboundCreator") // 作为创建者的销售出库单
+  purchaseOrders          PurchaseOrder[] @relation("PurchaseOrderCreator") // 作为创建者的采购订单
+  purchaseInbounds        PurchaseInbound[] @relation("PurchaseInboundCreator") // 作为创建者的采购入库单
   createdStockTakes       StockTake[]     @relation("StockTakeCreator")
   confirmedStockTakes     StockTake[]     @relation("StockTakeConfirmer")
   createdOtherInbounds    OtherInbound[]  @relation("OtherInboundCreator")
@@ -738,6 +742,7 @@ model Customer {
   category        CustomerCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   salesman        User?             @relation(fields: [salesmanId], references: [id], onDelete: SetNull)
   salesOrders     SalesOrder[]
+  salesOutbounds  SalesOutbound[]
   paymentReceipts PaymentReceipt[]
   customerPrices  CustomerPrice[]
 
@@ -933,6 +938,7 @@ model PurchaseOrder {
   approvalStatus String    @default("pending") // 审批状态: pending, approved, rejected
   approvedAt     DateTime? // 审批时间
   approvedBy     String? // 审批人ID
+  creatorId      String? // 创建人ID
   remark         String? // 备注
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -944,6 +950,7 @@ model PurchaseOrder {
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  creator  User?    @relation("PurchaseOrderCreator", fields: [creatorId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, orderNo])
   @@index([tenantId, orderDate])
@@ -997,13 +1004,15 @@ model SalesOrder {
   approvalStatus String    @default("pending") // 审批状态: pending, approved, rejected
   approvedAt     DateTime? // 审批时间
   approvedBy     String? // 审批人ID
+  creatorId      String? // 创建人ID
   remark         String? // 备注
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer  Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  salesman  User?            @relation(fields: [salesmanId], references: [id], onDelete: SetNull)
+  salesman  User?            @relation("SalesOrderSalesman", fields: [salesmanId], references: [id], onDelete: SetNull)
+  creator   User?            @relation("SalesOrderCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   items     SalesOrderItem[]
   outbounds SalesOutbound[] // 关联的出库单
   receipts  PaymentReceipt[] // 关联的收款单
@@ -1055,6 +1064,7 @@ model PurchaseInbound {
   type        String   @default("blue") // blue(正常入库), red(退货入库)
   qcStatus    String   @default("pending") // 待质检: pending, qualified, unqualified, partial
   status      String   @default("draft") // draft, confirmed, cancelled
+  creatorId   String? // 创建人ID
   remark      String? // 备注
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1062,6 +1072,7 @@ model PurchaseInbound {
   tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   order     PurchaseOrder?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
   warehouse Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  creator   User?                   @relation("PurchaseInboundCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   details   PurchaseInboundDetail[]
 
   @@unique([tenantId, inboundNo])
@@ -1115,6 +1126,7 @@ model SalesOutbound {
   logisticsCost Decimal @default(0) // 物流/快递费用
   type         String   @default("blue") // blue(正常出库), red(退货出库)
   status       String   @default("draft") // draft, confirmed, cancelled
+  creatorId    String? // 创建人ID
   remark       String? // 备注
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -1122,7 +1134,9 @@ model SalesOutbound {
   tenant    Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   order     SalesOrder?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
   warehouse Warehouse             @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
-  salesman  User?                 @relation(fields: [salesmanId], references: [id], onDelete: SetNull)
+  customer  Customer?             @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  salesman  User?                 @relation("SalesOutboundSalesman", fields: [salesmanId], references: [id], onDelete: SetNull)
+  creator   User?                 @relation("SalesOutboundCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   details   SalesOutboundDetail[]
 
   @@unique([tenantId, outboundNo])

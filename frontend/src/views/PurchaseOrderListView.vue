@@ -332,7 +332,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
       :close-on-click-modal="false"
       @close="handleDialogClose"
     >
-      <div class="order-form">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px" class="order-form">
         <!-- 单据信息 -->
         <div class="form-section">
           <div class="section-title">
@@ -554,7 +554,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
             </el-col>
           </el-row>
         </div>
-      </div>
+      </el-form>
 
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -768,6 +768,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import {
   Plus, Download, Document, Clock, Money, Wallet, Goods, Delete,
   ArrowDown, Upload, Setting
@@ -797,6 +798,7 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('新增采购订单')
 const isEdit = ref(false)
 const currentOrder = ref<any>(null)
+const formRef = ref<FormInstance>()
 const importDialogVisible = ref(false)
 const helpDialogVisible = ref(false)
 
@@ -908,6 +910,16 @@ const formData = reactive({
   totalAmount: 0,
   finalAmount: 0
 })
+
+// 表单验证规则
+const formRules: FormRules = {
+  orderDate: [
+    { required: true, message: '请选择单据日期', trigger: 'change' }
+  ],
+  supplierId: [
+    { required: true, message: '请选择供应商', trigger: 'change' }
+  ]
+}
 
 // 计算金额
 const calculateAmounts = () => {
@@ -1155,6 +1167,21 @@ const handleEdit = async (row: any) => {
     const response: any = await getPurchaseOrderById(row.id)
     if (response.success) {
       const order = response.data
+
+      // 确保当前供应商在选项列表中
+      if (order.supplier && !suppliers.value.find((s: any) => s.id === order.supplierId)) {
+        suppliers.value = [order.supplier, ...suppliers.value]
+      }
+
+      // 确保当前物料在选项列表中
+      const allProducts = [...products.value]
+      ;(order.items || []).forEach((item: any) => {
+        if (item.product && !allProducts.find((p: any) => p.id === item.productId)) {
+          allProducts.push(item.product)
+        }
+      })
+      products.value = allProducts
+
       Object.assign(formData, {
         id: order.id,
         orderNo: order.orderNo,

@@ -3,6 +3,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
 import { auditLog, getAuditLogs } from '../utils/audit.util';
 import { applyDataPermissions } from '../utils/data-permission.util';
+import { parseDateStart, parseDateEnd } from '../utils/date.util';
 
 const prisma = new PrismaClient();
 
@@ -133,7 +134,9 @@ export const getSalesOrders = async (req: Request, res: Response) => {
             },
           },
           outbounds: {
-            include: {
+            select: {
+              status: true,
+              totalAmount: true,
               details: {
                 select: {
                   quantity: true,

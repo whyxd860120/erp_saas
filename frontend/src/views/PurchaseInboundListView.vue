@@ -244,7 +244,7 @@
       :close-on-click-modal="false"
       @close="handleDialogClose"
     >
-      <div class="inbound-form">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px" class="inbound-form">
         <!-- 单据信息 -->
         <div class="form-section">
           <div class="section-title">
@@ -482,7 +482,7 @@
             </el-col>
           </el-row>
         </div>
-      </div>
+      </el-form>
 
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -587,7 +587,7 @@
     <!-- 导入对话框 -->
     <CommonImportDialog
       v-model="importDialogVisible"
-      module-name="采购入库单"
+      title="采购入库单"
       :columns="importColumns"
       :format-tips="importFormatTips"
       :import-fn="handleImportSubmit"
@@ -733,6 +733,16 @@ const formData = reactive({
   finalAmount: 0,
   details: [] as any[]
 })
+
+// 表单验证规则
+const formRules: FormRules = {
+  inboundDate: [
+    { required: true, message: '请选择入库日期', trigger: 'change' }
+  ],
+  warehouseId: [
+    { required: true, message: '请选择仓库', trigger: 'change' }
+  ]
+}
 
 // 获取采购入库单列表
 const fetchPurchaseInbounds = async () => {
@@ -1070,6 +1080,22 @@ const handleEdit = async (row: any) => {
     const response: any = await getPurchaseInboundById(row.id)
     if (response.success) {
       const inbound = response.data
+
+      // 确保当前供应商在选项列表中
+      const supplierObj = inbound.order?.supplier
+      if (supplierObj && !suppliers.value.find((s: any) => s.id === supplierObj.id)) {
+        suppliers.value = [supplierObj, ...suppliers.value]
+      }
+
+      // 确保当前物料在选项列表中
+      const allProducts = [...products.value]
+      ;(inbound.items || inbound.details || []).forEach((item: any) => {
+        if (item.product && !allProducts.find((p: any) => p.id === item.productId)) {
+          allProducts.push(item.product)
+        }
+      })
+      products.value = allProducts
+
       Object.assign(formData, {
         id: inbound.id,
         orderNo: inbound.inboundNo,
@@ -1078,20 +1104,20 @@ const handleEdit = async (row: any) => {
         inboundDate: inbound.inboundDate,
         warehouseId: inbound.warehouseId,
         remark: inbound.remark || '',
-        logisticsCost: inbound.logisticsCost || 0,
-        discountAmount: inbound.discountAmount || 0,
+        logisticsCost: Number(inbound.logisticsCost) || 0,
+        discountAmount: Number(inbound.discountAmount) || 0,
         goodsAmount: 0,
         taxAmount: 0,
-        finalAmount: inbound.finalAmount || inbound.totalAmount || 0,
+        finalAmount: Number(inbound.finalAmount || inbound.totalAmount) || 0,
         details: (inbound.items || inbound.details || []).map((item: any) => ({
           id: item.id,
           productId: item.productId,
-          plannedQty: item.plannedQty || 0,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          taxRate: item.taxRate || 0,
-          taxAmount: item.taxAmount || 0,
-          amount: item.amount
+          plannedQty: Number(item.plannedQty) || 0,
+          quantity: Number(item.quantity) || 0,
+          unitPrice: Number(item.unitPrice) || 0,
+          taxRate: Number(item.taxRate) || 0,
+          taxAmount: Number(item.taxAmount) || 0,
+          amount: Number(item.amount) || 0
         }))
       })
       calculateAmounts()
