@@ -864,6 +864,14 @@ const formatDate = (date: string | Date) => {
   return new Date(date).toLocaleDateString('zh-CN')
 }
 
+// 格式化金额
+const formatAmount = (amount: any) => {
+  if (amount === undefined || amount === null) return '0.00'
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
+  if (isNaN(numAmount)) return '0.00'
+  return numAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
 // 提交表单
 const handleSubmit = async () => {
   if (!formRef.value) return
