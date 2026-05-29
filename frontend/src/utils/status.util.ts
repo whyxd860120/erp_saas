@@ -14,7 +14,7 @@ export type StatusType = 'draft' | 'confirmed' | 'partial' | 'completed' | 'canc
  */
 export const STATUS_COLOR_MAP: Record<StatusType, string> = {
   draft: 'info',           // 草稿 - 灰色
-  confirmed: '',           // 已确认 - 默认蓝色
+  confirmed: 'primary',    // 已审核 - 蓝色
   partial: 'warning',      // 部分 - 橙色
   completed: 'success',    // 已完成 - 绿色
   cancelled: 'danger',     // 已取消 - 红色
@@ -30,7 +30,7 @@ export const STATUS_COLOR_MAP: Record<StatusType, string> = {
  */
 export const SALES_ORDER_STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
-  confirmed: '已确认',
+  confirmed: '已审核',
   partial: '部分出库',
   completed: '已完成',
   cancelled: '已取消'
@@ -41,7 +41,7 @@ export const SALES_ORDER_STATUS_TEXT: Record<string, string> = {
  */
 export const PURCHASE_ORDER_STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
-  confirmed: '已确认',
+  confirmed: '已审核',
   partial: '部分入库',
   completed: '已完成',
   cancelled: '已取消'
@@ -52,7 +52,7 @@ export const PURCHASE_ORDER_STATUS_TEXT: Record<string, string> = {
  */
 export const SALES_OUTBOUND_STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
-  confirmed: '已确认',
+  confirmed: '已审核',
   cancelled: '已取消'
 }
 
@@ -61,7 +61,7 @@ export const SALES_OUTBOUND_STATUS_TEXT: Record<string, string> = {
  */
 export const PURCHASE_INBOUND_STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
-  confirmed: '已确认',
+  confirmed: '已审核',
   cancelled: '已取消'
 }
 
@@ -70,7 +70,7 @@ export const PURCHASE_INBOUND_STATUS_TEXT: Record<string, string> = {
  */
 export const STOCK_TRANSFER_STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
-  confirmed: '已确认',
+  confirmed: '已审核',
   cancelled: '已取消'
 }
 
@@ -79,7 +79,7 @@ export const STOCK_TRANSFER_STATUS_TEXT: Record<string, string> = {
  */
 export const STOCK_TAKE_STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
-  confirmed: '已确认',
+  confirmed: '已审核',
   cancelled: '已取消'
 }
 
@@ -88,7 +88,7 @@ export const STOCK_TAKE_STATUS_TEXT: Record<string, string> = {
  */
 export const OTHER_OUTBOUND_STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
-  confirmed: '已确认',
+  confirmed: '已审核',
   cancelled: '已取消'
 }
 
@@ -97,7 +97,7 @@ export const OTHER_OUTBOUND_STATUS_TEXT: Record<string, string> = {
  */
 export const OTHER_INBOUND_STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
-  confirmed: '已确认',
+  confirmed: '已审核',
   cancelled: '已取消'
 }
 
@@ -106,7 +106,7 @@ export const OTHER_INBOUND_STATUS_TEXT: Record<string, string> = {
  */
 export const PAYMENT_RECEIPT_STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
-  confirmed: '已确认',
+  confirmed: '已审核',
   cancelled: '已取消'
 }
 
@@ -115,7 +115,7 @@ export const PAYMENT_RECEIPT_STATUS_TEXT: Record<string, string> = {
  */
 export const PAYMENT_PAYMENT_STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
-  confirmed: '已确认',
+  confirmed: '已审核',
   cancelled: '已取消'
 }
 

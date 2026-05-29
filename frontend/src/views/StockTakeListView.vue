@@ -206,11 +206,24 @@
       </el-form>
 
       <!-- 盘点明细 -->
-      <div class="detail-toolbar">
+      <div class="detail-toolbar" style="display: flex; align-items: center; justify-content: space-between;">
         <el-button type="primary" plain @click="addDetailRow">
           <el-icon><Plus /></el-icon>
           添加物料
         </el-button>
+        <el-popover trigger="click" placement="bottom-end" :width="100">
+          <template #reference>
+            <el-button size="small" link type="primary">
+              <el-icon><Setting /></el-icon>
+              列设置
+            </el-button>
+          </template>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <el-checkbox v-model="visibleColumns.batchNo">批次号</el-checkbox>
+            <el-checkbox v-model="visibleColumns.unitCost">单位成本</el-checkbox>
+            <el-checkbox v-model="visibleColumns.diffCost">差异金额</el-checkbox>
+          </div>
+        </el-popover>
       </div>
 
       <el-table :data="createForm.details" border max-height="350" style="margin-top: 10px">
@@ -245,21 +258,21 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="unitCost" label="单位成本" width="120" align="right">
-          <template #default="{ row, $index }">
-            <el-input-number v-model="row.unitCost" :min="0" :precision="2" controls-position="right" @change="() => calculateDiff($index)" style="width: 100%" />
-          </template>
-        </el-table-column>
-        <el-table-column label="差异金额" width="120" align="right">
+        <el-table-column v-if="visibleColumns.unitCost" prop="unitCost" label="单位成本" width="120" align="right">
+              <template #default="{ row, $index }">
+                <el-input-number v-model="row.unitCost" :min="0" :precision="2" controls-position="right" @change="() => calculateDiff($index)" style="width: 100%" />
+              </template>
+            </el-table-column>
+            <el-table-column v-if="visibleColumns.diffCost" label="差异金额" width="120" align="right">
           <template #default="{ row }">
             {{ formatCurrency(row.diffCost) }}
           </template>
         </el-table-column>
-        <el-table-column label="批次号" width="130">
-          <template #default="{ row }">
-            <el-input v-model="row.batchNo" placeholder="批次号" />
-          </template>
-        </el-table-column>
+        <el-table-column v-if="visibleColumns.batchNo" label="批次号" width="130">
+              <template #default="{ row }">
+                <el-input v-model="row.batchNo" placeholder="批次号" />
+              </template>
+            </el-table-column>
         <el-table-column label="操作" width="80" fixed="right">
           <template #default="{ $index }">
             <el-button type="danger" size="small" text @click="removeDetailRow($index)">
@@ -287,7 +300,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Delete, QuestionFilled } from '@element-plus/icons-vue'
+import { Plus, Delete, QuestionFilled, Setting } from '@element-plus/icons-vue'
 import { getStockTakes, getStockTakeDetail, createStockTake, confirmStockTake, deleteStockTake } from '@/api/stock-take'
 import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
@@ -334,6 +347,13 @@ const detailItems = ref<any[]>([])
 
 // 创建对话框
 const createDialogVisible = ref(false)
+
+// 明细列显隐控制
+const visibleColumns = reactive({
+  batchNo: true,
+  unitCost: true,
+  diffCost: true
+})
 const createDialogTitle = ref('新增盘点单')
 const createLoading = ref(false)
 const helpDialogVisible = ref(false)

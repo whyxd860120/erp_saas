@@ -37,7 +37,7 @@
           <div class="stat-icon pending"><el-icon><Clock /></el-icon></div>
           <div class="stat-info">
             <span class="stat-value">{{ stats.pending }}</span>
-            <span class="stat-label">待确认</span>
+            <span class="stat-label">待审核</span>
           </div>
         </div>
       </el-col>
@@ -65,12 +65,12 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm">
         <el-row :gutter="16">
-          <el-col :xs="24" :sm="12" :md="5">
+          <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="入库单号" class="search-item">
               <el-input v-model="searchForm.orderNo" placeholder="入库单号" clearable style="width: 100%;" @keyup.enter="handleSearch" />
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="7">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="供应商" class="search-item">
               <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable style="width: 100%;" @change="handleSearch">
                 <el-option
@@ -82,11 +82,11 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="4">
             <el-form-item label="单据状态" class="search-item">
-              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 100%;" @change="handleSearch">
+              <el-select v-model="searchForm.status" placeholder="状态" clearable style="width: 100%;" @change="handleSearch">
                 <el-option label="草稿" value="draft" />
-                <el-option label="已确认" value="confirmed" />
+                <el-option label="已审核" value="confirmed" />
                 <el-option label="已取消" value="cancelled" />
               </el-select>
             </el-form-item>
@@ -162,38 +162,58 @@
             {{ formatDate(row.createdAt) || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right" align="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" link @click="handleView(row)">
+            <div class="action-buttons">
+            <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer;">
               查看
-            </el-button>
+            </el-tag>
             <el-button
               v-if="row.status === 'draft'"
               type="warning"
               size="small"
               link
-              @click="handleConfirm(row)"
+              @click="handleEdit(row)"
             >
-              确认
+              编辑
             </el-button>
-            <el-button
-              v-if="row.status === 'confirmed'"
+            <el-tag
+              v-if="row.status === 'draft'"
               type="info"
               size="small"
-              link
-              @click="handleUnconfirm(row)"
+              @click="handleConfirm(row)"
+              style="cursor: pointer;"
             >
-              反确认
-            </el-button>
-            <el-button
+              审核
+            </el-tag>
+            <el-tag
               v-if="row.status === 'draft'"
               type="danger"
               size="small"
-              link
               @click="handleDelete(row)"
+              style="cursor: pointer;"
             >
               删除
-            </el-button>
+            </el-tag>
+            <el-tag
+              v-if="row.status === 'confirmed'"
+              type="warning"
+              size="small"
+              @click="handleUnconfirm(row)"
+              style="cursor: pointer;"
+            >
+              反审核
+            </el-tag>
+            <el-tag
+              v-if="row.status === 'draft'"
+              type="success"
+              size="small"
+              @click="handleCopy(row)"
+              style="cursor: pointer;"
+            >
+              复制
+            </el-tag>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -316,8 +336,22 @@
         
         <!-- 入库明细 -->
         <div class="details-section">
-          <div class="details-header">
+          <div class="details-header" style="display: flex; align-items: center; justify-content: space-between;">
             <h3>入库明细</h3>
+            <el-popover trigger="click" placement="bottom-end" :width="120">
+              <template #reference>
+                <el-button size="small" link type="primary">
+                  <el-icon><Setting /></el-icon>
+                  列设置
+                </el-button>
+              </template>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <el-checkbox v-model="visibleColumns.spec">规格</el-checkbox>
+                <el-checkbox v-model="visibleColumns.unit">单位</el-checkbox>
+                <el-checkbox v-model="visibleColumns.plannedQty">计划数量</el-checkbox>
+                <el-checkbox v-model="visibleColumns.inboundQty">已入库数量</el-checkbox>
+              </div>
+            </el-popover>
           </div>
 
           <el-table :data="formData.details" border style="width: 100%">
@@ -347,22 +381,22 @@
                 {{ row.productName }}
               </template>
             </el-table-column>
-            <el-table-column label="规格" width="120">
+            <el-table-column v-if="visibleColumns.spec" label="规格" width="120">
               <template #default="{ row }">
                 {{ isView ? (row.spec || '-') : getProductSpec(row.productId) }}
               </template>
             </el-table-column>
-            <el-table-column label="单位" width="80">
+            <el-table-column v-if="visibleColumns.unit" label="单位" width="80">
               <template #default="{ row }">
                 {{ isView ? (row.unit || '-') : getProductUnit(row.productId) }}
               </template>
             </el-table-column>
-            <el-table-column label="计划数量" width="120">
+            <el-table-column v-if="visibleColumns.plannedQty" label="计划数量" width="120">
               <template #default="{ row }">
                 {{ row.plannedQty || 0 }}
               </template>
             </el-table-column>
-            <el-table-column label="已入库数量" width="120">
+            <el-table-column v-if="visibleColumns.inboundQty" label="已入库数量" width="120">
               <template #default="{ row }">
                 {{ row.inboundQty || 0 }}
               </template>
@@ -422,7 +456,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, QuestionFilled, Download, Document, Clock, Money, Wallet } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled, Download, Document, Clock, Money, Wallet, Setting } from '@element-plus/icons-vue'
 import { getPurchaseInbounds, getPurchaseInboundById, createPurchaseInbound, updatePurchaseInbound, confirmPurchaseInbound, unconfirmPurchaseInbound, deletePurchaseInbound } from '@/api/purchase-inbound'
 import { getPurchaseOrders } from '@/api/purchase-order'
 import { getSuppliers } from '@/api/supplier'
@@ -468,6 +502,14 @@ const pagination = reactive({
 
 // 对话框
 const dialogVisible = ref(false)
+
+// 明细列显隐控制
+const visibleColumns = reactive({
+  spec: true,
+  unit: true,
+  plannedQty: true,
+  inboundQty: true
+})
 const dialogTitle = ref('新增采购入库单')
 const isEdit = ref(false)
 const isView = ref(false)
@@ -732,11 +774,30 @@ const handleView = async (row: any) => {
   }
 }
 
-// 确认入库单
+// 编辑
+const handleEdit = async (row: any) => {
+  dialogTitle.value = '编辑采购入库单'
+  isEdit.value = true
+  isView.value = false
+  await handleView(row)
+}
+
+// 复制
+const handleCopy = async (row: any) => {
+  await handleEdit(row)
+  isEdit.value = false
+  isView.value = false
+  formData.id = ''
+  formData.orderNo = ''
+  formData.purchaseOrderId = ''
+  dialogTitle.value = '复制采购入库单'
+}
+
+// 审核入库单
 const handleConfirm = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `确定要确认采购入库单 "${row.inboundNo}" 吗？`,
+      `确定要审核采购入库单 "${row.inboundNo}" 吗？`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -746,20 +807,20 @@ const handleConfirm = async (row: any) => {
     )
 
     await confirmPurchaseInbound(row.id)
-    ElMessage.success('确认成功')
+    ElMessage.success('审核成功')
     fetchPurchaseInbounds()
   } catch (error: any) {
     if (error !== 'cancel') {
-      console.error('确认采购入库单失败:', error)
+      console.error('审核采购入库单失败:', error)
     }
   }
 }
 
-// 反确认入库单
+// 反审核入库单
 const handleUnconfirm = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `确定要反确认采购入库单 "${row.inboundNo}" 吗？`,
+      `确定要反审核采购入库单 "${row.inboundNo}" 吗？`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -769,11 +830,11 @@ const handleUnconfirm = async (row: any) => {
     )
 
     await unconfirmPurchaseInbound(row.id)
-    ElMessage.success('反确认成功')
+    ElMessage.success('反审核成功')
     fetchPurchaseInbounds()
   } catch (error: any) {
     if (error !== 'cancel') {
-      console.error('反确认采购入库单失败:', error)
+      console.error('反审核采购入库单失败:', error)
     }
   }
 }
@@ -969,7 +1030,7 @@ const helpData = {
         '选择入库仓库',
         '添加入库明细，选择物料和数量',
         '设置入库日期和备注',
-        '点击"确定"保存草稿或直接确认'
+        '点击"确定"保存草稿或直接审核'
       ]
     },
     {
@@ -978,29 +1039,29 @@ const helpData = {
         '在新增入库单时选择关联的采购订单',
         '系统会自动带入订单的物料明细',
         '修改入库数量',
-        '确认入库'
+        '审核入库'
       ]
     },
     {
-      title: '确认入库单',
+      title: '审核入库单',
       steps: [
         '在入库单列表中找到草稿状态的入库单',
-        '点击"确认"按钮',
-        '确认后库存会相应增加'
+        '点击"审核"按钮',
+        '审核后库存会相应增加'
       ]
     }
   ],
   notices: [
     '入库数量必须与采购订单数量一致',
     '确认入库单会增加库存',
-    '已确认的入库单不能直接修改',
+    '已审核的入库单不能直接修改',
     '可以关联采购订单自动生成入库单',
     '支持部分入库'
   ],
   tips: [
     '可以使用采购订单快速入库功能',
     '支持批量入库操作',
-    '入库单确认后不可撤销',
+    '入库单审核后不可撤销',
     '可以按供应商、状态、日期等条件筛选入库单'
   ],
   shortcuts: [
@@ -1204,5 +1265,12 @@ onMounted(async () => {
   border-radius: 4px;
   color: #606266;
   font-size: 14px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
 }
 </style>

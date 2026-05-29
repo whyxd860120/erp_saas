@@ -141,12 +141,12 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm">
         <el-row :gutter="16">
-          <el-col :xs="24" :sm="12" :md="5">
+          <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="单据编号" class="search-item">
               <el-input v-model="searchForm.keyword" placeholder="单据编号" clearable style="width: 100%;" @keyup.enter="handleSearch" />
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="7">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="供应商" class="search-item">
               <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable style="width: 100%;" @change="handleSearch">
                 <el-option
@@ -158,11 +158,11 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="4">
             <el-form-item label="单据状态" class="search-item">
-              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 100%;" @change="handleSearch">
+              <el-select v-model="searchForm.status" placeholder="状态" clearable style="width: 100%;" @change="handleSearch">
                 <el-option label="草稿" value="draft" />
-                <el-option label="已确认" value="confirmed" />
+                <el-option label="已审核" value="confirmed" />
                 <el-option label="部分入库" value="partial" />
                 <el-option label="已完成" value="completed" />
                 <el-option label="已取消" value="cancelled" />
@@ -267,43 +267,40 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right" align="right">
           <template #default="{ row }">
-            <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer; margin-right: 4px;">
+            <div class="action-buttons">
+            <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer;">
               查看
             </el-tag>
-            <el-dropdown v-if="row.status === 'draft'" trigger="click">
-              <el-tag type="info" size="small" style="cursor: pointer; margin-right: 4px;">
-                更多
-                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </el-tag>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="handleEdit(row)">编辑</el-dropdown-item>
-                  <el-dropdown-item @click="handleCopy(row)">复制</el-dropdown-item>
-                  <el-dropdown-item @click="handleConfirm(row)" divided>确认</el-dropdown-item>
-                  <el-dropdown-item @click="handleCancel(row)" style="color: #F56C6C;">取消</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-            <el-dropdown v-if="row.status === 'confirmed'" trigger="click">
-              <el-tag type="info" size="small" style="cursor: pointer; margin-right: 4px;">
-                更多
-                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </el-tag>
-              <template #dropdown>
-                <el-dropdown-item @click="handleUnconfirm(row)">反确认</el-dropdown-item>
-              </template>
-            </el-dropdown>
+            <el-tag v-if="row.status === 'draft'" type="warning" size="small" @click="handleEdit(row)" style="cursor: pointer;">
+              编辑
+            </el-tag>
+            <el-tag v-if="row.status === 'draft'" type="success" size="small" @click="handleCopy(row)" style="cursor: pointer;">
+              复制
+            </el-tag>
+            <el-tag v-if="row.status === 'draft'" type="info" size="small" @click="handleConfirm(row)" style="cursor: pointer;">
+              审核
+            </el-tag>
             <el-tag
               v-if="row.status === 'confirmed'"
-              type="success"
+              type="warning"
+              size="small"
+              @click="handleUnconfirm(row)"
+              style="cursor: pointer;"
+            >
+              反审核
+            </el-tag>
+            <el-tag
+              v-if="row.status === 'confirmed'"
+              type=""
               size="small"
               @click="handleQuickInbound(row)"
               style="cursor: pointer;"
             >
               快速入库
             </el-tag>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -381,18 +378,6 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
             </el-col>
           </el-row>
           <el-row :gutter="16">
-            <el-col :span="8">
-              <el-form-item label="物流/快递费用">
-                <el-input-number
-                  v-model="formData.logisticsCost"
-                  :min="0"
-                  :precision="2"
-                  placeholder="请输入物流费用"
-                  style="width: 100%;"
-                  @change="calculateAmounts"
-                />
-              </el-form-item>
-            </el-col>
             <el-col :span="24">
               <el-form-item label="备注">
                 <el-input v-model="formData.remark" type="textarea" :rows="2" placeholder="请输入备注信息" />
@@ -406,7 +391,19 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
           <div class="section-title">
             <el-icon><Goods /></el-icon>
             <span>物料明细</span>
-            <span class="section-tip">（双击行或点击编辑按钮可修改明细）</span>
+            <el-popover trigger="click" placement="bottom-end" :width="120">
+              <template #reference>
+                <el-button size="small" link type="primary" style="margin-left: 12px">
+                  <el-icon><Setting /></el-icon>
+                  列设置
+                </el-button>
+              </template>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <el-checkbox v-model="visibleColumns.spec">规格</el-checkbox>
+                <el-checkbox v-model="visibleColumns.unit">单位</el-checkbox>
+                <el-checkbox v-model="visibleColumns.taxRate">税率(%)</el-checkbox>
+              </div>
+            </el-popover>
           </div>
           <el-table :data="formData.details" border size="small" show-summary :summary-method="getSummary">
             <el-table-column type="index" label="序号" width="60" />
@@ -433,12 +430,12 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="规格" width="100">
+            <el-table-column v-if="visibleColumns.spec" label="规格" width="100">
               <template #default="{ row }">
                 {{ getProductAttr(row.productId, 'spec') }}
               </template>
             </el-table-column>
-            <el-table-column label="单位" width="80">
+            <el-table-column v-if="visibleColumns.unit" label="单位" width="80">
               <template #default="{ row }">
                 {{ getProductAttr(row.productId, 'unit') }}
               </template>
@@ -467,7 +464,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
                 />
               </template>
             </el-table-column>
-            <el-table-column label="税率(%)" width="100">
+            <el-table-column v-if="visibleColumns.taxRate" label="税率(%)" width="100">
               <template #default="{ row, $index }">
                 <el-input-number
                   v-model="row.taxRate"
@@ -480,9 +477,16 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
                 />
               </template>
             </el-table-column>
-            <el-table-column label="金额" width="120">
-              <template #default="{ row }">
-                <span class="amount">¥{{ formatAmount(row.amount) }}</span>
+            <el-table-column label="金额" width="130">
+              <template #default="{ row, $index }">
+                <el-input-number
+                  v-model="row.amount"
+                  :min="0"
+                  :precision="2"
+                  size="small"
+                  @change="handleAmountChange($index)"
+                  style="width: 100%;"
+                />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="60">
@@ -520,7 +524,14 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
             </el-col>
             <el-col :span="8">
               <el-form-item label="物流/快递费用">
-                <el-input :value="'¥' + formatAmount(formData.logisticsCost)" disabled />
+                <el-input-number
+                  v-model="formData.logisticsCost"
+                  :min="0"
+                  :precision="2"
+                  placeholder="请输入物流费用"
+                  style="width: 100%;"
+                  @change="calculateAmounts"
+                />
               </el-form-item>
             </el-col>
           </el-row>
@@ -548,7 +559,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button @click="handleSaveDraft" :loading="submitLoading">保存草稿</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确认单据</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">提交单据</el-button>
       </template>
     </el-dialog>
 
@@ -628,7 +639,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
                 <el-table-column label="状态" width="100">
                   <template #default="{ row }">
                     <el-tag :type="row.status === 'confirmed' ? 'success' : 'info'" size="small">
-                      {{ row.status === 'confirmed' ? '已确认' : '草稿' }}
+                      {{ row.status === 'confirmed' ? '已审核' : '草稿' }}
                     </el-tag>
                   </template>
                 </el-table-column>
@@ -759,7 +770,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus, Download, Document, Clock, Money, Wallet, Goods, Delete,
-  ArrowDown, Upload
+  ArrowDown, Upload, Setting
 } from '@element-plus/icons-vue'
 import {
   getPurchaseOrders, getPurchaseOrderById, createPurchaseOrder,
@@ -874,6 +885,13 @@ const pagination = reactive({
   total: 0
 })
 
+// 明细列显隐控制
+const visibleColumns = reactive({
+  spec: true,
+  unit: true,
+  taxRate: true
+})
+
 // 表单数据
 const formData = reactive({
   id: '',
@@ -981,13 +999,14 @@ const getRowClassName = ({ row }: { row: any }) => {
 // 获取汇总数据
 const getSummary = () => {
   calculateAmounts()
+  const totalQty = formData.details.reduce((sum: number, d: any) => sum + (d.quantity || 0), 0)
   return [
     '', '', '',
-    `<span class="amount">合计</span>`,
+    '合计',
+    totalQty,
     '',
-    `<span class="amount">¥${formatAmount(formData.goodsAmount)}</span>`,
     '',
-    `<span class="amount">¥${formatAmount(formData.totalAmount)}</span>`
+    `¥${formatAmount(formData.totalAmount)}`
   ]
 }
 
@@ -1176,44 +1195,30 @@ const handleCopy = async (row: any) => {
   dialogTitle.value = '复制采购订单'
 }
 
-// 确认
+// 审核
 const handleConfirm = async (row: any) => {
   try {
-    await ElMessageBox.confirm(`确定要确认采购订单 "${row.orderNo}" 吗？`, '确认', { type: 'warning' })
+    await ElMessageBox.confirm(`确定要审核采购订单 "${row.orderNo}" 吗？`, '审核', { type: 'warning' })
     await confirmPurchaseOrder(row.id)
-    ElMessage.success('确认成功')
+    ElMessage.success('审核成功')
     fetchData()
   } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error('确认失败')
+      ElMessage.error('审核失败')
     }
   }
 }
 
-// 取消
-const handleCancel = async (row: any) => {
-  try {
-    await ElMessageBox.confirm(`确定要取消采购订单 "${row.orderNo}" 吗？`, '确认取消', { type: 'warning' })
-    // 调用取消API
-    ElMessage.success('取消成功')
-    fetchData()
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error('取消失败')
-    }
-  }
-}
-
-// 反确认
+// 反审核
 const handleUnconfirm = async (row: any) => {
   try {
-    await ElMessageBox.confirm(`确定要反确认采购订单 "${row.orderNo}" 吗？反确认后订单将回到草稿状态。`, '确认反确认', { type: 'warning' })
+    await ElMessageBox.confirm(`确定要反审核采购订单 "${row.orderNo}" 吗？反审核后订单将回到草稿状态。`, '确认反审核', { type: 'warning' })
     await unconfirmPurchaseOrder(row.id)
-    ElMessage.success('反确认成功')
+    ElMessage.success('反审核成功')
     fetchData()
   } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error('反确认失败')
+      ElMessage.error('反审核失败')
     }
   }
 }
@@ -1323,19 +1328,19 @@ const handleConfirmQuickInbound = async () => {
   }
 }
 
-// 批量确认
+// 批量审核
 const handleBatchConfirm = async () => {
   if (!selectedRows.value.length) return
   try {
-    await ElMessageBox.confirm(`确定要确认选中的 ${selectedRows.value.length} 个订单吗？`, '批量确认', { type: 'warning' })
+    await ElMessageBox.confirm(`确定要审核选中的 ${selectedRows.value.length} 个订单吗？`, '批量审核', { type: 'warning' })
     batchLoading.value = true
-    // 批量确认逻辑
-    ElMessage.success('批量确认成功')
+    // 批量审核逻辑
+    ElMessage.success('批量审核成功')
     selectedRows.value = []
     fetchData()
   } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error('批量确认失败')
+      ElMessage.error('批量审核失败')
     }
   } finally {
     batchLoading.value = false
@@ -1496,10 +1501,19 @@ const handleProductSelect = (index: number) => {
   handleDetailChange(index)
 }
 
-// 明细变更
+// 明细变更（数量/单价变更）
 const handleDetailChange = (index: number) => {
   const detail = formData.details[index]
   detail.amount = Number((detail.quantity || 0) * (detail.unitPrice || 0))
+  calculateAmounts()
+}
+
+// 金额变更（反算单价）
+const handleAmountChange = (index: number) => {
+  const detail = formData.details[index]
+  if (detail.quantity > 0) {
+    detail.unitPrice = Number((detail.amount / detail.quantity).toFixed(4))
+  }
   calculateAmounts()
 }
 
@@ -1605,21 +1619,21 @@ const helpData = computed(() => {
             '选择供应商和采购员',
             '添加物料明细，选择物料、输入数量和单价',
             '设置订单日期、预计到货日期等基本信息',
-            '点击"保存草稿"保存订单，或点击"提交"直接确认订单'
+            '点击"保存草稿"保存订单，或点击"提交"直接审核订单'
           ]
         },
         {
-          title: '确认订单',
+          title: '审核订单',
           steps: [
             '在订单列表中找到草稿状态的订单',
-            '点击操作列中的"确认"按钮',
-            '确认后订单状态变为"已确认"，可以进行入库操作'
+            '点击操作列中的"审核"按钮',
+            '审核后订单状态变为"已审核"，可以进行入库操作'
           ]
         },
         {
           title: '快速入库',
           steps: [
-            '在已确认的订单上点击"快速入库"按钮',
+            '在已审核的订单上点击"快速入库"按钮',
             '选择入库仓库和入库方式（整单入库或部分入库）',
             '如果是部分入库，选择需要入库的物料明细',
             '点击"确认入库"生成采购入库单'
@@ -1644,7 +1658,7 @@ const helpData = computed(() => {
       ],
       tips: [
         '可以使用快捷键 Ctrl+N 快速新增订单',
-        '支持批量操作：批量确认、批量删除',
+        '支持批量操作：批量审核、批量删除',
         '订单编号系统自动生成，支持自定义编号规则',
         '可以导入Excel批量创建订单',
         '支持按供应商、状态、日期等条件筛选订单'
@@ -1693,7 +1707,7 @@ const helpData = computed(() => {
       tips: [
         '可以关联采购订单自动生成入库单',
         '支持部分入库',
-        '入库单确认后不可撤销'
+        '入库单审核后不可撤销'
       ],
       shortcuts: [
         { key: 'Ctrl+N', description: '新增入库单' },
@@ -1812,7 +1826,7 @@ const fetchWarehouses = async () => {
   color: #909399;
 }
 .search-card {
-  margin: 0 20px 16px;
+  margin-bottom: 16px;
 }
 
 .search-card :deep(.el-card__body) {
@@ -1929,5 +1943,12 @@ const fetchWarehouses = async () => {
 
 .search-card :deep(.el-select .el-input__wrapper) {
   width: 100%;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
 }
 </style>

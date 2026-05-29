@@ -65,12 +65,12 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm">
         <el-row :gutter="16">
-          <el-col :xs="24" :sm="12" :md="5">
+          <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="出库单号" class="search-item">
               <el-input v-model="searchForm.orderNo" placeholder="出库单号" clearable style="width: 100%;" />
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="7">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="客户" class="search-item">
               <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable style="width: 100%;" @change="handleSearch">
                 <el-option
@@ -82,11 +82,11 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="4">
             <el-form-item label="单据状态" class="search-item">
-              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 100%;" @change="handleSearch">
+              <el-select v-model="searchForm.status" placeholder="状态" clearable style="width: 100%;" @change="handleSearch">
                 <el-option label="草稿" value="draft" />
-                <el-option label="已确认" value="confirmed" />
+                <el-option label="已审核" value="confirmed" />
                 <el-option label="已取消" value="cancelled" />
               </el-select>
             </el-form-item>
@@ -156,38 +156,58 @@
             {{ row.warehouse?.name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right" align="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" link @click="handleView(row)">
+            <div class="action-buttons">
+            <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer;">
               查看
-            </el-button>
+            </el-tag>
             <el-button
               v-if="row.status === 'draft'"
               type="warning"
               size="small"
               link
-              @click="handleConfirm(row)"
+              @click="handleEdit(row)"
             >
-              确认
+              编辑
             </el-button>
-            <el-button
-              v-if="row.status === 'confirmed'"
+            <el-tag
+              v-if="row.status === 'draft'"
               type="info"
               size="small"
-              link
-              @click="handleUnconfirm(row)"
+              @click="handleConfirm(row)"
+              style="cursor: pointer;"
             >
-              反确认
-            </el-button>
-            <el-button
+              审核
+            </el-tag>
+            <el-tag
               v-if="row.status === 'draft'"
               type="danger"
               size="small"
-              link
               @click="handleDelete(row)"
+              style="cursor: pointer;"
             >
               删除
-            </el-button>
+            </el-tag>
+            <el-tag
+              v-if="row.status === 'confirmed'"
+              type="warning"
+              size="small"
+              @click="handleUnconfirm(row)"
+              style="cursor: pointer;"
+            >
+              反审核
+            </el-tag>
+            <el-tag
+              v-if="row.status === 'draft'"
+              type="success"
+              size="small"
+              @click="handleCopy(row)"
+              style="cursor: pointer;"
+            >
+              复制
+            </el-tag>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -323,8 +343,23 @@
         
         <!-- 出库明细 -->
         <div class="details-section">
-          <div class="details-header">
+          <div class="details-header" style="display: flex; align-items: center; justify-content: space-between;">
             <h3>出库明细</h3>
+            <el-popover trigger="click" placement="bottom-end" :width="120">
+              <template #reference>
+                <el-button size="small" link type="primary">
+                  <el-icon><Setting /></el-icon>
+                  列设置
+                </el-button>
+              </template>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <el-checkbox v-model="visibleColumns.spec">规格</el-checkbox>
+                <el-checkbox v-model="visibleColumns.unit">单位</el-checkbox>
+                <el-checkbox v-model="visibleColumns.availableStock">可用库存</el-checkbox>
+                <el-checkbox v-model="visibleColumns.plannedQty">计划数量</el-checkbox>
+                <el-checkbox v-model="visibleColumns.outboundQty">已出库数量</el-checkbox>
+              </div>
+            </el-popover>
           </div>
           
           <el-table :data="formData.details" border style="width: 100%">
@@ -350,27 +385,27 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="规格" width="120">
+            <el-table-column v-if="visibleColumns.spec" label="规格" width="120">
               <template #default="{ row }">
                 {{ getProductSpec(row.productId) }}
               </template>
             </el-table-column>
-            <el-table-column label="单位" width="80">
+            <el-table-column v-if="visibleColumns.unit" label="单位" width="80">
               <template #default="{ row }">
                 {{ getProductUnit(row.productId) }}
               </template>
             </el-table-column>
-            <el-table-column label="可用库存" width="120">
+            <el-table-column v-if="visibleColumns.availableStock" label="可用库存" width="120">
               <template #default="{ row }">
                 {{ getAvailableStock(row.productId) }}
               </template>
             </el-table-column>
-            <el-table-column label="计划数量" width="120">
+            <el-table-column v-if="visibleColumns.plannedQty" label="计划数量" width="120">
               <template #default="{ row }">
                 {{ row.plannedQty || '-' }}
               </template>
             </el-table-column>
-            <el-table-column label="已出库数量" width="120">
+            <el-table-column v-if="visibleColumns.outboundQty" label="已出库数量" width="120">
               <template #default="{ row }">
                 {{ row.outboundQty || 0 }}
               </template>
@@ -435,7 +470,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, QuestionFilled, Download, Document, Clock, Money, Wallet } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled, Download, Document, Clock, Money, Wallet, Setting } from '@element-plus/icons-vue'
 import { getSalesOutbounds, getSalesOutboundById, createSalesOutbound, updateSalesOutbound, confirmSalesOutbound, unconfirmSalesOutbound, deleteSalesOutbound } from '@/api/sales-outbound'
 import { getSalesOrders } from '@/api/sales-order'
 import { getCustomers } from '@/api/customer'
@@ -484,6 +519,15 @@ const pagination = reactive({
 
 // 对话框
 const dialogVisible = ref(false)
+
+// 明细列显隐控制
+const visibleColumns = reactive({
+  spec: true,
+  unit: true,
+  availableStock: true,
+  plannedQty: true,
+  outboundQty: true
+})
 const dialogTitle = ref('新增销售出库单')
 const isEdit = ref(false)
 const submitLoading = ref(false)
@@ -801,11 +845,28 @@ const handleView = async (row: any) => {
   }
 }
 
-// 确认出库单
+// 编辑
+const handleEdit = async (row: any) => {
+  dialogTitle.value = '编辑销售出库单'
+  isEdit.value = true
+  await handleView(row)
+}
+
+// 复制
+const handleCopy = async (row: any) => {
+  await handleEdit(row)
+  isEdit.value = false
+  formData.id = ''
+  formData.outboundNo = ''
+  formData.orderId = ''
+  dialogTitle.value = '复制销售出库单'
+}
+
+// 审核出库单
 const handleConfirm = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `确定要确认销售出库单 "${row.outboundNo}" 吗？`,
+      `确定要审核销售出库单 "${row.outboundNo}" 吗？`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -815,20 +876,20 @@ const handleConfirm = async (row: any) => {
     )
     
     await confirmSalesOutbound(row.id)
-    ElMessage.success('确认成功')
+    ElMessage.success('审核成功')
     fetchSalesOutbounds()
   } catch (error: any) {
     if (error !== 'cancel') {
-      console.error('确认销售出库单失败:', error)
+      console.error('审核销售出库单失败:', error)
     }
   }
 }
 
-// 反确认出库单
+// 反审核出库单
 const handleUnconfirm = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `确定要反确认销售出库单 "${row.outboundNo}" 吗？反确认后库存将恢复。`,
+      `确定要反审核销售出库单 "${row.outboundNo}" 吗？反审核后库存将恢复。`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -838,12 +899,12 @@ const handleUnconfirm = async (row: any) => {
     )
     
     await unconfirmSalesOutbound(row.id)
-    ElMessage.success('反确认成功')
+    ElMessage.success('反审核成功')
     fetchSalesOutbounds()
   } catch (error: any) {
     if (error !== 'cancel') {
-      console.error('反确认销售出库单失败:', error)
-      ElMessage.error('反确认失败')
+      console.error('反审核销售出库单失败:', error)
+      ElMessage.error('反审核失败')
     }
   }
 }
@@ -1052,14 +1113,14 @@ const helpData = {
   notices: [
     '出库数量不能超过可用库存',
     '确认出库单会扣减库存',
-    '已确认的出库单不能直接修改',
+    '已审核的出库单不能直接修改',
     '可以关联销售订单自动生成出库单',
     '支持部分出库'
   ],
   tips: [
     '可以使用销售订单快速出库功能',
     '支持批量出库操作',
-    '出库单确认后不可撤销',
+    '出库单审核后不可撤销',
     '可以按客户、状态、日期等条件筛选出库单'
   ],
   shortcuts: [
@@ -1252,5 +1313,12 @@ onMounted(async () => {
 .amount {
   color: #67c23a;
   font-weight: 500;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
 }
 </style>

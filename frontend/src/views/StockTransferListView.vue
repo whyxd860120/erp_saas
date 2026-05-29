@@ -143,7 +143,22 @@
         </el-row>
       </el-form>
 
-      <el-divider content-position="left">调拨明细</el-divider>
+      <el-divider content-position="left">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          调拨明细
+          <el-popover trigger="click" placement="bottom-end" :width="100">
+            <template #reference>
+              <el-button size="small" link type="primary">
+                <el-icon><Setting /></el-icon>
+                列设置
+              </el-button>
+            </template>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <el-checkbox v-model="visibleColumns.batchNo">批次号</el-checkbox>
+            </div>
+          </el-popover>
+        </span>
+      </el-divider>
 
       <el-button type="primary" size="small" @click="addDetailRow" style="margin-bottom: 10px">
         <el-icon><Plus /></el-icon> 添加明细
@@ -178,11 +193,11 @@
             {{ ((row.quantity || 0) * (row.unitCost || 0)).toFixed(2) }}
           </template>
         </el-table-column>
-        <el-table-column label="批次号" width="120">
-          <template #default="{ row, $index }">
-            <el-input v-model="createForm.details[$index].batchNo" placeholder="批次号" />
-          </template>
-        </el-table-column>
+        <el-table-column v-if="visibleColumns.batchNo" label="批次号" width="120">
+              <template #default="{ row, $index }">
+                <el-input v-model="createForm.details[$index].batchNo" placeholder="批次号" />
+              </template>
+            </el-table-column>
         <el-table-column label="操作" width="80">
           <template #default="{ $index }">
             <el-button type="danger" size="small" link @click="removeDetailRow($index)">删除</el-button>
@@ -259,7 +274,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, QuestionFilled } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled, Setting } from '@element-plus/icons-vue'
 import { getStockTransfers, getStockTransferById, createStockTransfer, confirmStockTransfer, deleteStockTransfer } from '@/api/stock-transfer'
 import { getWarehouses } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
@@ -310,6 +325,11 @@ const detailItems = ref<any[]>([])
 
 // 创建对话框
 const createDialogVisible = ref(false)
+
+// 明细列显隐控制
+const visibleColumns = reactive({
+  batchNo: true
+})
 const createDialogTitle = ref('新增调拨单')
 const createLoading = ref(false)
 const helpDialogVisible = ref(false)
