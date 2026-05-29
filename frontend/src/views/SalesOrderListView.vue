@@ -930,6 +930,7 @@ const importColumns = [
   { prop: 'productSpec', label: '物料规格' },
   { prop: 'quantity', label: '数量', required: true },
   { prop: 'unitPrice', label: '单价' },
+  { prop: 'amount', label: '金额' },
   { prop: 'remark', label: '备注' }
 ]
 
