@@ -921,7 +921,7 @@ const pushPurchaseForm = reactive({
 
 // 导入配置
 const importColumns = [
-  { prop: 'orderNo', label: '订单单号', required: true },
+  { prop: 'orderNo', label: '订单单号', required: true, unique: false }, // 订单号可以重复，用于多明细合并
   { prop: 'orderDate', label: '订单日期', required: true },
   { prop: 'customerName', label: '客户名称', required: true },
   { prop: 'salesmanName', label: '业务员' },
