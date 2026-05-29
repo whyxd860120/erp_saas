@@ -1149,11 +1149,12 @@ export const importSalesOrders = async (req: Request, res: Response) => {
               return sum + Number(item.amount);
             }, 0);
 
-            // 更新订单，添加新明细
+            // 更新订单，添加新明细，并确保状态为已确认
             const updatedOrder = await prisma.salesOrder.update({
               where: { id: existingOrder.id },
               data: {
                 totalAmount: existingTotalAmount + newTotalAmount,
+                status: 'confirmed',
                 items: {
                   create: newItemsData
                 }
@@ -1240,7 +1241,7 @@ export const importSalesOrders = async (req: Request, res: Response) => {
             customerId: firstItem.customerId,
             orderDate,
             remark: firstItem.remark || '',
-            status: 'draft',
+            status: 'confirmed',
             totalAmount: totalAmount,
             salesmanId: firstItem.salesmanId,
             items: {
