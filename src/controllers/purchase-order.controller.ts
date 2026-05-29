@@ -1032,8 +1032,8 @@ export const importPurchaseOrders = async (req: Request, res: Response) => {
     const errors: Array<{ row: number; message: string }> = [];
     const successItems: any[] = [];
 
-    // 按供应商分组（采购订单没有订单号，按供应商分组）
-    const supplierGroups = new Map<string, any[]>();
+    // 按订单号分组（采购订单改为按订单号分组）
+    const orderGroups = new Map<string, any[]>();
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const row = i + 1;
@@ -1052,30 +1052,120 @@ export const importPurchaseOrders = async (req: Request, res: Response) => {
       if (!item.supplierId) rowErrors.push('供应商不能为空');
       if (!item.productId) rowErrors.push('物料不能为空');
       if (!item.quantity) rowErrors.push('数量不能为空');
+      if (!item.orderNo) rowErrors.push('订单单号不能为空');
+      if (!item.orderDate) rowErrors.push('订单日期不能为空');
 
       if (rowErrors.length > 0) {
         errors.push({ row, message: rowErrors.join('; ') });
         continue;
       }
 
-      // 按供应商分组
-      if (!supplierGroups.has(item.supplierId)) {
-        supplierGroups.set(item.supplierId, []);
+      const orderNo = item.orderNo || `PO${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+      // 按订单号分组
+      if (!orderGroups.has(orderNo)) {
+        orderGroups.set(orderNo, []);
       }
-      supplierGroups.get(item.supplierId)!.push(item);
+      orderGroups.get(orderNo)!.push(item);
     }
 
-    // 为每个供应商组创建订单
-    for (const [supplierId, supplierItems] of supplierGroups.entries()) {
+    // 为每个订单组创建订单
+    for (const [orderNo, orderItems] of orderGroups.entries()) {
       try {
-        const orderNo = `PO${Date.now()}${Math.floor(Math.random() * 1000)}`;
-        const firstItem = supplierItems[0];
+        const firstItem = orderItems[0];
+        const orderDate = firstItem.orderDate ? new Date(firstItem.orderDate) : new Date();
 
-        console.log(`创建订单 ${orderNo}, 供应商ID: ${supplierId}, 明细数量: ${supplierItems.length}`);
+        console.log(`创建订单 ${orderNo}, 供应商ID: ${firstItem.supplierId}, 明细数量: ${orderItems.length}`);
+
+        // 检查订单号是否已存在
+        const existingOrder = await prisma.purchaseOrder.findFirst({
+          where: {
+            tenantId,
+            orderNo,
+          },
+          include: {
+            items: true
+          }
+        });
+
+        if (existingOrder) {
+          console.log(`订单号 ${orderNo} 已存在，尝试合并明细`);
+          
+          try {
+            // 计算新明细的金额
+            let newTotalAmount = 0;
+            const newItemsData = orderItems.map(item => {
+              const quantity = parseInt(item.quantity) || 0;
+              const unitPrice = parseFloat(item.unitPrice) || 0;
+              const amount = quantity * unitPrice;
+              newTotalAmount += amount;
+
+              return {
+                productId: item.productId,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                amount: amount,
+              };
+            });
+
+            // 计算现有订单的明细金额
+            const existingTotalAmount = existingOrder.items.reduce((sum, item) => {
+              return sum + Number(item.amount);
+            }, 0);
+
+            // 更新订单，添加新明细
+            const updatedOrder = await prisma.purchaseOrder.update({
+              where: { id: existingOrder.id },
+              data: {
+                totalAmount: existingTotalAmount + newTotalAmount,
+                items: {
+                  create: newItemsData
+                }
+              },
+              include: {
+                supplier: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                  },
+                },
+                items: {
+                  include: {
+                    product: {
+                      select: {
+                        id: true,
+                        code: true,
+                        name: true,
+                        spec: true,
+                        unit: true,
+                      },
+                    },
+                  },
+                },
+              },
+            });
+
+            successItems.push(updatedOrder);
+            console.log(`订单 ${orderNo} 明细合并成功`);
+            continue;
+          } catch (mergeError) {
+            console.error(`合并订单 ${orderNo} 明细失败:`, mergeError);
+            // 找到这个订单的所有行号
+            const affectedRows = items.map((item, index) => 
+              item.orderNo === orderNo ? index + 1 : -1
+            ).filter(row => row > 0);
+            
+            affectedRows.forEach(row => {
+              errors.push({ row, message: `合并订单 ${orderNo} 明细失败: ${mergeError instanceof Error ? mergeError.message : '未知错误'}` });
+            });
+            continue;
+          }
+        }
 
         // 计算总金额
         let totalAmount = 0;
-        const itemsData = supplierItems.map(item => {
+        const itemsData = orderItems.map(item => {
           const quantity = parseInt(item.quantity) || 0;
           const unitPrice = parseFloat(item.unitPrice) || 0;
           const amount = quantity * unitPrice;
@@ -1093,27 +1183,50 @@ export const importPurchaseOrders = async (req: Request, res: Response) => {
           data: {
             tenantId,
             orderNo,
-            supplierId: supplierId,
-            orderDate: new Date(),
+            supplierId: firstItem.supplierId,
+            orderDate,
             remark: firstItem.remark || '',
             status: 'draft',
             totalAmount: totalAmount,
+            salesmanId: firstItem.salesmanId,
             items: {
               create: itemsData
             }
-          }
+          },
+          include: {
+            supplier: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+              },
+            },
+            items: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                    spec: true,
+                    unit: true,
+                  },
+                },
+              },
+            },
+          },
         });
 
         successItems.push(order);
       } catch (error) {
-        console.error(`创建供应商 ${supplierId} 的订单失败:`, error);
-        // 找到这个供应商的所有行号
+        console.error(`创建订单 ${orderNo} 失败:`, error);
+        // 找到这个订单的所有行号
         const affectedRows = items.map((item, index) => 
-          item.supplierId === supplierId ? index + 1 : -1
+          item.orderNo === orderNo ? index + 1 : -1
         ).filter(row => row > 0);
         
         affectedRows.forEach(row => {
-          errors.push({ row, message: `供应商 ${supplierId} 的订单创建失败: ${error instanceof Error ? error.message : '未知错误'}` });
+          errors.push({ row, message: `订单 ${orderNo} 创建失败: ${error instanceof Error ? error.message : '未知错误'}` });
         });
       }
     }

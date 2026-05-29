@@ -707,21 +707,36 @@ const products = ref<any[]>([])
 
 // 导入配置
 const importColumns = [
+  { prop: 'orderNo', label: '订单单号', required: true, unique: false }, // 订单号可以重复，用于多明细合并
+  { prop: 'orderDate', label: '订单日期', required: true },
   { prop: 'supplierName', label: '供应商名称', required: true },
+  { prop: 'salesmanName', label: '业务员' },
   { prop: 'productCode', label: '物料编码', required: true },
   { prop: 'productName', label: '物料名称', required: true },
+  { prop: 'productSpec', label: '物料规格' },
   { prop: 'quantity', label: '数量', required: true },
   { prop: 'unitPrice', label: '单价' },
   { prop: 'remark', label: '备注' }
 ]
 
 const importFormatTips = [
+  '订单单号：必填，唯一标识，不可重复',
+  '订单日期：必填，格式：YYYY-MM-DD',
   '供应商名称：必填，填写供应商名称',
   '物料编码：必填，填写物料编码',
   '物料名称：必填，填写物料名称',
+  '物料规格：选填，填写物料规格',
   '数量：必填，数字格式',
   '单价：选填，数字格式',
-  '备注：选填'
+  '备注：选填',
+  '',
+  '多明细订单导入示例：',
+  '订单单号相同的行会合并为一个订单',
+  '例如：订单号 PO001 有3个物料明细',
+  '第1行：PO001, 2026-04-20, 供应商A, , P001, 产品A, , 10, 100, 备注1',
+  '第2行：PO001, 2026-04-20, 供应商A, , P002, 产品B, , 5, 200, 备注2',
+  '第3行：PO001, 2026-04-20, 供应商A, , P003, 产品C, , 8, 150, 备注3',
+  '这3行会合并为一个订单 PO001，包含3个明细'
 ]
 
 // 统计
@@ -1134,6 +1149,7 @@ const handleImport = () => {
 const handleImportSubmit = async (data: any[]) => {
   const supplierMap = new Map<string, string>()
   const productMap = new Map<string, string>()
+  const salesmanMap = new Map<string, string>()
 
   // 获取所有供应商数据用于导入验证
   try {
@@ -1145,6 +1161,8 @@ const handleImportSubmit = async (data: any[]) => {
   } catch (error) {
     console.error('获取供应商列表失败:', error)
   }
+
+  salesmen.value.forEach(s => salesmanMap.set(s.name, s.id))
 
   // 获取所有物料数据用于导入验证
   try {
@@ -1165,6 +1183,13 @@ const handleImportSubmit = async (data: any[]) => {
       delete newItem.supplierName
     } else if (item.supplierName) {
       newItem.supplierError = `供应商 "${item.supplierName}" 不存在`
+    }
+
+    if (item.salesmanName && salesmanMap.has(item.salesmanName)) {
+      newItem.salesmanId = salesmanMap.get(item.salesmanName)
+      delete newItem.salesmanName
+    } else if (item.salesmanName) {
+      newItem.salesmanError = `业务员 "${item.salesmanName}" 不存在`
     }
 
     if (item.productCode && productMap.has(item.productCode)) {
