@@ -1045,6 +1045,12 @@ export const importSalesOrders = async (req: Request, res: Response) => {
     }
 
     const items = req.body as any[];
+    console.log('导入销售订单 - 接收到的数据:', JSON.stringify(items, null, 2));
+
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ success: false, message: '数据格式错误，期望数组格式' });
+    }
+
     const errors: Array<{ row: number; message: string }> = [];
     const successItems: any[] = [];
 
@@ -1052,6 +1058,8 @@ export const importSalesOrders = async (req: Request, res: Response) => {
       const item = items[i];
       const row = i + 1;
       const rowErrors: string[] = [];
+
+      console.log(`处理第${row}行数据:`, JSON.stringify(item, null, 2));
 
       if (item.customerError) rowErrors.push(item.customerError);
       if (item.productError) rowErrors.push(item.productError);
@@ -1074,6 +1082,8 @@ export const importSalesOrders = async (req: Request, res: Response) => {
 
       const orderNo = item.orderNo || `SO${Date.now()}${Math.floor(Math.random() * 1000)}`;
       const orderDate = item.orderDate ? new Date(item.orderDate) : new Date();
+
+      console.log(`创建订单 ${orderNo}, 客户ID: ${item.customerId}, 物料ID: ${item.productId}`);
 
       const order = await prisma.salesOrder.create({
         data: {

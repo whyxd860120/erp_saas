@@ -1023,6 +1023,12 @@ export const importPurchaseOrders = async (req: Request, res: Response) => {
     }
 
     const items = req.body as any[];
+    console.log('导入采购订单 - 接收到的数据:', JSON.stringify(items, null, 2));
+
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ success: false, message: '数据格式错误，期望数组格式' });
+    }
+
     const errors: Array<{ row: number; message: string }> = [];
     const successItems: any[] = [];
 
@@ -1030,6 +1036,8 @@ export const importPurchaseOrders = async (req: Request, res: Response) => {
       const item = items[i];
       const row = i + 1;
       const rowErrors: string[] = [];
+
+      console.log(`处理第${row}行数据:`, JSON.stringify(item, null, 2));
 
       if (item.supplierError) rowErrors.push(item.supplierError);
       if (item.productError) rowErrors.push(item.productError);
@@ -1049,6 +1057,8 @@ export const importPurchaseOrders = async (req: Request, res: Response) => {
       }
 
       const orderNo = `PO${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+      console.log(`创建订单 ${orderNo}, 供应商ID: ${item.supplierId}, 物料ID: ${item.productId}`);
 
       const order = await prisma.purchaseOrder.create({
         data: {

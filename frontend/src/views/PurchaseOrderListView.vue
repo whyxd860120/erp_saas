@@ -1,3 +1,71 @@
+http.ts:67  POST http://localhost:8088/api/v1/sales-orders/import 500 (Internal Server Error)
+dispatchXhrRequest @ axios.js?v=1d9d485c:2165
+xhr @ axios.js?v=1d9d485c:2071
+dispatchRequest @ axios.js?v=1d9d485c:2661
+Promise.then
+_request @ axios.js?v=1d9d485c:2872
+request @ axios.js?v=1d9d485c:2788
+wrap @ axios.js?v=1d9d485c:12
+(anonymous) @ http.ts:67
+(anonymous) @ sales-order.ts:95
+(anonymous) @ SalesOrderListView.vue:1668
+await in (anonymous)
+startImport @ CommonImportDialog.vue:629
+confirmImport @ CommonImportDialog.vue:601
+callWithErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1890
+callWithAsyncErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1897
+emit @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:4654
+(anonymous) @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:6854
+handleClick @ element-plus.js?v=1d9d485c:16039
+callWithErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1890
+callWithAsyncErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1897
+invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
+http.ts:67  POST http://localhost:8088/api/v1/sales-orders/import 500 (Internal Server Error)
+dispatchXhrRequest @ axios.js?v=1d9d485c:2165
+xhr @ axios.js?v=1d9d485c:2071
+dispatchRequest @ axios.js?v=1d9d485c:2661
+Promise.then
+_request @ axios.js?v=1d9d485c:2872
+request @ axios.js?v=1d9d485c:2788
+wrap @ axios.js?v=1d9d485c:12
+(anonymous) @ http.ts:67
+(anonymous) @ sales-order.ts:95
+(anonymous) @ SalesOrderListView.vue:1668
+await in (anonymous)
+startImport @ CommonImportDialog.vue:629
+await in startImport
+confirmImport @ CommonImportDialog.vue:601
+callWithErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1890
+callWithAsyncErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1897
+emit @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:4654
+(anonymous) @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:6854
+handleClick @ element-plus.js?v=1d9d485c:16039
+callWithErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1890
+callWithAsyncErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1897
+invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
+http.ts:67  POST http://localhost:8088/api/v1/sales-orders/import 500 (Internal Server Error)
+dispatchXhrRequest @ axios.js?v=1d9d485c:2165
+xhr @ axios.js?v=1d9d485c:2071
+dispatchRequest @ axios.js?v=1d9d485c:2661
+Promise.then
+_request @ axios.js?v=1d9d485c:2872
+request @ axios.js?v=1d9d485c:2788
+wrap @ axios.js?v=1d9d485c:12
+(anonymous) @ http.ts:67
+(anonymous) @ sales-order.ts:95
+(anonymous) @ SalesOrderListView.vue:1668
+await in (anonymous)
+startImport @ CommonImportDialog.vue:629
+await in startImport
+confirmImport @ CommonImportDialog.vue:601
+callWithErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1890
+callWithAsyncErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1897
+emit @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:4654
+(anonymous) @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:6854
+handleClick @ element-plus.js?v=1d9d485c:16039
+callWithErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1890
+callWithAsyncErrorHandling @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:1897
+invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
 <template>
   <div class="purchase-order-page">
     <!-- 页面标题 -->
