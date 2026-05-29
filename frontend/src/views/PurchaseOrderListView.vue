@@ -146,7 +146,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
               <el-input v-model="searchForm.keyword" placeholder="订单号/供应商" clearable style="width: 100%;" @keyup.enter="handleSearch" />
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="7">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="供应商" class="search-item">
               <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable style="width: 100%;" @change="handleSearch">
                 <el-option
@@ -158,7 +158,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
+          <el-col :xs="24" :sm="12" :md="7">
             <el-form-item label="单据状态" class="search-item">
               <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 100%;" @change="handleSearch">
                 <el-option label="草稿" value="draft" />
@@ -1134,7 +1134,7 @@ const handleView = async (row: any) => {
   try {
     const response: any = await getPurchaseOrderById(row.id)
     if (response.success) {
-      currentOrder.value = response.data.data
+      currentOrder.value = response.data
       viewDrawer.value = true
     }
   } catch (error) {

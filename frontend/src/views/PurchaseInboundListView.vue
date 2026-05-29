@@ -212,13 +212,19 @@
       >
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="入库单号" prop="orderNo">
-              <el-input v-model="formData.orderNo" placeholder="请输入入库单号" />
+            <el-form-item label="入库单号">
+              <template v-if="isView">
+                <span class="readonly-text">{{ formData.inboundNo }}</span>
+              </template>
+              <el-input v-else v-model="formData.orderNo" placeholder="请输入入库单号" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="采购订单" prop="purchaseOrderId">
-              <el-select 
+            <el-form-item label="采购订单">
+              <template v-if="isView">
+                <span class="readonly-text">{{ formData.orderNo }}</span>
+              </template>
+              <el-select v-else
                 v-model="formData.purchaseOrderId" 
                 placeholder="请选择采购订单"
                 filterable
@@ -237,8 +243,11 @@
         
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="入库日期" prop="inboundDate">
-              <el-date-picker
+            <el-form-item label="入库日期">
+              <template v-if="isView">
+                <span class="readonly-text">{{ formatDate(formData.inboundDate) }}</span>
+              </template>
+              <el-date-picker v-else
                 v-model="formData.inboundDate"
                 type="date"
                 placeholder="请选择日期"
@@ -247,8 +256,11 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="仓库" prop="warehouseId">
-              <el-select v-model="formData.warehouseId" placeholder="请选择仓库" filterable>
+            <el-form-item label="仓库">
+              <template v-if="isView">
+                <span class="readonly-text">{{ formData.warehouseName }}</span>
+              </template>
+              <el-select v-else v-model="formData.warehouseId" placeholder="请选择仓库" filterable>
                 <el-option
                   v-for="warehouse in warehouses"
                   :key="warehouse.id"
@@ -256,6 +268,14 @@
                   :value="warehouse.id"
                 />
               </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row v-if="isView" :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="供应商">
+              <span class="readonly-text">{{ formData.supplierName }}</span>
             </el-form-item>
           </el-col>
         </el-row>
@@ -284,7 +304,55 @@
             <h3>入库明细</h3>
           </div>
           
-          <el-table :data="formData.details" border style="width: 100%">
+          <el-table v-if="isView" :data="formData.details" border style="width: 100%">
+            <el-table-column label="物料编码" width="150">
+              <template #default="{ row }">
+                {{ row.productCode }}
+              </template>
+            </el-table-column>
+            <el-table-column label="物料名称" width="180">
+              <template #default="{ row }">
+                {{ row.productName }}
+              </template>
+            </el-table-column>
+            <el-table-column label="规格" width="120">
+              <template #default="{ row }">
+                {{ row.spec || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="单位" width="80">
+              <template #default="{ row }">
+                {{ row.unit || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="计划数量" width="120">
+              <template #default="{ row }">
+                {{ row.plannedQty || 0 }}
+              </template>
+            </el-table-column>
+            <el-table-column label="已入库数量" width="120">
+              <template #default="{ row }">
+                {{ row.inboundQty || 0 }}
+              </template>
+            </el-table-column>
+            <el-table-column label="本次入库" width="120">
+              <template #default="{ row }">
+                {{ row.quantity || 0 }}
+              </template>
+            </el-table-column>
+            <el-table-column label="单价" width="120">
+              <template #default="{ row }">
+                {{ row.unitPrice?.toFixed(2) || '0.00' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="金额" width="120">
+              <template #default="{ row }">
+                {{ ((row.quantity || 0) * (row.unitPrice || 0))?.toFixed(2) || '0.00' }}
+              </template>
+            </el-table-column>
+          </el-table>
+          
+          <el-table v-else :data="formData.details" border style="width: 100%">
             <el-table-column label="物料" width="250">
               <template #default="{ row, $index }">
                 <el-select
@@ -364,10 +432,15 @@
       </el-form>
       
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
-          确定
-        </el-button>
+        <template v-if="isView">
+          <el-button @click="dialogVisible = false">关闭</el-button>
+        </template>
+        <template v-else>
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
+            确定
+          </el-button>
+        </template>
       </template>
     </el-dialog>
 
@@ -431,6 +504,7 @@ const pagination = reactive({
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增采购入库单')
 const isEdit = ref(false)
+const isView = ref(false)
 const submitLoading = ref(false)
 const formRef = ref<FormInstance>()
 const helpDialogVisible = ref(false)
@@ -640,7 +714,8 @@ const handleCreate = async () => {
 const handleView = async (row: any) => {
   try {
     dialogTitle.value = '查看采购入库单'
-    isEdit.value = true
+    isEdit.value = false
+    isView.value = true
     
     const response: any = await getPurchaseInboundById(row.id)
     if (response.success) {
@@ -648,9 +723,12 @@ const handleView = async (row: any) => {
       Object.assign(formData, {
         id: inbound.id,
         inboundNo: inbound.inboundNo,
+        orderNo: inbound.order?.orderNo || '',
         orderId: inbound.orderId,
+        supplierName: inbound.order?.supplier?.name || '',
         supplierId: inbound.order?.supplier?.id || '',
         inboundDate: new Date(inbound.inboundDate),
+        warehouseName: inbound.warehouse?.name || '',
         warehouseId: inbound.warehouseId,
         totalAmount: inbound.totalAmount,
         logisticsCost: inbound.logisticsCost || 0,
@@ -664,7 +742,7 @@ const handleView = async (row: any) => {
           unit: detail.product?.unit || '',
           plannedQty: detail.plannedQty || 0,
           inboundQty: detail.inboundQty || 0,
-          quantity: 0,
+          quantity: detail.inboundQty || 0,
           unitPrice: detail.unitPrice || 0
         })) || []
       })
@@ -860,6 +938,7 @@ const resetForm = () => {
 // 关闭对话框
 const handleDialogClose = () => {
   resetForm()
+  isView.value = false
   if (formRef.value) {
     formRef.value.resetFields()
   }
@@ -1105,5 +1184,14 @@ onMounted(async () => {
 .amount {
   color: #67c23a;
   font-weight: 500;
+}
+
+.readonly-text {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  color: #606266;
+  font-size: 14px;
 }
 </style>
