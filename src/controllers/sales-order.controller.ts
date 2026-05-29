@@ -120,6 +120,22 @@ export const getSalesOrders = async (req: Request, res: Response) => {
               name: true,
             },
           },
+          items: {
+            select: {
+              quantity: true,
+              amount: true,
+            },
+          },
+          outbounds: {
+            include: {
+              details: {
+                select: {
+                  quantity: true,
+                  productId: true,
+                },
+              },
+            },
+          },
           _count: {
             select: {
               items: true,
@@ -133,10 +149,37 @@ export const getSalesOrders = async (req: Request, res: Response) => {
       prisma.salesOrder.count({ where }),
     ]);
 
+    // 处理订单数据，计算出库数量和金额
+    const processedOrders = orders.map(order => {
+      const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      
+      // 从关联的已确认出库单中计算已出库数量
+      let outboundQuantity = 0;
+      let outboundAmount = 0;
+      
+      for (const outbound of order.outbounds) {
+        if (outbound.status === 'confirmed') {
+          outboundAmount += outbound.totalAmount || 0;
+          if (outbound.details) {
+            for (const detail of outbound.details) {
+              outboundQuantity += detail.quantity || 0;
+            }
+          }
+        }
+      }
+
+      return {
+        ...order,
+        totalQuantity,
+        outboundQuantity,
+        outboundAmount,
+      };
+    });
+
     return res.json({
       success: true,
       data: {
-        items: orders,
+        items: processedOrders,
         total,
         page: pageNum,
         limit: limitNum,

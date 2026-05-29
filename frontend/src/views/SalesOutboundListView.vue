@@ -6,6 +6,10 @@
         <h2 class="page-title">销售出库</h2>
       </div>
       <div class="header-right">
+        <el-button @click="handleImport">
+          <el-icon><Download /></el-icon>
+          导入
+        </el-button>
         <el-button @click="handleExport">
           <el-icon><Download /></el-icon>
           导出
@@ -72,7 +76,7 @@
           </el-col>
           <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="客户" class="search-item">
-              <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable style="width: 100%;" @change="handleSearch">
+              <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable remote reserve-keyword :remote-method="searchCustomers" style="width: 100%;" @change="handleSearch">
                 <el-option
                   v-for="customer in customers"
                   :key="customer.id"
@@ -576,6 +580,16 @@
       </div>
     </el-drawer>
 
+    <!-- 导入对话框 -->
+    <CommonImportDialog
+      v-model="importDialogVisible"
+      module-name="销售出库单"
+      :columns="importColumns"
+      :format-tips="importFormatTips"
+      :import-fn="handleImportSubmit"
+      @success="handleImportSuccess"
+    />
+
     <!-- 帮助对话框 -->
     <CommonHelpDialog
       v-model="helpDialogVisible"
@@ -589,7 +603,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Download, Document, Clock, Money, Wallet, Goods, Delete, QuestionFilled, Setting } from '@element-plus/icons-vue'
-import { getSalesOutbounds, getSalesOutboundById, createSalesOutbound, updateSalesOutbound, confirmSalesOutbound, unconfirmSalesOutbound, deleteSalesOutbound } from '@/api/sales-outbound'
+import { getSalesOutbounds, getSalesOutboundById, createSalesOutbound, updateSalesOutbound, confirmSalesOutbound, unconfirmSalesOutbound, deleteSalesOutbound, importSalesOutbounds } from '@/api/sales-outbound'
 import { getSalesOrders } from '@/api/sales-order'
 import { getCustomers } from '@/api/customer'
 import { getUsers } from '@/api/user'
@@ -598,6 +612,7 @@ import { getProducts } from '@/api/product'
 import { getInventory } from '@/api/inventory'
 import { getStatusColor, getSalesOutboundStatusText } from '@/utils/status.util'
 import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
+import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 // 数据列表
@@ -654,6 +669,51 @@ const isEdit = ref(false)
 const submitLoading = ref(false)
 const formRef = ref<FormInstance>()
 const helpDialogVisible = ref(false)
+const importDialogVisible = ref(false)
+
+// 导入配置
+const importColumns = [
+  { prop: 'outboundNo', label: '出库单号', required: true, unique: false },
+  { prop: 'outboundDate', label: '出库日期', required: true },
+  { prop: 'warehouseName', label: '仓库名称', required: true },
+  { prop: 'customerName', label: '客户名称', required: true },
+  { prop: 'orderNo', label: '销售订单号' },
+  { prop: 'productCode', label: '物料编码', required: true },
+  { prop: 'productName', label: '物料名称', required: true },
+  { prop: 'productSpec', label: '物料规格' },
+  { prop: 'quantity', label: '数量', required: true },
+  { prop: 'unitPrice', label: '单价' },
+  { prop: 'amount', label: '金额' },
+  { prop: 'batchNo', label: '批次号' },
+  { prop: 'remark', label: '备注' }
+]
+
+const importFormatTips = [
+  '出库单号：必填，用于合并同一出库单的多个明细行',
+  '出库日期：必填，格式：YYYY-MM-DD',
+  '仓库名称：必填，填写仓库名称',
+  '客户名称：必填，填写客户名称',
+  '销售订单号：可选，填写关联的销售订单号',
+  '物料编码：必填，填写物料编码',
+  '物料名称：必填，填写物料名称',
+  '物料规格：可选，填写物料规格',
+  '数量：必填，数字格式',
+  '单价：可选，数字格式',
+  '金额：可选，数字格式，优先使用金额计算',
+  '批次号：可选，填写批次号',
+  '备注：可选',
+  '',
+  '金额计算规则：',
+  '1. 如果填写了金额和数量，则金额优先，单价=金额/数量',
+  '2. 如果只填写了单价和数量，则金额=单价×数量',
+  '',
+  '多明细出库单导入示例：',
+  '出库单号相同的行会合并为一个出库单',
+  '例如：出库单号 SO001 有2个物料明细',
+  '第1行：SO001, 2026-04-20, 主仓库, 客户A, SO001, P001, 产品A, , 10, 100, 1000, , 备注1',
+  '第2行：SO001, 2026-04-20, 主仓库, 客户A, SO001, P002, 产品B, , 5, 200, 1000, , 备注2',
+  '这2行会合并为一个出库单 SO001，包含2个明细'
+]
 
 // 表单数据
 const formData = reactive({
@@ -1323,6 +1383,122 @@ const handleDialogClose = () => {
   }
 }
 
+// 导入
+const handleImport = () => {
+  importDialogVisible.value = true
+}
+
+const handleImportSubmit = async (data: any[]) => {
+  const warehouseMap = new Map<string, string>()
+  const customerMap = new Map<string, string>()
+  const productMap = new Map<string, string>()
+  const orderMap = new Map<string, string>()
+
+  try {
+    const warehouseResponse: any = await getWarehouses({ page: 1, limit: 10000, status: '' })
+    if (warehouseResponse.success) {
+      const allWarehouses = warehouseResponse.data.items || []
+      allWarehouses.forEach((w: any) => warehouseMap.set(w.name, w.id))
+    }
+  } catch (error) {
+    console.error('获取仓库列表失败:', error)
+  }
+
+  try {
+    const customerResponse: any = await getCustomers({ page: 1, limit: 10000, status: '' })
+    if (customerResponse.success) {
+      const allCustomers = customerResponse.data.items || []
+      allCustomers.forEach((c: any) => customerMap.set(c.name, c.id))
+    }
+  } catch (error) {
+    console.error('获取客户列表失败:', error)
+  }
+
+  try {
+    const productResponse: any = await getProducts({ page: 1, limit: 10000, status: '' })
+    if (productResponse.success) {
+      const allProducts = productResponse.data.items || []
+      allProducts.forEach((p: any) => productMap.set(p.code, p.id))
+    }
+  } catch (error) {
+    console.error('获取物料列表失败:', error)
+  }
+
+  try {
+    const orderResponse: any = await getSalesOrders({ page: 1, limit: 10000, status: '' })
+    if (orderResponse.success) {
+      const allOrders = orderResponse.data.items || []
+      allOrders.forEach((o: any) => orderMap.set(o.orderNo, o.id))
+    }
+  } catch (error) {
+    console.error('获取销售订单列表失败:', error)
+  }
+
+  const processedData = data.map(item => {
+    const newItem: any = { ...item }
+
+    if (item.warehouseName && warehouseMap.has(item.warehouseName)) {
+      newItem.warehouseId = warehouseMap.get(item.warehouseName)
+      delete newItem.warehouseName
+    } else if (item.warehouseName) {
+      newItem.warehouseError = `仓库 "${item.warehouseName}" 不存在`
+    }
+
+    if (item.customerName && customerMap.has(item.customerName)) {
+      newItem.customerId = customerMap.get(item.customerName)
+      delete newItem.customerName
+    } else if (item.customerName) {
+      newItem.customerError = `客户 "${item.customerName}" 不存在`
+    }
+
+    if (item.orderNo && orderMap.has(item.orderNo)) {
+      newItem.orderId = orderMap.get(item.orderNo)
+      delete newItem.orderNo
+    } else if (item.orderNo) {
+      console.warn(`销售订单 "${item.orderNo}" 不存在，已跳过设置订单`)
+      delete newItem.orderNo
+    }
+
+    if (item.productCode && productMap.has(item.productCode)) {
+      newItem.productId = productMap.get(item.productCode)
+      delete newItem.productCode
+    } else if (item.productCode) {
+      newItem.productError = `物料编码 "${item.productCode}" 不存在`
+    }
+
+    const quantity = parseFloat(item.quantity) || 0
+    const excelAmount = parseFloat(item.amount) || 0
+    const excelUnitPrice = parseFloat(item.unitPrice) || 0
+
+    let amount: number
+    let unitPrice: number
+
+    if (excelAmount > 0 && quantity > 0) {
+      amount = excelAmount
+      unitPrice = excelUnitPrice > 0 ? excelUnitPrice : (amount / quantity)
+    } else if (quantity > 0 && excelUnitPrice > 0) {
+      unitPrice = excelUnitPrice
+      amount = quantity * unitPrice
+    } else {
+      unitPrice = 0
+      amount = 0
+    }
+
+    newItem.quantity = quantity
+    newItem.unitPrice = unitPrice
+    newItem.amount = amount
+
+    return newItem
+  })
+
+  const result: any = await importSalesOutbounds(processedData)
+  return result
+}
+
+const handleImportSuccess = () => {
+  fetchSalesOutbounds()
+}
+
 // 帮助数据
 const helpData = {
   operations: [
@@ -1402,8 +1578,13 @@ const handleCurrentChange = (val: number) => {
 
 // 初始化
 onMounted(async () => {
-  // 只加载列表数据，其他数据按需加载
-  await fetchSalesOutbounds()
+  // 加载列表数据和基础数据
+  await Promise.all([
+    fetchSalesOutbounds(),
+    fetchCustomers(),
+    fetchWarehouses(),
+    fetchProducts()
+  ])
 })
 </script>
 

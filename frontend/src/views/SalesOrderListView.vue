@@ -80,7 +80,7 @@
           </el-col>
           <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="客户" class="search-item">
-              <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable style="width: 100%;" @change="handleSearch">
+              <el-select v-model="searchForm.customerId" placeholder="请选择客户" clearable filterable remote reserve-keyword :remote-method="searchCustomers" style="width: 100%;" @change="handleSearch">
                 <el-option
                   v-for="customer in customers"
                   :key="customer.id"

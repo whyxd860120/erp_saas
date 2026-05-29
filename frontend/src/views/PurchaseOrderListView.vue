@@ -148,7 +148,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
           </el-col>
           <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="供应商" class="search-item">
-              <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable style="width: 100%;" @change="handleSearch">
+              <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable remote reserve-keyword :remote-method="searchSuppliers" style="width: 100%;" @change="handleSearch">
                 <el-option
                   v-for="supplier in suppliers"
                   :key="supplier.id"

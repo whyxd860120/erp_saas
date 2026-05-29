@@ -3,9 +3,11 @@ import {
   getSalesOutbounds,
   getSalesOutboundById,
   createSalesOutbound,
+  updateSalesOutbound,
   confirmSalesOutbound,
   unconfirmSalesOutbound,
   deleteSalesOutbound,
+  importSalesOutbounds,
 } from '../controllers/sales-outbound.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
 import { checkFiscalPeriod } from '../middlewares/fiscal-period.middleware';
@@ -31,6 +33,19 @@ router.get('/:id', authenticate, tenantIsolation(), getSalesOutboundById);
  * Body: { outboundNo, orderId?, warehouseId, outboundDate?, remark?, details: [{ productId, quantity, unitPrice, batchNo? }] }
  */
 router.post('/', authenticate, authorize(['admin', 'manager', 'staff']), tenantIsolation(), checkFiscalPeriod('outboundDate'), createSalesOutbound);
+
+/**
+ * 更新销售出库单（仅草稿状态）
+ * PUT /api/v1/sales-outbounds/:id
+ * Body: { outboundNo?, orderId?, warehouseId?, outboundDate?, remark?, details? }
+ */
+router.put('/:id', authenticate, authorize(['admin', 'manager', 'staff']), tenantIsolation(), checkFiscalPeriod('outboundDate'), updateSalesOutbound);
+
+/**
+ * 导入销售出库单
+ * POST /api/v1/sales-outbounds/import
+ */
+router.post('/import', authenticate, authorize(['admin', 'manager', 'staff']), tenantIsolation(), importSalesOutbounds);
 
 /**
  * 确认销售出库单（草稿 → 已确认，同时更新库存）

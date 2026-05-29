@@ -498,9 +498,11 @@ const availableWarehouses = computed(() => {
 })
 
 // 格式化数字
-const formatNumber = (num: number) => {
+const formatNumber = (num: any) => {
   if (num === undefined || num === null) return '0'
-  return num.toLocaleString()
+  const n = Number(num)
+  if (isNaN(n)) return '0'
+  return n.toLocaleString()
 }
 
 // 格式化金额

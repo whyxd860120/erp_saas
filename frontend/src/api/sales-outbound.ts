@@ -89,3 +89,12 @@ export const updateSalesOutbound = (id: string, data: Partial<CreateSalesOutboun
     data
   })
 }
+
+// 导入销售出库单
+export const importSalesOutbounds = (data: any[]) => {
+  return request({
+    url: '/api/v1/sales-outbounds/import',
+    method: 'post',
+    data
+  })
+}

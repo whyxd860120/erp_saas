@@ -91,3 +91,12 @@ export const updatePurchaseInbound = (id: string, data: Partial<CreatePurchaseIn
     data
   })
 }
+
+// 导入采购入库单
+export const importPurchaseInbounds = (data: any[]) => {
+  return request({
+    url: '/api/v1/purchase-inbounds/import',
+    method: 'post',
+    data
+  })
+}
