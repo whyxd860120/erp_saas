@@ -646,14 +646,21 @@ const getPlanLabel = (plan: string) => {
   return labels[plan] || plan
 }
 
-const getStatusType = (status: string) => {
+const getStatusType = (status: any): 'primary' | 'success' | 'info' | 'warning' | 'danger' => {
+  const safeStatus = status && typeof status === 'string' ? status : ''
   const types: Record<string, any> = {
     active: 'success',
     trial: 'warning',
     suspended: 'danger',
     expired: 'info'
   }
-  return types[status] || 'info'
+  const type = types[safeStatus] || 'info'
+  const validTypes: Array<'primary' | 'success' | 'info' | 'warning' | 'danger'> = 
+    ['primary', 'success', 'info', 'warning', 'danger']
+  if (validTypes.includes(type)) {
+    return type
+  }
+  return 'info'
 }
 
 const getStatusLabel = (status: string) => {

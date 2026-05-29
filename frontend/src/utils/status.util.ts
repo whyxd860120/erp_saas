@@ -142,8 +142,20 @@ export const USER_STATUS_TEXT: Record<string, string> = {
  * @param status 状态值
  * @returns Element Plus tag type
  */
-export const getStatusColor = (status: string): string => {
-  return STATUS_COLOR_MAP[status as StatusType] || 'info'
+export const getStatusColor = (status: any): 'primary' | 'success' | 'info' | 'warning' | 'danger' => {
+  // 安全检查
+  const safeStatus = status && typeof status === 'string' ? status : ''
+  
+  const color = STATUS_COLOR_MAP[safeStatus as StatusType]
+  
+  // 确保返回有效的类型
+  const validTypes: Array<'primary' | 'success' | 'info' | 'warning' | 'danger'> = 
+    ['primary', 'success', 'info', 'warning', 'danger']
+  
+  if (color && typeof color === 'string' && validTypes.includes(color as any)) {
+    return color as any
+  }
+  return 'info'
 }
 
 /**

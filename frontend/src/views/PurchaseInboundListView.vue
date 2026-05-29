@@ -147,7 +147,7 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
+            <el-tag :type="getStatusType(row.status) || 'info'" size="small">
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
@@ -371,7 +371,7 @@
                 {{ row.plannedQty || 0 }}
               </template>
             </el-table-column>
-            <el-table-column label="本次入库" width="120">
+            <el-table-column label="本次入库" width="120" prop="quantity">
               <template #default="{ row, $index }">
                 <el-input-number
                   v-model="row.quantity"
@@ -408,16 +408,9 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column label="金额" width="130">
+            <el-table-column label="金额" width="130" prop="amount">
               <template #default="{ row }">
-                <el-input-number
-                  v-model="row.amount"
-                  :min="0"
-                  :precision="2"
-                  size="small"
-                  disabled
-                  style="width: 100%;"
-                />
+                <span class="amount">¥{{ formatAmount(row.amount) }}</span>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="60">
@@ -504,7 +497,7 @@
             <el-descriptions-item label="入库单号">{{ currentInbound.inboundNo }}</el-descriptions-item>
             <el-descriptions-item label="入库日期">{{ formatDate(currentInbound.inboundDate) }}</el-descriptions-item>
             <el-descriptions-item label="单据状态">
-              <el-tag :type="getStatusType(currentInbound.status)" size="small">
+              <el-tag :type="getStatusType(currentInbound.status) || 'info'" size="small">
                 {{ getStatusText(currentInbound.status) }}
               </el-tag>
             </el-descriptions-item>
@@ -517,22 +510,36 @@
         <!-- 物料明细 -->
         <div class="detail-section">
           <h4>物料明细</h4>
-          <el-table :data="currentInbound.items || []" border size="small">
+          <el-table :data="(currentInbound.items || currentInbound.details || [])" border size="small">
             <el-table-column type="index" label="序号" width="60" />
-            <el-table-column prop="product.code" label="物料编码" width="120" />
-            <el-table-column prop="product.name" label="物料名称" min-width="150" />
-            <el-table-column prop="product.spec" label="规格" width="100" />
-            <el-table-column prop="product.unit" label="单位" width="60" />
-            <el-table-column prop="plannedQty" label="计划数量" width="100" align="right" />
-            <el-table-column prop="quantity" label="入库数量" width="100" align="right" />
-            <el-table-column prop="unitPrice" label="单价" width="100" align="right">
+            <el-table-column label="物料编码" width="120">
+              <template #default="{ row }">{{ row.product?.code || row.productCode || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="物料名称" min-width="150">
+              <template #default="{ row }">{{ row.product?.name || row.productName || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="规格" width="100">
+              <template #default="{ row }">{{ row.product?.spec || row.spec || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="单位" width="60">
+              <template #default="{ row }">{{ row.product?.unit || row.unit || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="计划数量" width="100" align="right">
+              <template #default="{ row }">{{ row.plannedQty || row.plannedQuantity || 0 }}</template>
+            </el-table-column>
+            <el-table-column label="入库数量" width="100" align="right">
+              <template #default="{ row }">{{ row.quantity || 0 }}</template>
+            </el-table-column>
+            <el-table-column label="单价" width="100" align="right">
               <template #default="{ row }">¥{{ formatAmount(row.unitPrice) }}</template>
             </el-table-column>
-            <el-table-column prop="taxRate" label="税率(%)" width="80" align="right" />
-            <el-table-column prop="taxAmount" label="税额" width="100" align="right">
+            <el-table-column label="税率(%)" width="80" align="right">
+              <template #default="{ row }">{{ row.taxRate || 0 }}</template>
+            </el-table-column>
+            <el-table-column label="税额" width="100" align="right">
               <template #default="{ row }">¥{{ formatAmount(row.taxAmount) }}</template>
             </el-table-column>
-            <el-table-column prop="amount" label="金额" width="120" align="right">
+            <el-table-column label="金额" width="120" align="right">
               <template #default="{ row }">¥{{ formatAmount(row.amount) }}</template>
             </el-table-column>
           </el-table>
@@ -554,6 +561,21 @@
         <div class="detail-section" v-if="currentInbound.remark">
           <h4>备注信息</h4>
           <p>{{ currentInbound.remark }}</p>
+        </div>
+
+        <!-- 操作日志 -->
+        <div class="detail-section" v-if="currentInbound.logs?.length">
+          <h4>操作记录</h4>
+          <el-timeline size="small">
+            <el-timeline-item
+              v-for="log in currentInbound.logs"
+              :key="log.id"
+              :timestamp="formatDateTime(log.createdAt)"
+              :type="log.action === 'create' ? 'primary' : undefined"
+            >
+              <p>{{ log.actionText }} - {{ log.operator?.name || '系统' }}</p>
+            </el-timeline-item>
+          </el-timeline>
         </div>
       </div>
     </el-drawer>
@@ -841,13 +863,18 @@ const getProductAttr = (productId: string, attr: string) => {
 }
 
 // 获取汇总
-const getSummary = ({ columns, data }: any) => {
+const getSummary = ({ columns }: any) => {
+  calculateAmounts()
+  const totalQty = formData.details.reduce((sum: number, d: any) => sum + (d.quantity || 0), 0)
   return columns.map((column: any, index: number) => {
     if (index === 0) {
       return '合计'
     }
+    if (column.property === 'quantity') {
+      return totalQty
+    }
     if (column.property === 'amount') {
-      return '¥' + formatAmount(formData.goodsAmount)
+      return `¥${formatAmount(formData.goodsAmount)}`
     }
     return ''
   })
@@ -933,7 +960,12 @@ const handleView = async (row: any) => {
   try {
     const response: any = await getPurchaseInboundById(row.id)
     if (response.success) {
-      currentInbound.value = response.data
+      const data = response.data
+      // 确保明细数据正确映射
+      if (!data.items && data.details) {
+        data.items = data.details
+      }
+      currentInbound.value = data
       viewDrawer.value = true
     }
   } catch (error) {
@@ -1050,17 +1082,15 @@ const doSubmit = async (isConfirm: boolean) => {
 
     submitLoading.value = true
 
-    // 构建提交数据
+    // 构建提交数据 - 注意API期望的参数名称是 orderId 而不是 purchaseOrderId
     const submitData: any = {
       inboundNo: formData.orderNo,
-      purchaseOrderId: formData.purchaseOrderId || undefined,
+      orderId: formData.purchaseOrderId || undefined,
       inboundDate: formData.inboundDate,
       warehouseId: formData.warehouseId,
       remark: formData.remark,
       logisticsCost: formData.logisticsCost,
-      discountAmount: formData.discountAmount,
-      finalAmount: formData.finalAmount,
-      items: formData.details.map(detail => ({
+      details: formData.details.map(detail => ({
         productId: detail.productId,
         quantity: detail.quantity,
         unitPrice: detail.unitPrice,
@@ -1078,7 +1108,13 @@ const doSubmit = async (isConfirm: boolean) => {
       try {
         const res = await createPurchaseInbound(submitData) as any
         if (res.success) {
-          ElMessage.success('创建成功')
+          // 如果需要直接确认，则调用确认接口
+          if (isConfirm) {
+            await confirmPurchaseInbound(res.data.id)
+            ElMessage.success('入库成功')
+          } else {
+            ElMessage.success('创建成功')
+          }
           dialogVisible.value = false
           fetchPurchaseInbounds()
         }
@@ -1093,7 +1129,13 @@ const doSubmit = async (isConfirm: boolean) => {
             // 重试保存
             const retryRes = await createPurchaseInbound(submitData) as any
             if (retryRes.success) {
-              ElMessage.success('创建成功')
+              // 如果需要直接确认，则调用确认接口
+              if (isConfirm) {
+                await confirmPurchaseInbound(retryRes.data.id)
+                ElMessage.success('入库成功')
+              } else {
+                ElMessage.success('创建成功')
+              }
               dialogVisible.value = false
               fetchPurchaseInbounds()
               return
@@ -1186,8 +1228,14 @@ const handleDelete = async (row: any) => {
 }
 
 // 获取状态类型
-const getStatusType = (status: string) => {
-  return getStatusColor(status)
+const getStatusType = (status: any): 'primary' | 'success' | 'info' | 'warning' | 'danger' => {
+  const type = getStatusColor(status)
+  const validTypes: Array<'primary' | 'success' | 'info' | 'warning' | 'danger'> = 
+    ['primary', 'success', 'info', 'warning', 'danger']
+  if (validTypes.includes(type)) {
+    return type
+  }
+  return 'info'
 }
 
 const getStatusText = (status: string) => {

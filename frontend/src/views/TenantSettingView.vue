@@ -421,14 +421,19 @@ const handleExportData = () => {
   ElMessage.info('数据导出功能开发中')
 }
 
-const getPlanType = (plan: string) => {
+const getPlanType = (plan: string): 'primary' | 'success' | 'info' | 'warning' | 'danger' => {
   const map: Record<string, string> = {
     free: 'info',
-    basic: '',
+    basic: 'primary',
     pro: 'warning',
     enterprise: 'success'
   }
-  return map[plan] || ''
+  const type = map[plan] || 'info'
+  const validTypes = ['primary', 'success', 'info', 'warning', 'danger']
+  if (validTypes.includes(type)) {
+    return type as any
+  }
+  return 'info'
 }
 
 const getPlanName = (plan: string) => {
@@ -441,15 +446,22 @@ const getPlanName = (plan: string) => {
   return map[plan] || plan
 }
 
-const getStatusType = (status: string) => {
+const getStatusType = (status: any): 'primary' | 'success' | 'info' | 'warning' | 'danger' => {
+  const safeStatus = status && typeof status === 'string' ? status : ''
   const map: Record<string, string> = {
     active: 'success',
-    trial: '',
+    trial: 'warning',
     suspended: 'danger',
     expired: 'info',
     cancelled: 'info'
   }
-  return map[status] || ''
+  const type = map[safeStatus] || 'info'
+  const validTypes: Array<'primary' | 'success' | 'info' | 'warning' | 'danger'> = 
+    ['primary', 'success', 'info', 'warning', 'danger']
+  if (validTypes.includes(type as any)) {
+    return type as any
+  }
+  return 'info'
 }
 
 const getStatusName = (status: string) => {

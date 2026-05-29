@@ -183,7 +183,7 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
+            <el-tag :type="getStatusType(row.status) || 'info'" size="small">
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
@@ -267,7 +267,7 @@
             </el-tag>
             <el-tag
               v-if="row.status === 'confirmed' || row.status === 'partial'"
-              type=""
+              type="warning"
               size="small"
               @click="handleQuickOutbound(row)"
               style="cursor: pointer;"
@@ -758,7 +758,7 @@
             <el-descriptions-item label="单据编号">{{ currentOrder.orderNo }}</el-descriptions-item>
             <el-descriptions-item label="单据日期">{{ formatDate(currentOrder.orderDate) }}</el-descriptions-item>
             <el-descriptions-item label="单据状态">
-              <el-tag :type="getStatusType(currentOrder.status)" size="small">
+              <el-tag :type="getStatusType(currentOrder.status) || 'info'" size="small">
                 {{ getStatusText(currentOrder.status) }}
               </el-tag>
             </el-descriptions-item>
@@ -839,7 +839,7 @@
               v-for="log in currentOrder.logs || []"
               :key="log.id"
               :timestamp="formatDateTime(log.createdAt)"
-              :type="log.action === 'create' ? 'primary' : ''"
+              :type="log.action === 'create' ? 'primary' : undefined"
             >
               <p>{{ log.actionText }} - {{ log.operator?.name || '系统' }}</p>
             </el-timeline-item>
@@ -1084,9 +1084,26 @@ const formatDateTime = (date: string | Date) => {
   return new Date(date).toLocaleString('zh-CN')
 }
 
-// 获取状态类型
-const getStatusType = (status: string) => {
-  return getStatusColor(status)
+// 获取状态类型 - 完全安全的版本
+const getStatusType = (status: any): 'primary' | 'success' | 'info' | 'warning' | 'danger' => {
+  // 安全检查，确保 status 是有效字符串
+  const safeStatus = status && typeof status === 'string' ? status : ''
+  
+  let type = ''
+  try {
+    type = getStatusColor(safeStatus)
+  } catch (e) {
+    type = 'info'
+  }
+  
+  // 确保返回有效的 ElTag type
+  const validTypes: Array<'primary' | 'success' | 'info' | 'warning' | 'danger'> = 
+    ['primary', 'success', 'info', 'warning', 'danger']
+  
+  if (type && typeof type === 'string' && validTypes.includes(type as any)) {
+    return type as any
+  }
+  return 'info' // 默认返回 info
 }
 
 // 获取状态文本
@@ -1513,7 +1530,8 @@ const handlePushToPurchase = async (row: any) => {
           availableStock,
           useStock: 0,
           purchaseQuantity: orderQuantity,
-          purchasePrice: 0
+          // 使用商品的成本价作为采购价格，如果没有则使用销售单价
+          purchasePrice: Number(item.product?.costPrice) || Number(item.unitPrice) || 0
         }
       })
       
@@ -1557,40 +1575,66 @@ const handleConfirmPushPurchase = async () => {
     pushPurchaseLoading.value = true
 
     // 构建采购订单明细（只包含有采购数量的物料）
-    const details = pushPurchaseForm.details
+    const items = pushPurchaseForm.details
       .filter(d => d.purchaseQuantity > 0)
-      .map(item => ({
-        productId: item.productId,
-        quantity: Number(item.purchaseQuantity) || 0,
-        unitPrice: Number(item.purchasePrice) || 0
-      }))
+      .map(item => {
+        const quantity = Number(item.purchaseQuantity) || 0
+        const unitPrice = Number(item.purchasePrice) || 0
+        const amount = quantity * unitPrice
+        
+        return {
+          productId: item.productId,
+          quantity,
+          unitPrice,
+          taxRate: 0, // 默认税率0
+          taxAmount: 0, // 默认税额0
+          amount
+        }
+      })
+
+    // 验证明细数据
+    for (const item of items) {
+      if (!item.productId) {
+        ElMessage.warning('物料ID不能为空')
+        return
+      }
+      if (item.quantity <= 0) {
+        ElMessage.warning('采购数量必须大于0')
+        return
+      }
+      if (item.unitPrice <= 0) {
+        ElMessage.warning('采购价格必须大于0')
+        return
+      }
+    }
 
     // 生成采购订单编号
     const orderNo = `PO${Date.now()}${Math.floor(Math.random() * 1000)}`
 
-    // 创建采购订单
-    await createPurchaseOrder({
+    // 创建采购订单（直接创建为已审核状态）
+    const response: any = await createPurchaseOrder({
       orderNo,
       supplierId: pushPurchaseForm.supplierId,
       orderDate: pushPurchaseForm.purchaseDate,
-      items: details.map(item => ({
-        ...item,
-        taxRate: 0, // 默认税率0
-        taxAmount: 0, // 默认税额0
-        amount: item.quantity * item.unitPrice
-      })),
+      items,
       logisticsCost: 0,
       discountRate: 0,
       discountAmount: 0,
+      status: 'confirmed',
       remark: `由销售订单 ${pushPurchaseForm.orderNo} 下推生成`
     })
 
-    ElMessage.success('采购订单生成成功')
-    pushPurchaseDialogVisible.value = false
-    fetchData()
-  } catch (error) {
+    if (response.success) {
+      ElMessage.success('采购订单生成成功')
+      pushPurchaseDialogVisible.value = false
+      fetchData()
+    } else {
+      ElMessage.error(response.message || '生成采购订单失败')
+    }
+  } catch (error: any) {
     console.error('生成采购订单失败:', error)
-    ElMessage.error('生成采购订单失败')
+    const errorMsg = error?.response?.data?.message || error?.message || '生成采购订单失败'
+    ElMessage.error(errorMsg)
   } finally {
     pushPurchaseLoading.value = false
   }

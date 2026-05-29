@@ -146,7 +146,7 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
+            <el-tag :type="getStatusType(row.status) || 'info'" size="small">
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
@@ -519,7 +519,7 @@
             <el-descriptions-item label="出库单号">{{ currentOutbound.outboundNo }}</el-descriptions-item>
             <el-descriptions-item label="出库日期">{{ formatDate(currentOutbound.outboundDate) }}</el-descriptions-item>
             <el-descriptions-item label="单据状态">
-              <el-tag :type="getStatusType(currentOutbound.status)" size="small">
+              <el-tag :type="getStatusType(currentOutbound.status) || 'info'" size="small">
                 {{ getStatusText(currentOutbound.status) }}
               </el-tag>
             </el-descriptions-item>
@@ -557,6 +557,21 @@
             <span>优惠：¥{{ formatAmount(currentOutbound.extraDiscount || 0) }}</span>
             <span class="total">出库总额：¥{{ formatAmount(currentOutbound.totalAmount) }}</span>
           </div>
+        </div>
+
+        <!-- 操作日志 -->
+        <div class="detail-section" v-if="currentOutbound.logs?.length">
+          <h4>操作记录</h4>
+          <el-timeline size="small">
+            <el-timeline-item
+              v-for="log in currentOutbound.logs"
+              :key="log.id"
+              :timestamp="formatDateTime(log.createdAt)"
+              :type="log.action === 'create' ? 'primary' : undefined"
+            >
+              <p>{{ log.actionText }} - {{ log.operator?.name || '系统' }}</p>
+            </el-timeline-item>
+          </el-timeline>
         </div>
       </div>
     </el-drawer>
@@ -1107,8 +1122,14 @@ const handleDelete = async (row: any) => {
   }
 }
 
-const getStatusType = (status: string) => {
-  return getStatusColor(status)
+const getStatusType = (status: any): 'primary' | 'success' | 'info' | 'warning' | 'danger' => {
+  const type = getStatusColor(status)
+  const validTypes: Array<'primary' | 'success' | 'info' | 'warning' | 'danger'> = 
+    ['primary', 'success', 'info', 'warning', 'danger']
+  if (validTypes.includes(type)) {
+    return type
+  }
+  return 'info'
 }
 
 const getStatusText = (status: string) => {

@@ -504,9 +504,11 @@ const formatNumber = (num: number) => {
 }
 
 // 格式化金额
-const formatAmount = (amount: number) => {
+const formatAmount = (amount: any) => {
   if (amount === undefined || amount === null) return '0.00'
-  return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const num = Number(amount)
+  if (isNaN(num)) return '0.00'
+  return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
 // 格式化日期时间

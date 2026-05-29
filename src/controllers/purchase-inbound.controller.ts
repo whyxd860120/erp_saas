@@ -416,7 +416,7 @@ export const createPurchaseInbound = async (req: Request, res: Response) => {
 
     // 创建入库单（事务）
     const inbound = await prisma.$transaction(async (tx) => {
-      // 创建入库单主表
+      // 创建入库单主表 - 初始状态为草稿
       const newInbound = await tx.purchaseInbound.create({
         data: {
           tenantId: req.user!.tenantId!,
@@ -426,7 +426,7 @@ export const createPurchaseInbound = async (req: Request, res: Response) => {
           inboundDate: new Date(inboundDate),
           totalAmount,
           logisticsCost,
-          status: 'confirmed',
+          status: 'draft',
           remark,
         },
       });

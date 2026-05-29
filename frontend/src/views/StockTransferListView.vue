@@ -618,8 +618,14 @@ const formatCurrency = (value: number | string | any): string => {
 }
 
 // 获取状态标签类型
-const getStatusType = (status: string): string => {
-  return getStatusColor(status)
+const getStatusType = (status: any): 'primary' | 'success' | 'info' | 'warning' | 'danger' => {
+  const type = getStatusColor(status)
+  const validTypes: Array<'primary' | 'success' | 'info' | 'warning' | 'danger'> = 
+    ['primary', 'success', 'info', 'warning', 'danger']
+  if (validTypes.includes(type)) {
+    return type
+  }
+  return 'info'
 }
 
 const getStatusText = (status: string): string => {

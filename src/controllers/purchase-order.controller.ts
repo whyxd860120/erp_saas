@@ -108,11 +108,13 @@ export const getPurchaseOrders = async (req: Request, res: Response) => {
             },
           },
           inbounds: {
-            select: {
-              id: true,
-              inboundNo: true,
-              status: true,
-              totalAmount: true,
+            include: {
+              details: {
+                select: {
+                  quantity: true,
+                  productId: true,
+                },
+              },
             },
           },
           payments: {
@@ -138,10 +140,21 @@ export const getPurchaseOrders = async (req: Request, res: Response) => {
     // 处理订单数据，计算入库数量和金额
     const processedOrders = orders.map(order => {
       const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
-      const inboundQuantity = order.items.reduce((sum, item) => sum + (item.receivedQty || 0), 0);
-      const inboundAmount = order.inbounds
-        .filter((inbound: any) => inbound.status === 'confirmed')
-        .reduce((sum, inbound) => sum + (inbound.totalAmount || 0), 0);
+      
+      // 从关联的已确认入库单中计算已入库数量
+      let inboundQuantity = 0;
+      let inboundAmount = 0;
+      
+      for (const inbound of order.inbounds) {
+        if (inbound.status === 'confirmed') {
+          inboundAmount += inbound.totalAmount || 0;
+          if (inbound.details) {
+            for (const detail of inbound.details) {
+              inboundQuantity += detail.quantity || 0;
+            }
+          }
+        }
+      }
 
       return {
         ...order,
@@ -316,6 +329,7 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
       discountRate = 0,
       discountAmount = 0,
       items,
+      status = 'draft',
     } = req.body;
 
     // 验证参数
@@ -420,6 +434,10 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
 
     // 创建采购订单（事务）
     const order = await prisma.$transaction(async (tx) => {
+      // 验证状态是否有效
+      const validStatuses = ['draft', 'confirmed', 'partial', 'completed', 'cancelled'];
+      const finalStatus = validStatuses.includes(status) ? status : 'draft';
+      
       // 创建订单主表
       const newOrder = await tx.purchaseOrder.create({
         data: {
@@ -432,7 +450,7 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
           discountRate,
           discountAmount,
           finalAmount,
-          status: 'draft',
+          status: finalStatus,
           remark,
         },
       });
@@ -449,7 +467,7 @@ export const createPurchaseOrder = async (req: Request, res: Response) => {
             taxAmount: item.taxAmount || 0,
             amount: item.amount,
             receivedQty: 0,
-            status: 'pending',
+            status: finalStatus === 'confirmed' ? 'confirmed' : 'pending',
           },
         });
       }

@@ -241,7 +241,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
+            <el-tag :type="getStatusType(row.status) || 'info'" size="small">
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
@@ -293,7 +293,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
             </el-tag>
             <el-tag
               v-if="row.status === 'confirmed'"
-              type=""
+              type="success"
               size="small"
               @click="handleQuickInbound(row)"
               style="cursor: pointer;"
@@ -573,7 +573,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
             <el-descriptions-item label="单据编号">{{ currentOrder.orderNo }}</el-descriptions-item>
             <el-descriptions-item label="单据日期">{{ formatDate(currentOrder.orderDate) }}</el-descriptions-item>
             <el-descriptions-item label="单据状态">
-              <el-tag :type="getStatusType(currentOrder.status)" size="small">
+              <el-tag :type="getStatusType(currentOrder.status) || 'info'" size="small">
                 {{ getStatusText(currentOrder.status) }}
               </el-tag>
             </el-descriptions-item>
@@ -656,7 +656,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
               v-for="log in currentOrder.logs || []"
               :key="log.id"
               :timestamp="formatDateTime(log.createdAt)"
-              :type="log.action === 'create' ? 'primary' : ''"
+              :type="log.action === 'create' ? 'primary' : undefined"
             >
               <p>{{ log.actionText }} - {{ log.operator?.name || '系统' }}</p>
             </el-timeline-item>
@@ -968,8 +968,14 @@ const getTotalTaxAmount = () => {
   }, 0)
 }
 
-const getStatusType = (status: string) => {
-  return getStatusColor(status)
+const getStatusType = (status: any): 'primary' | 'success' | 'info' | 'warning' | 'danger' => {
+  const type = getStatusColor(status)
+  const validTypes: Array<'primary' | 'success' | 'info' | 'warning' | 'danger'> = 
+    ['primary', 'success', 'info', 'warning', 'danger']
+  if (validTypes.includes(type)) {
+    return type
+  }
+  return 'info'
 }
 
 const getStatusText = (status: string) => {
