@@ -1054,6 +1054,8 @@ export const importSalesOrders = async (req: Request, res: Response) => {
     const errors: Array<{ row: number; message: string }> = [];
     const successItems: any[] = [];
 
+    // 按订单号分组
+    const orderGroups = new Map<string, any[]>();
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const row = i + 1;
@@ -1081,37 +1083,66 @@ export const importSalesOrders = async (req: Request, res: Response) => {
       }
 
       const orderNo = item.orderNo || `SO${Date.now()}${Math.floor(Math.random() * 1000)}`;
-      const orderDate = item.orderDate ? new Date(item.orderDate) : new Date();
 
-      console.log(`创建订单 ${orderNo}, 客户ID: ${item.customerId}, 物料ID: ${item.productId}`);
+      // 按订单号分组
+      if (!orderGroups.has(orderNo)) {
+        orderGroups.set(orderNo, []);
+      }
+      orderGroups.get(orderNo)!.push(item);
+    }
 
-      // 确保数量是整数
-      const quantity = parseInt(item.quantity) || 0;
-      const unitPrice = parseFloat(item.unitPrice) || 0;
-      const amount = quantity * unitPrice;
+    // 为每个订单组创建订单
+    for (const [orderNo, orderItems] of orderGroups.entries()) {
+      try {
+        const firstItem = orderItems[0];
+        const orderDate = firstItem.orderDate ? new Date(firstItem.orderDate) : new Date();
 
-      const order = await prisma.salesOrder.create({
-        data: {
-          tenantId,
-          orderNo,
-          customerId: item.customerId,
-          orderDate,
-          remark: item.remark || '',
-          status: 'draft',
-          totalAmount: amount,
-          salesmanId: item.salesmanId,
-          items: {
-            create: {
-              productId: item.productId,
-              quantity: quantity,
-              unitPrice: unitPrice,
-              amount: amount,
+        console.log(`创建订单 ${orderNo}, 客户ID: ${firstItem.customerId}, 明细数量: ${orderItems.length}`);
+
+        // 计算总金额
+        let totalAmount = 0;
+        const itemsData = orderItems.map(item => {
+          const quantity = parseInt(item.quantity) || 0;
+          const unitPrice = parseFloat(item.unitPrice) || 0;
+          const amount = quantity * unitPrice;
+          totalAmount += amount;
+
+          return {
+            productId: item.productId,
+            quantity: quantity,
+            unitPrice: unitPrice,
+            amount: amount,
+          };
+        });
+
+        const order = await prisma.salesOrder.create({
+          data: {
+            tenantId,
+            orderNo,
+            customerId: firstItem.customerId,
+            orderDate,
+            remark: firstItem.remark || '',
+            status: 'draft',
+            totalAmount: totalAmount,
+            salesmanId: firstItem.salesmanId,
+            items: {
+              create: itemsData
             }
           }
-        }
-      });
+        });
 
-      successItems.push(order);
+        successItems.push(order);
+      } catch (error) {
+        console.error(`创建订单 ${orderNo} 失败:`, error);
+        // 找到这个订单的所有行号
+        const affectedRows = items.map((item, index) => 
+          item.orderNo === orderNo ? index + 1 : -1
+        ).filter(row => row > 0);
+        
+        affectedRows.forEach(row => {
+          errors.push({ row, message: `订单 ${orderNo} 创建失败: ${error instanceof Error ? error.message : '未知错误'}` });
+        });
+      }
     }
 
     await auditLog({
