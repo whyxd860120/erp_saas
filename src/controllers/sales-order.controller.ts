@@ -1099,6 +1099,27 @@ export const importSalesOrders = async (req: Request, res: Response) => {
 
         console.log(`创建订单 ${orderNo}, 客户ID: ${firstItem.customerId}, 明细数量: ${orderItems.length}`);
 
+        // 检查订单号是否已存在
+        const existingOrder = await prisma.salesOrder.findFirst({
+          where: {
+            tenantId,
+            orderNo,
+          },
+        });
+
+        if (existingOrder) {
+          console.log(`订单号 ${orderNo} 已存在，跳过`);
+          // 找到这个订单的所有行号
+          const affectedRows = items.map((item, index) => 
+            item.orderNo === orderNo ? index + 1 : -1
+          ).filter(row => row > 0);
+          
+          affectedRows.forEach(row => {
+            errors.push({ row, message: `订单号 ${orderNo} 已存在，请修改订单号后重试` });
+          });
+          continue;
+        }
+
         // 计算总金额
         let totalAmount = 0;
         const itemsData = orderItems.map(item => {
