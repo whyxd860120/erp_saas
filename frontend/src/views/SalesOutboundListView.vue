@@ -67,7 +67,7 @@
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12" :md="6">
             <el-form-item label="出库单号" class="search-item">
-              <el-input v-model="searchForm.orderNo" placeholder="出库单号" clearable style="width: 100%;" />
+              <el-input v-model="searchForm.orderNo" placeholder="出库单号" clearable style="width: 100%;" @keyup.enter="handleSearch" />
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8">
@@ -156,57 +156,57 @@
             {{ row.warehouse?.name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="240" fixed="right" align="right">
+        <el-table-column label="操作" width="260" fixed="right" align="right">
           <template #default="{ row }">
             <div class="action-buttons">
-            <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer;">
-              查看
-            </el-tag>
-            <el-button
-              v-if="row.status === 'draft'"
-              type="warning"
-              size="small"
-              link
-              @click="handleEdit(row)"
-            >
-              编辑
-            </el-button>
-            <el-tag
-              v-if="row.status === 'draft'"
-              type="info"
-              size="small"
-              @click="handleConfirm(row)"
-              style="cursor: pointer;"
-            >
-              审核
-            </el-tag>
-            <el-tag
-              v-if="row.status === 'draft'"
-              type="danger"
-              size="small"
-              @click="handleDelete(row)"
-              style="cursor: pointer;"
-            >
-              删除
-            </el-tag>
-            <el-tag
-              v-if="row.status === 'confirmed'"
-              type="warning"
-              size="small"
-              @click="handleUnconfirm(row)"
-              style="cursor: pointer;"
-            >
-              反审核
-            </el-tag>
-            <el-tag
-              v-if="row.status === 'draft'"
-              type="success"
-              size="small"
-              @click="handleCopy(row)"
-              style="cursor: pointer;"
-            >
-              复制
-            </el-tag>
+              <el-tag type="primary" size="small" @click="handleView(row)" style="cursor: pointer;">
+                查看
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'draft'"
+                type="warning"
+                size="small"
+                @click="handleEdit(row)"
+                style="cursor: pointer;"
+              >
+                编辑
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'draft'"
+                type="success"
+                size="small"
+                @click="handleCopy(row)"
+                style="cursor: pointer;"
+              >
+                复制
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'draft'"
+                type="info"
+                size="small"
+                @click="handleConfirm(row)"
+                style="cursor: pointer;"
+              >
+                审核
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'draft'"
+                type="danger"
+                size="small"
+                @click="handleDelete(row)"
+                style="cursor: pointer;"
+              >
+                删除
+              </el-tag>
+              <el-tag
+                v-if="row.status === 'confirmed'"
+                type="warning"
+                size="small"
+                @click="handleUnconfirm(row)"
+                style="cursor: pointer;"
+              >
+                反审核
+              </el-tag>
             </div>
           </template>
         </el-table-column>
@@ -214,6 +214,9 @@
       
       <!-- 分页 -->
       <div class="pagination-container">
+        <div class="batch-actions" v-if="selectedRows.length">
+          <span>已选择 {{ selectedRows.length }} 项</span>
+        </div>
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.limit"
@@ -230,124 +233,120 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="900px"
+      width="1000px"
+      :close-on-click-modal="false"
       @close="handleDialogClose"
     >
-      <el-form
-        ref="formRef"
-        :model="formData"
-        :rules="formRules"
-        label-width="100px"
-      >
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="出库单号" prop="orderNo">
-              <el-input v-model="formData.orderNo" placeholder="请输入出库单号" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="销售订单" prop="salesOrderId">
-              <el-select 
-                v-model="formData.salesOrderId" 
-                placeholder="请选择销售订单"
-                filterable
-                @change="handleOrderChange"
-              >
-                <el-option
-                  v-for="order in salesOrders"
-                  :key="order.id"
-                  :label="order.orderNo"
-                  :value="order.id"
+      <div class="outbound-form">
+        <!-- 单据信息 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Document /></el-icon>
+            <span>单据信息</span>
+          </div>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="出库单号" prop="orderNo">
+                <el-input v-model="formData.orderNo" placeholder="自动生成或手动输入" clearable />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="出库日期" prop="outboundDate">
+                <el-date-picker
+                  v-model="formData.outboundDate"
+                  type="date"
+                  placeholder="选择日期"
+                  style="width: 100%;"
+                  value-format="YYYY-MM-DD"
                 />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="出库日期" prop="outboundDate">
-              <el-date-picker
-                v-model="formData.outboundDate"
-                type="date"
-                placeholder="请选择日期"
-                style="width: 100%;"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="仓库" prop="warehouseId">
-              <el-select v-model="formData.warehouseId" placeholder="请选择仓库" filterable>
-                <el-option
-                  v-for="warehouse in warehouses"
-                  :key="warehouse.id"
-                  :label="warehouse.name"
-                  :value="warehouse.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="客户" prop="customerId">
-              <el-select 
-                v-model="formData.customerId" 
-                placeholder="请选择客户" 
-                filterable
-                remote
-                reserve-keyword
-                :remote-method="searchCustomers"
-                :loading="loading">
-                <el-option
-                  v-for="customer in customers"
-                  :key="customer.id"
-                  :label="customer.name"
-                  :value="customer.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="销售员">
-              <el-select v-model="formData.salesmanId" placeholder="请选择销售员" filterable clearable>
-                <el-option
-                  v-for="user in users"
-                  :key="user.id"
-                  :label="user.name"
-                  :value="user.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="物流/快递费用">
-              <el-input-number
-                v-model="formData.logisticsCost"
-                :min="0"
-                :precision="2"
-                placeholder="请输入物流费用"
-                style="width: 100%;"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="formData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
-        </el-form-item>
-        
-        <!-- 出库明细 -->
-        <div class="details-section">
-          <div class="details-header" style="display: flex; align-items: center; justify-content: space-between;">
-            <h3>出库明细</h3>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="销售订单" prop="salesOrderId">
+                <el-select 
+                  v-model="formData.salesOrderId" 
+                  placeholder="请选择销售订单"
+                  filterable
+                  clearable
+                  style="width: 100%;"
+                  @change="handleOrderChange"
+                >
+                  <el-option
+                    v-for="order in salesOrders"
+                    :key="order.id"
+                    :label="order.orderNo"
+                    :value="order.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="仓库" prop="warehouseId">
+                <el-select v-model="formData.warehouseId" placeholder="请选择仓库" filterable style="width: 100%;">
+                  <el-option
+                    v-for="warehouse in warehouses"
+                    :key="warehouse.id"
+                    :label="warehouse.name"
+                    :value="warehouse.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="客户" prop="customerId">
+                <el-select 
+                  v-model="formData.customerId" 
+                  placeholder="请选择客户" 
+                  filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="searchCustomers"
+                  :loading="loading"
+                  style="width: 100%;"
+                >
+                  <el-option
+                    v-for="customer in customers"
+                    :key="customer.id"
+                    :label="customer.name"
+                    :value="customer.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="销售员">
+                <el-select v-model="formData.salesmanId" placeholder="请选择销售员" filterable clearable style="width: 100%;">
+                  <el-option
+                    v-for="user in users"
+                    :key="user.id"
+                    :label="user.name"
+                    :value="user.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :span="24">
+              <el-form-item label="备注">
+                <el-input v-model="formData.remark" type="textarea" :rows="2" placeholder="请输入备注信息" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- 物料明细 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Goods /></el-icon>
+            <span>物料明细</span>
             <el-popover trigger="click" placement="bottom-end" :width="120">
               <template #reference>
-                <el-button size="small" link type="primary">
+                <el-button size="small" link type="primary" style="margin-left: 12px">
                   <el-icon><Setting /></el-icon>
                   列设置
                 </el-button>
@@ -355,26 +354,27 @@
               <div style="display: flex; flex-direction: column; gap: 8px;">
                 <el-checkbox v-model="visibleColumns.spec">规格</el-checkbox>
                 <el-checkbox v-model="visibleColumns.unit">单位</el-checkbox>
-                <el-checkbox v-model="visibleColumns.availableStock">可用库存</el-checkbox>
+                <el-checkbox v-model="visibleColumns.stock">可用库存</el-checkbox>
                 <el-checkbox v-model="visibleColumns.plannedQty">计划数量</el-checkbox>
                 <el-checkbox v-model="visibleColumns.outboundQty">已出库数量</el-checkbox>
               </div>
             </el-popover>
           </div>
-          
-          <el-table :data="formData.details" border style="width: 100%">
-            <el-table-column label="物料" width="250">
+          <el-table :data="formData.details" border size="small" show-summary :summary-method="getSummary">
+            <el-table-column type="index" label="序号" width="60" />
+            <el-table-column label="物料" min-width="200">
               <template #default="{ row, $index }">
                 <el-select
-                  v-model="formData.details[$index].productId"
+                  v-model="row.productId"
                   placeholder="请选择物料"
                   filterable
                   remote
                   reserve-keyword
                   :remote-method="searchProducts"
                   :loading="loading"
-                  style="width: 100%"
-                  @change="(val: string) => handleProductChange(val, $index)"
+                  size="small"
+                  @change="handleProductSelect($index)"
+                  style="width: 100%;"
                 >
                   <el-option
                     v-for="product in products"
@@ -385,78 +385,181 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column v-if="visibleColumns.spec" label="规格" width="120">
+            <el-table-column v-if="visibleColumns.spec" label="规格" width="100">
               <template #default="{ row }">
-                {{ getProductSpec(row.productId) }}
+                {{ getProductAttr(row.productId, 'spec') }}
               </template>
             </el-table-column>
             <el-table-column v-if="visibleColumns.unit" label="单位" width="80">
               <template #default="{ row }">
-                {{ getProductUnit(row.productId) }}
+                {{ getProductAttr(row.productId, 'unit') }}
               </template>
             </el-table-column>
-            <el-table-column v-if="visibleColumns.availableStock" label="可用库存" width="120">
+            <el-table-column v-if="visibleColumns.stock" label="可用库存" width="90">
               <template #default="{ row }">
-                {{ getAvailableStock(row.productId) }}
+                <span :class="getStockClass(row.productId)">
+                  {{ getAvailableStock(row.productId) }}
+                </span>
               </template>
             </el-table-column>
-            <el-table-column v-if="visibleColumns.plannedQty" label="计划数量" width="120">
+            <el-table-column v-if="visibleColumns.plannedQty" label="计划数量" width="90">
               <template #default="{ row }">
                 {{ row.plannedQty || '-' }}
               </template>
             </el-table-column>
-            <el-table-column v-if="visibleColumns.outboundQty" label="已出库数量" width="120">
+            <el-table-column v-if="visibleColumns.outboundQty" label="已出库数量" width="90">
               <template #default="{ row }">
                 {{ row.outboundQty || 0 }}
               </template>
             </el-table-column>
-            <el-table-column label="本次出库" width="150">
+            <el-table-column label="本次出库" width="120">
               <template #default="{ row, $index }">
                 <el-input-number
-                  v-model="formData.details[$index].quantity"
-                  :min="0"
+                  v-model="row.quantity"
+                  :min="1"
                   :precision="0"
+                  size="small"
+                  @change="handleDetailChange($index)"
                   style="width: 100%;"
                 />
               </template>
             </el-table-column>
-            <el-table-column label="单价" width="150">
+            <el-table-column label="单价" width="130">
               <template #default="{ row, $index }">
                 <el-input-number
-                  v-model="formData.details[$index].unitPrice"
+                  v-model="row.unitPrice"
                   :min="0"
                   :precision="2"
+                  size="small"
+                  @change="handleDetailChange($index)"
                   style="width: 100%;"
                 />
               </template>
             </el-table-column>
             <el-table-column label="金额" width="120">
               <template #default="{ row }">
-                {{ (row.quantity * row.unitPrice)?.toFixed(2) }}
+                <span class="amount">¥{{ formatAmount(row.amount) }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="80" fixed="right">
+            <el-table-column label="操作" width="60">
               <template #default="{ $index }">
-                <el-button type="danger" size="small" link @click="removeDetailRow($index)">删除</el-button>
+                <el-button type="danger" size="small" link @click="handleRemoveDetail($index)">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
-
-          <div style="margin-top: 10px">
-            <el-button type="primary" size="small" @click="addDetailRow">
-              <el-icon><Plus /></el-icon> 添加物料
+          <div class="details-actions">
+            <el-button type="primary" size="small" @click="handleAddDetail">
+              <el-icon><Plus /></el-icon>
+              添加明细
             </el-button>
           </div>
         </div>
-      </el-form>
-      
+
+        <!-- 费用信息 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Wallet /></el-icon>
+            <span>费用信息</span>
+          </div>
+          <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item label="物料总额">
+                <el-input :value="'¥' + formatAmount(formData.goodsAmount)" disabled />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="物流费用">
+                <el-input-number
+                  v-model="formData.logisticsCost"
+                  :min="0"
+                  :precision="2"
+                  style="width: 100%;"
+                  @change="calculateAmounts"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="优惠金额">
+                <el-input-number
+                  v-model="formData.extraDiscount"
+                  :min="0"
+                  :precision="2"
+                  style="width: 100%;"
+                  @change="calculateAmounts"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item label="出库总额">
+                <el-input :value="'¥' + formatAmount(formData.totalAmount)" disabled class="total-amount" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+      </div>
+
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
-          确定
-        </el-button>
+        <el-button @click="handleSaveDraft" :loading="submitLoading">保存草稿</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">提交单据</el-button>
       </template>
     </el-dialog>
+
+    <!-- 查看详情抽屉 -->
+    <el-drawer v-model="viewDrawer" title="单据详情" size="800px">
+      <div class="outbound-detail" v-if="currentOutbound">
+        <!-- 单据信息 -->
+        <div class="detail-section">
+          <h4>单据信息</h4>
+          <el-descriptions :column="3" border size="small">
+            <el-descriptions-item label="出库单号">{{ currentOutbound.outboundNo }}</el-descriptions-item>
+            <el-descriptions-item label="出库日期">{{ formatDate(currentOutbound.outboundDate) }}</el-descriptions-item>
+            <el-descriptions-item label="单据状态">
+              <el-tag :type="getStatusType(currentOutbound.status)" size="small">
+                {{ getStatusText(currentOutbound.status) }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="客户">{{ currentOutbound.order?.customer?.name || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="销售员">{{ currentOutbound.salesman?.name || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="仓库">{{ currentOutbound.warehouse?.name || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="制单人">{{ currentOutbound.creator?.name || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="制单时间">{{ formatDateTime(currentOutbound.createdAt) }}</el-descriptions-item>
+            <el-descriptions-item label="备注" :span="3">{{ currentOutbound.remark || '-' }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+
+        <!-- 物料明细 -->
+        <div class="detail-section">
+          <h4>物料明细</h4>
+          <el-table :data="currentOutbound.details" border size="small">
+            <el-table-column type="index" label="序号" width="60" />
+            <el-table-column prop="product.code" label="物料编码" width="120" />
+            <el-table-column prop="product.name" label="物料名称" min-width="150" />
+            <el-table-column prop="product.spec" label="规格" width="100" />
+            <el-table-column prop="product.unit" label="单位" width="60" />
+            <el-table-column prop="plannedQty" label="计划数量" width="90" align="right" />
+            <el-table-column prop="outboundQty" label="已出库数量" width="100" align="right" />
+            <el-table-column prop="quantity" label="本次出库" width="100" align="right" />
+            <el-table-column prop="unitPrice" label="单价" width="100" align="right">
+              <template #default="{ row }">¥{{ formatAmount(row.unitPrice) }}</template>
+            </el-table-column>
+            <el-table-column prop="amount" label="金额" width="120" align="right">
+              <template #default="{ row }">¥{{ formatAmount(row.amount) }}</template>
+            </el-table-column>
+          </el-table>
+          <div class="detail-summary">
+            <span>物料总额：¥{{ formatAmount(currentOutbound.goodsAmount) }}</span>
+            <span>物流费用：¥{{ formatAmount(currentOutbound.logisticsCost || 0) }}</span>
+            <span>优惠：¥{{ formatAmount(currentOutbound.extraDiscount || 0) }}</span>
+            <span class="total">出库总额：¥{{ formatAmount(currentOutbound.totalAmount) }}</span>
+          </div>
+        </div>
+      </div>
+    </el-drawer>
 
     <!-- 帮助对话框 -->
     <CommonHelpDialog
@@ -470,12 +573,12 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, QuestionFilled, Download, Document, Clock, Money, Wallet, Setting } from '@element-plus/icons-vue'
+import { Plus, Download, Document, Clock, Money, Wallet, Goods, Delete, QuestionFilled, Setting } from '@element-plus/icons-vue'
 import { getSalesOutbounds, getSalesOutboundById, createSalesOutbound, updateSalesOutbound, confirmSalesOutbound, unconfirmSalesOutbound, deleteSalesOutbound } from '@/api/sales-outbound'
 import { getSalesOrders } from '@/api/sales-order'
 import { getCustomers } from '@/api/customer'
 import { getUsers } from '@/api/user'
-import { getWarehouses } from '@/api/warehouse'
+import { getWarehouses, getDefaultWarehouse } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { getInventory } from '@/api/inventory'
 import { getStatusColor, getSalesOutboundStatusText } from '@/utils/status.util'
@@ -485,6 +588,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 // 数据列表
 const tableData = ref<any[]>([])
 const loading = ref(false)
+const selectedRows = ref<any[]>([])
 
 // 统计
 const stats = ref({
@@ -519,12 +623,14 @@ const pagination = reactive({
 
 // 对话框
 const dialogVisible = ref(false)
+const viewDrawer = ref(false)
+const currentOutbound = ref<any>(null)
 
 // 明细列显隐控制
 const visibleColumns = reactive({
   spec: true,
   unit: true,
-  availableStock: true,
+  stock: true,
   plannedQty: true,
   outboundQty: true
 })
@@ -541,23 +647,58 @@ const formData = reactive({
   salesOrderId: '',
   customerId: '',
   salesmanId: '',
-  outboundDate: new Date(),
+  outboundDate: new Date().toISOString().split('T')[0],
   warehouseId: '',
   remark: '',
   logisticsCost: 0,
-  details: [] as any[]
+  extraDiscount: 0,
+  details: [] as any[],
+  goodsAmount: 0,
+  totalAmount: 0
 })
 
 // 表单验证规则
 const formRules: FormRules = {
-  orderNo: [
-    { required: true, message: '请输入出库单号', trigger: 'blur' }
-  ],
   outboundDate: [
     { required: true, message: '请选择出库日期', trigger: 'change' }
   ],
   warehouseId: [
     { required: true, message: '请选择仓库', trigger: 'change' }
+  ]
+}
+
+// 计算金额
+const calculateAmounts = () => {
+  let goodsAmount = 0
+  formData.details.forEach(detail => {
+    detail.amount = Number((detail.quantity || 0) * (detail.unitPrice || 0))
+    goodsAmount += detail.amount
+  })
+  formData.goodsAmount = Number(goodsAmount)
+  formData.totalAmount = Number(formData.goodsAmount + (formData.logisticsCost || 0) - (formData.extraDiscount || 0))
+}
+
+// 获取物料属性
+const getProductAttr = (productId: string, attr: string) => {
+  const product = products.value.find(p => p.id === productId)
+  return product ? product[attr] || '-' : '-'
+}
+
+// 获取库存样式
+const getStockClass = (productId: string) => {
+  const product = products.value.find(p => p.id === productId)
+  const stock = getAvailableStock(productId)
+  if (!product || stock <= 0) return 'stock-low'
+  if (stock < product.minStock) return 'stock-warning'
+  return ''
+}
+
+// 获取汇总数据
+const getSummary = () => {
+  calculateAmounts()
+  const totalQty = formData.details.reduce((sum: number, d: any) => sum + (d.quantity || 0), 0)
+  return [
+    '', '', '', '', '', '', '', totalQty, '', '¥' + formatAmount(formData.goodsAmount), ''
   ]
 }
 
@@ -575,6 +716,9 @@ const fetchSalesOutbounds = async () => {
     }
     if (searchForm.status) {
       params.status = searchForm.status
+    }
+    if (searchForm.customerId) {
+      params.customerId = searchForm.customerId
     }
     if (searchForm.dateRange && searchForm.dateRange.length === 2) {
       params.startDate = searchForm.dateRange[0]
@@ -656,6 +800,11 @@ const fetchWarehouses = async () => {
     const response: any = await getWarehouses({ page: 1, limit: 100 })
     if (response.success) {
       warehouses.value = response.data.items || []
+      // 自动填充默认仓库
+      if (warehouses.value.length > 0 && !formData.warehouseId) {
+        const defaultWarehouse = warehouses.value.find(w => w.isDefault) || warehouses.value[0]
+        formData.warehouseId = defaultWarehouse.id
+      }
     }
   } catch (error) {
     console.error('获取仓库列表失败:', error)
@@ -686,10 +835,10 @@ const searchProducts = async (keyword: string) => {
   }
 }
 
-  // 获取库存数据
-  const fetchInventory = async () => {
-    try {
-      const response: any = await getInventory({ page: 1, limit: 100 })
+// 获取库存数据
+const fetchInventory = async () => {
+  try {
+    const response: any = await getInventory({ page: 1, limit: 100 })
     if (response.success) {
       const map: Record<string, number> = {}
       response.data.items?.forEach((item: any) => {
@@ -702,37 +851,44 @@ const searchProducts = async (keyword: string) => {
   }
 }
 
-// 销售订单变更
-const handleOrderChange = (orderId: string) => {
-  const order = salesOrders.value.find((o: any) => o.id === orderId)
-  if (order) {
-    formData.customerId = order.customerId
-    formData.details = order.details?.map((detail: any) => ({
-      id: detail.id,
-      productId: detail.productId,
-      plannedQty: detail.quantity,
-      outboundQty: 0,
-      quantity: 0,
-      unitPrice: detail.unitPrice
-    })) || []
-  }
-}
-
 // 获取可用库存
 const getAvailableStock = (productId: string) => {
   return inventoryMap.value[productId] || 0
 }
 
-// 获取最大出库数量
-const getMaxOutboundQty = (row: any) => {
-  const available = getAvailableStock(row.productId)
-  const remaining = (row.plannedQty || Infinity) - (row.outboundQty || 0)
-  return Math.min(available, remaining)
+// 销售订单变更
+const handleOrderChange = (orderId: string) => {
+  const order = salesOrders.value.find((o: any) => o.id === orderId)
+  if (order) {
+    formData.customerId = order.customerId
+    formData.details = order.items?.map((detail: any) => ({
+      id: detail.id,
+      productId: detail.productId,
+      plannedQty: detail.quantity,
+      outboundQty: 0,
+      quantity: detail.quantity,
+      unitPrice: detail.unitPrice,
+      taxRate: detail.taxRate || 0,
+      taxAmount: detail.taxAmount || 0,
+      amount: detail.amount || 0
+    })) || []
+    calculateAmounts()
+  }
 }
 
 // 明细变更
 const handleDetailChange = (index: number) => {
-  // 可以在这里添加明细变更后的逻辑
+  calculateAmounts()
+}
+
+// 物料选择
+const handleProductSelect = (index: number) => {
+  const detail = formData.details[index]
+  const product = products.value.find((p: any) => p.id === detail.productId)
+  if (product) {
+    detail.unitPrice = Number(product.costPrice) || 0
+    calculateAmounts()
+  }
 }
 
 // 搜索
@@ -775,69 +931,44 @@ const handleCreate = async () => {
   if (!users.value.length) {
     await fetchUsers()
   }
+  if (!salesOrders.value.length) {
+    await fetchSalesOrders()
+  }
+  await fetchInventory()
+  
+  // 默认添加一行明细
+  handleAddDetail()
   
   dialogVisible.value = true
-  // 不在这里预生成编号，用户保存时才生成
 }
 
 // 添加明细行
-const addDetailRow = () => {
+const handleAddDetail = () => {
   formData.details.push({
     productId: '',
     plannedQty: 0,
     outboundQty: 0,
     quantity: 0,
-    unitPrice: 0
+    unitPrice: 0,
+    taxRate: 0,
+    taxAmount: 0,
+    amount: 0
   })
 }
 
 // 删除明细行
-const removeDetailRow = (index: number) => {
+const handleRemoveDetail = (index: number) => {
   formData.details.splice(index, 1)
-}
-
-// 产品变更
-const handleProductChange = (productId: string, index: number) => {
-  const product = products.value.find((p: any) => p.id === productId)
-  if (product) {
-    formData.details[index].unitPrice = Number(product.costPrice) || 0
-  }
+  calculateAmounts()
 }
 
 // 查看
 const handleView = async (row: any) => {
   try {
-    dialogTitle.value = '查看销售出库单'
-    isEdit.value = true
-    
     const response: any = await getSalesOutboundById(row.id)
     if (response.success) {
-      const outbound = response.data
-      Object.assign(formData, {
-        id: outbound.id,
-        outboundNo: outbound.outboundNo,
-        orderId: outbound.orderId,
-        customerId: outbound.order?.customer?.id || '',
-        outboundDate: new Date(outbound.outboundDate),
-        warehouseId: outbound.warehouseId,
-        salesmanId: outbound.salesmanId || '',
-        totalAmount: outbound.totalAmount,
-        logisticsCost: outbound.logisticsCost || 0,
-        remark: outbound.remark || '',
-        details: outbound.details?.map((detail: any) => ({
-          id: detail.id,
-          productId: detail.productId,
-          productName: detail.product?.name || '',
-          productCode: detail.product?.code || '',
-          spec: detail.product?.spec || '',
-          unit: detail.product?.unit || '',
-          plannedQty: detail.plannedQty || 0,
-          outboundQty: detail.outboundQty || 0,
-          quantity: 0,
-          unitPrice: detail.unitPrice || 0
-        })) || []
-      })
-      dialogVisible.value = true
+      currentOutbound.value = response.data
+      viewDrawer.value = true
     }
   } catch (error) {
     console.error('获取销售出库单详情失败:', error)
@@ -849,7 +980,51 @@ const handleView = async (row: any) => {
 const handleEdit = async (row: any) => {
   dialogTitle.value = '编辑销售出库单'
   isEdit.value = true
-  await handleView(row)
+  
+  try {
+    const response: any = await getSalesOutboundById(row.id)
+    if (response.success) {
+      const outbound = response.data
+      Object.assign(formData, {
+        id: outbound.id,
+        orderNo: outbound.outboundNo,
+        salesOrderId: outbound.orderId || '',
+        customerId: outbound.order?.customer?.id || '',
+        outboundDate: outbound.outboundDate,
+        warehouseId: outbound.warehouseId,
+        salesmanId: outbound.salesmanId || '',
+        remark: outbound.remark || '',
+        logisticsCost: outbound.logisticsCost || 0,
+        extraDiscount: outbound.extraDiscount || 0,
+        goodsAmount: outbound.goodsAmount || 0,
+        totalAmount: outbound.totalAmount || 0,
+        details: outbound.details?.map((detail: any) => ({
+          id: detail.id,
+          productId: detail.productId,
+          plannedQty: detail.plannedQty || 0,
+          outboundQty: detail.outboundQty || 0,
+          quantity: detail.quantity,
+          unitPrice: detail.unitPrice || 0,
+          taxRate: detail.taxRate || 0,
+          taxAmount: detail.taxAmount || 0,
+          amount: detail.amount || 0
+        })) || []
+      })
+      
+      // 加载必要数据
+      if (!customers.value.length) await fetchCustomers()
+      if (!products.value.length) await fetchProducts()
+      if (!warehouses.value.length) await fetchWarehouses()
+      if (!users.value.length) await fetchUsers()
+      if (!salesOrders.value.length) await fetchSalesOrders()
+      await fetchInventory()
+      
+      dialogVisible.value = true
+    }
+  } catch (error) {
+    console.error('获取销售出库单详情失败:', error)
+    ElMessage.error('获取销售出库单详情失败')
+  }
 }
 
 // 复制
@@ -857,8 +1032,8 @@ const handleCopy = async (row: any) => {
   await handleEdit(row)
   isEdit.value = false
   formData.id = ''
-  formData.outboundNo = ''
-  formData.orderId = ''
+  formData.orderNo = ''
+  formData.salesOrderId = ''
   dialogTitle.value = '复制销售出库单'
 }
 
@@ -932,18 +1107,6 @@ const handleDelete = async (row: any) => {
   }
 }
 
-// 获取物料规格
-const getProductSpec = (productId: string) => {
-  const product = products.value.find((p: any) => p.id === productId)
-  return product?.spec || '-'
-}
-
-// 获取物料单位
-const getProductUnit = (productId: string) => {
-  const product = products.value.find((p: any) => p.id === productId)
-  return product?.unit || '-'
-}
-
 const getStatusType = (status: string) => {
   return getStatusColor(status)
 }
@@ -958,12 +1121,56 @@ const formatDate = (date: string | Date) => {
   return new Date(date).toLocaleDateString('zh-CN')
 }
 
+// 格式化日期时间
+const formatDateTime = (date: string | Date) => {
+  if (!date) return '-'
+  return new Date(date).toLocaleString('zh-CN')
+}
+
 // 格式化金额
 const formatAmount = (amount: any) => {
   if (amount === undefined || amount === null) return '0.00'
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
   if (isNaN(numAmount)) return '0.00'
   return numAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
+// 保存草稿
+const handleSaveDraft = async () => {
+  if (!formRef.value) return
+  
+  if (formData.details.length === 0) {
+    ElMessage.warning('请至少添加一条明细')
+    return
+  }
+  
+  try {
+    await formRef.value.validate()
+    
+    // 验证明细
+    for (const detail of formData.details) {
+      if (!detail.productId) {
+        ElMessage.warning('请选择物料')
+        return
+      }
+      if (!detail.quantity || detail.quantity <= 0) {
+        ElMessage.warning('出库数量必须大于0')
+        return
+      }
+      const available = getAvailableStock(detail.productId)
+      if (detail.quantity > available) {
+        ElMessage.warning(`物料 "${getProductName(detail.productId)}" 库存不足`)
+        return
+      }
+    }
+    
+    submitLoading.value = true
+    await doSubmit(false)
+  } catch (error) {
+    console.error('保存失败:', error)
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 // 提交表单
@@ -996,7 +1203,17 @@ const handleSubmit = async () => {
     }
     
     submitLoading.value = true
-    
+    await doSubmit(true)
+  } catch (error) {
+    console.error('提交失败:', error)
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+// 实际提交逻辑
+const doSubmit = async (shouldConfirm: boolean) => {
+  try {
     // 构建提交数据
     const submitData: any = {
       customerId: formData.customerId,
@@ -1005,16 +1222,22 @@ const handleSubmit = async () => {
       warehouseId: formData.warehouseId,
       remark: formData.remark,
       logisticsCost: formData.logisticsCost,
+      extraDiscount: formData.extraDiscount,
+      goodsAmount: formData.goodsAmount,
+      totalAmount: formData.totalAmount,
       details: formData.details.map(detail => ({
         productId: detail.productId,
         quantity: detail.quantity,
-        unitPrice: detail.unitPrice
+        unitPrice: detail.unitPrice,
+        taxRate: detail.taxRate,
+        taxAmount: detail.taxAmount,
+        amount: detail.amount
       }))
     }
 
     if (isEdit.value) {
-      submitData.orderNo = formData.orderNo
-      submitData.salesOrderId = formData.salesOrderId || undefined
+      submitData.outboundNo = formData.orderNo
+      submitData.orderId = formData.salesOrderId || undefined
       await updateSalesOutbound(formData.id, submitData)
       ElMessage.success('更新成功')
     } else {
@@ -1033,8 +1256,6 @@ const handleSubmit = async () => {
     fetchSalesOutbounds()
   } catch (error) {
     console.error('提交失败:', error)
-  } finally {
-    submitLoading.value = false
   }
 }
 
@@ -1051,10 +1272,13 @@ const resetForm = () => {
   formData.salesOrderId = ''
   formData.customerId = ''
   formData.salesmanId = ''
-  formData.outboundDate = new Date()
+  formData.outboundDate = new Date().toISOString().split('T')[0]
   formData.warehouseId = ''
   formData.remark = ''
   formData.logisticsCost = 0
+  formData.extraDiscount = 0
+  formData.goodsAmount = 0
+  formData.totalAmount = 0
   formData.details = []
 }
 
@@ -1089,7 +1313,7 @@ const helpData = {
         '选择出库仓库',
         '添加出库明细，选择物料和数量',
         '设置出库日期和备注',
-        '点击"确定"保存草稿或直接确认'
+        '点击"保存草稿"或"提交单据"'
       ]
     },
     {
@@ -1278,8 +1502,20 @@ onMounted(async () => {
 
 .pagination-container {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   padding: 16px;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.batch-actions span {
+  color: #606266;
+  font-size: 14px;
 }
 
 .card-header {
@@ -1288,26 +1524,35 @@ onMounted(async () => {
   align-items: center;
 }
 
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
+.outbound-form {
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
-.details-section {
-  margin-top: 20px;
+.form-section {
+  margin-bottom: 24px;
 }
 
-.details-header {
+.form-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ebeef5;
 }
 
-.details-header h3 {
-  margin: 0;
-  font-size: 16px;
+.details-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
 }
 
 .amount {
@@ -1315,10 +1560,65 @@ onMounted(async () => {
   font-weight: 500;
 }
 
+.total-amount :deep(.el-input__wrapper) {
+  background: #f0f9eb;
+}
+
+.total-amount :deep(.el-input__inner) {
+  color: #67c23a;
+  font-weight: 600;
+}
+
 .action-buttons {
   display: flex;
   gap: 4px;
   flex-wrap: nowrap;
   justify-content: flex-end;
+}
+
+.outbound-detail {
+  padding: 16px;
+}
+
+.detail-section {
+  margin-bottom: 24px;
+}
+
+.detail-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.detail-summary {
+  display: flex;
+  gap: 24px;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.detail-summary span {
+  font-size: 14px;
+  color: #606266;
+}
+
+.detail-summary .total {
+  font-size: 16px;
+  font-weight: 600;
+  color: #67c23a;
+}
+
+.stock-low {
+  color: #f56c6c;
+  font-weight: 500;
+}
+
+.stock-warning {
+  color: #e6a23c;
+  font-weight: 500;
 }
 </style>

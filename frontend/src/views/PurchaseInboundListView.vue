@@ -159,7 +159,7 @@
         </el-table-column>
         <el-table-column label="制单人" width="120">
           <template #default="{ row }">
-            {{ formatDate(row.createdAt) || '-' }}
+            {{ row.creator?.name || '-' }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="240" fixed="right" align="right">
@@ -236,111 +236,89 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="900px"
+      width="1000px"
+      :close-on-click-modal="false"
       @close="handleDialogClose"
-      class="purchase-inbound-dialog"
     >
-      <el-form
-        ref="formRef"
-        :model="formData"
-        :rules="formRules"
-        label-width="100px"
-      >
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="入库单号">
-              <template v-if="isView">
-                <span class="readonly-text">{{ formData.inboundNo }}</span>
-              </template>
-              <el-input v-else v-model="formData.orderNo" placeholder="请输入入库单号" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="采购订单">
-              <template v-if="isView">
-                <span class="readonly-text">{{ formData.orderNo }}</span>
-              </template>
-              <el-select v-else
-                v-model="formData.purchaseOrderId" 
-                placeholder="请选择采购订单"
-                filterable
-                @change="handleOrderChange"
-              >
-                <el-option
-                  v-for="order in purchaseOrders"
-                  :key="order.id"
-                  :label="order.orderNo"
-                  :value="order.id"
+      <div class="inbound-form">
+        <!-- 单据信息 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Document /></el-icon>
+            <span>单据信息</span>
+          </div>
+          <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item label="入库单号">
+                <el-input v-model="formData.orderNo" placeholder="自动生成" disabled />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="入库日期">
+                <el-date-picker
+                  v-model="formData.inboundDate"
+                  type="date"
+                  placeholder="选择日期"
+                  style="width: 100%;"
+                  value-format="YYYY-MM-DD"
                 />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="入库日期">
-              <template v-if="isView">
-                <span class="readonly-text">{{ formatDate(formData.inboundDate) }}</span>
-              </template>
-              <el-date-picker v-else
-                v-model="formData.inboundDate"
-                type="date"
-                placeholder="请选择日期"
-                style="width: 100%;"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="仓库">
-              <template v-if="isView">
-                <span class="readonly-text">{{ formData.warehouseName }}</span>
-              </template>
-              <el-select v-else v-model="formData.warehouseId" placeholder="请选择仓库" filterable>
-                <el-option
-                  v-for="warehouse in warehouses"
-                  :key="warehouse.id"
-                  :label="warehouse.name"
-                  :value="warehouse.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row v-if="isView" :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="供应商">
-              <span class="readonly-text">{{ formData.supplierName }}</span>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="物流/快递费用">
-              <el-input-number
-                v-model="formData.logisticsCost"
-                :min="0"
-                :precision="2"
-                placeholder="请输入物流费用"
-                style="width: 100%;"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="formData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
-        </el-form-item>
-        
-        <!-- 入库明细 -->
-        <div class="details-section">
-          <div class="details-header" style="display: flex; align-items: center; justify-content: space-between;">
-            <h3>入库明细</h3>
-            <el-popover trigger="click" placement="bottom-end" :width="120">
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="仓库">
+                <el-select
+                  v-model="formData.warehouseId"
+                  placeholder="请选择仓库"
+                  filterable
+                  style="width: 100%;"
+                >
+                  <el-option
+                    v-for="warehouse in warehouses"
+                    :key="warehouse.id"
+                    :label="warehouse.name"
+                    :value="warehouse.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :span="24">
+              <el-form-item label="采购订单">
+                <el-select
+                  v-model="formData.purchaseOrderId"
+                  placeholder="请选择采购订单（可选）"
+                  filterable
+                  @change="handleOrderChange"
+                  style="width: 100%;"
+                >
+                  <el-option
+                    v-for="order in purchaseOrders"
+                    :key="order.id"
+                    :label="order.orderNo"
+                    :value="order.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :span="24">
+              <el-form-item label="备注">
+                <el-input v-model="formData.remark" type="textarea" :rows="2" placeholder="请输入备注信息" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- 物料明细 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Goods /></el-icon>
+            <span>物料明细</span>
+            <el-popover trigger="click" placement="bottom-end" :width="140">
               <template #reference>
-                <el-button size="small" link type="primary">
+                <el-button size="small" link type="primary" style="margin-left: 12px">
                   <el-icon><Setting /></el-icon>
                   列设置
                 </el-button>
@@ -349,23 +327,25 @@
                 <el-checkbox v-model="visibleColumns.spec">规格</el-checkbox>
                 <el-checkbox v-model="visibleColumns.unit">单位</el-checkbox>
                 <el-checkbox v-model="visibleColumns.plannedQty">计划数量</el-checkbox>
-                <el-checkbox v-model="visibleColumns.inboundQty">已入库数量</el-checkbox>
+                <el-checkbox v-model="visibleColumns.taxRate">税率(%)</el-checkbox>
               </div>
             </el-popover>
           </div>
-
-          <el-table :data="formData.details" border style="width: 100%">
-            <el-table-column :label="isView ? '物料编码' : '物料'" width="200">
+          <el-table :data="formData.details" border size="small" show-summary :summary-method="getSummary">
+            <el-table-column type="index" label="序号" width="60" />
+            <el-table-column label="物料" min-width="200">
               <template #default="{ row, $index }">
-                <template v-if="isView">
-                  <span>{{ row.productCode }}</span>
-                </template>
-                <el-select v-else
-                  v-model="formData.details[$index].productId"
+                <el-select
+                  v-model="row.productId"
                   placeholder="请选择物料"
                   filterable
-                  style="width: 100%"
-                  @change="(val: any) => handleProductChange(val, $index)"
+                  remote
+                  reserve-keyword
+                  :remote-method="searchProducts"
+                  :loading="loading"
+                  size="small"
+                  @change="handleProductChange(row.productId, $index)"
+                  style="width: 100%;"
                 >
                   <el-option
                     v-for="product in products"
@@ -376,73 +356,207 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column v-if="isView" label="物料名称" width="180">
+            <el-table-column v-if="visibleColumns.spec" label="规格" width="100">
               <template #default="{ row }">
-                {{ row.productName }}
-              </template>
-            </el-table-column>
-            <el-table-column v-if="visibleColumns.spec" label="规格" width="120">
-              <template #default="{ row }">
-                {{ isView ? (row.spec || '-') : getProductSpec(row.productId) }}
+                {{ getProductAttr(row.productId, 'spec') }}
               </template>
             </el-table-column>
             <el-table-column v-if="visibleColumns.unit" label="单位" width="80">
               <template #default="{ row }">
-                {{ isView ? (row.unit || '-') : getProductUnit(row.productId) }}
+                {{ getProductAttr(row.productId, 'unit') }}
               </template>
             </el-table-column>
-            <el-table-column v-if="visibleColumns.plannedQty" label="计划数量" width="120">
+            <el-table-column v-if="visibleColumns.plannedQty" label="计划数量" width="120" align="right">
               <template #default="{ row }">
                 {{ row.plannedQty || 0 }}
               </template>
             </el-table-column>
-            <el-table-column v-if="visibleColumns.inboundQty" label="已入库数量" width="120">
-              <template #default="{ row }">
-                {{ row.inboundQty || 0 }}
-              </template>
-            </el-table-column>
             <el-table-column label="本次入库" width="120">
-              <template #default="{ row }">
-                {{ row.quantity || 0 }}
+              <template #default="{ row, $index }">
+                <el-input-number
+                  v-model="row.quantity"
+                  :min="1"
+                  :precision="0"
+                  size="small"
+                  @change="handleDetailChange($index)"
+                  style="width: 100%;"
+                />
               </template>
             </el-table-column>
-            <el-table-column label="单价" width="120">
-              <template #default="{ row }">
-                {{ row.unitPrice?.toFixed(2) || '0.00' }}
+            <el-table-column label="单价" width="130">
+              <template #default="{ row, $index }">
+                <el-input-number
+                  v-model="row.unitPrice"
+                  :min="0"
+                  :precision="2"
+                  size="small"
+                  @change="handleDetailChange($index)"
+                  style="width: 100%;"
+                />
               </template>
             </el-table-column>
-            <el-table-column label="金额" width="120">
-              <template #default="{ row }">
-                {{ ((row.quantity || 0) * (row.unitPrice || 0))?.toFixed(2) || '0.00' }}
+            <el-table-column v-if="visibleColumns.taxRate" label="税率(%)" width="100">
+              <template #default="{ row, $index }">
+                <el-input-number
+                  v-model="row.taxRate"
+                  :min="0"
+                  :max="100"
+                  :precision="0"
+                  size="small"
+                  @change="handleDetailChange($index)"
+                  style="width: 100%;"
+                />
               </template>
             </el-table-column>
-            <el-table-column v-if="!isView" label="操作" width="80" fixed="right">
+            <el-table-column label="金额" width="130">
+              <template #default="{ row }">
+                <el-input-number
+                  v-model="row.amount"
+                  :min="0"
+                  :precision="2"
+                  size="small"
+                  disabled
+                  style="width: 100%;"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="60">
               <template #default="{ $index }">
-                <el-button type="danger" size="small" link @click="removeDetailRow($index)">删除</el-button>
+                <el-button type="danger" size="small" link @click="handleRemoveDetail($index)">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
-
-          <div v-if="!isView" style="margin-top: 10px">
-            <el-button type="primary" size="small" @click="addDetailRow">
-              <el-icon><Plus /></el-icon> 添加物料
+          <div class="details-actions">
+            <el-button type="primary" size="small" @click="handleAddDetail">
+              <el-icon><Plus /></el-icon>
+              添加明细
             </el-button>
           </div>
         </div>
-      </el-form>
+
+        <!-- 费用信息 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Wallet /></el-icon>
+            <span>费用信息</span>
+          </div>
+          <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item label="物料总额">
+                <el-input :value="'¥' + formatAmount(formData.goodsAmount)" disabled />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="税额">
+                <el-input :value="'¥' + formatAmount(formData.taxAmount)" disabled />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="物流/快递费用">
+                <el-input-number
+                  v-model="formData.logisticsCost"
+                  :min="0"
+                  :precision="2"
+                  placeholder="请输入物流费用"
+                  style="width: 100%;"
+                  @change="calculateAmounts"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item label="优惠金额">
+                <el-input-number
+                  v-model="formData.discountAmount"
+                  :min="0"
+                  :precision="2"
+                  style="width: 100%;"
+                  @change="calculateAmounts"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="实际金额">
+                <el-input :value="'¥' + formatAmount(formData.finalAmount)" disabled class="total-amount" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+      </div>
 
       <template #footer>
-        <template v-if="isView">
-          <el-button @click="dialogVisible = false">关闭</el-button>
-        </template>
-        <template v-else>
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
-            确定
-          </el-button>
-        </template>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button @click="handleSaveDraft" :loading="submitLoading">保存草稿</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">提交单据</el-button>
       </template>
     </el-dialog>
+
+    <!-- 查看详情对话框 -->
+    <el-drawer v-model="viewDrawer" title="单据详情" size="800px">
+      <div class="inbound-detail" v-if="currentInbound">
+        <!-- 单据信息 -->
+        <div class="detail-section">
+          <h4>单据信息</h4>
+          <el-descriptions :column="3" border size="small">
+            <el-descriptions-item label="入库单号">{{ currentInbound.inboundNo }}</el-descriptions-item>
+            <el-descriptions-item label="入库日期">{{ formatDate(currentInbound.inboundDate) }}</el-descriptions-item>
+            <el-descriptions-item label="单据状态">
+              <el-tag :type="getStatusType(currentInbound.status)" size="small">
+                {{ getStatusText(currentInbound.status) }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="仓库">{{ currentInbound.warehouse?.name }}</el-descriptions-item>
+            <el-descriptions-item label="制单人">{{ currentInbound.creator?.name }}</el-descriptions-item>
+            <el-descriptions-item label="制单时间">{{ formatDateTime(currentInbound.createdAt) }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+
+        <!-- 物料明细 -->
+        <div class="detail-section">
+          <h4>物料明细</h4>
+          <el-table :data="currentInbound.items || []" border size="small">
+            <el-table-column type="index" label="序号" width="60" />
+            <el-table-column prop="product.code" label="物料编码" width="120" />
+            <el-table-column prop="product.name" label="物料名称" min-width="150" />
+            <el-table-column prop="product.spec" label="规格" width="100" />
+            <el-table-column prop="product.unit" label="单位" width="60" />
+            <el-table-column prop="plannedQty" label="计划数量" width="100" align="right" />
+            <el-table-column prop="quantity" label="入库数量" width="100" align="right" />
+            <el-table-column prop="unitPrice" label="单价" width="100" align="right">
+              <template #default="{ row }">¥{{ formatAmount(row.unitPrice) }}</template>
+            </el-table-column>
+            <el-table-column prop="taxRate" label="税率(%)" width="80" align="right" />
+            <el-table-column prop="taxAmount" label="税额" width="100" align="right">
+              <template #default="{ row }">¥{{ formatAmount(row.taxAmount) }}</template>
+            </el-table-column>
+            <el-table-column prop="amount" label="金额" width="120" align="right">
+              <template #default="{ row }">¥{{ formatAmount(row.amount) }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <!-- 费用汇总 -->
+        <div class="detail-section">
+          <h4>费用汇总</h4>
+          <div class="detail-summary">
+            <span>物料总额：¥{{ formatAmount(getGoodsAmount()) }}</span>
+            <span>税额：¥{{ formatAmount(getTaxAmount()) }}</span>
+            <span>物流/快递费用：¥{{ formatAmount(currentInbound.logisticsCost || 0) }}</span>
+            <span>优惠：¥{{ formatAmount(currentInbound.discountAmount || 0) }}</span>
+            <span class="total">入库总额：¥{{ formatAmount(currentInbound.finalAmount || currentInbound.totalAmount) }}</span>
+          </div>
+        </div>
+
+        <!-- 备注信息 -->
+        <div class="detail-section" v-if="currentInbound.remark">
+          <h4>备注信息</h4>
+          <p>{{ currentInbound.remark }}</p>
+        </div>
+      </div>
+    </el-drawer>
 
     <!-- 帮助对话框 -->
     <CommonHelpDialog
@@ -454,9 +568,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, QuestionFilled, Download, Document, Clock, Money, Wallet, Setting } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled, Download, Document, Clock, Money, Wallet, Setting, Goods, Delete } from '@element-plus/icons-vue'
 import { getPurchaseInbounds, getPurchaseInboundById, createPurchaseInbound, updatePurchaseInbound, confirmPurchaseInbound, unconfirmPurchaseInbound, deletePurchaseInbound } from '@/api/purchase-inbound'
 import { getPurchaseOrders } from '@/api/purchase-order'
 import { getSuppliers } from '@/api/supplier'
@@ -502,13 +616,15 @@ const pagination = reactive({
 
 // 对话框
 const dialogVisible = ref(false)
+const viewDrawer = ref(false)
+const currentInbound = ref<any>(null)
 
 // 明细列显隐控制
 const visibleColumns = reactive({
   spec: true,
   unit: true,
   plannedQty: true,
-  inboundQty: true
+  taxRate: true
 })
 const dialogTitle = ref('新增采购入库单')
 const isEdit = ref(false)
@@ -523,25 +639,16 @@ const formData = reactive({
   orderNo: '',
   purchaseOrderId: '',
   supplierId: '',
-  inboundDate: new Date(),
+  inboundDate: '',
   warehouseId: '',
   remark: '',
   logisticsCost: 0,
+  discountAmount: 0,
+  goodsAmount: 0,
+  taxAmount: 0,
+  finalAmount: 0,
   details: [] as any[]
 })
-
-// 表单验证规则
-const formRules: FormRules = {
-  orderNo: [
-    { required: true, message: '请输入入库单号', trigger: 'blur' }
-  ],
-  inboundDate: [
-    { required: true, message: '请选择入库日期', trigger: 'change' }
-  ],
-  warehouseId: [
-    { required: true, message: '请选择仓库', trigger: 'change' }
-  ]
-}
 
 // 获取采购入库单列表
 const fetchPurchaseInbounds = async () => {
@@ -557,6 +664,9 @@ const fetchPurchaseInbounds = async () => {
     }
     if (searchForm.status) {
       params.status = searchForm.status
+    }
+    if (searchForm.supplierId) {
+      params.supplierId = searchForm.supplierId
     }
     if (searchForm.dateRange && searchForm.dateRange.length === 2) {
       params.startDate = searchForm.dateRange[0]
@@ -632,20 +742,47 @@ const fetchProducts = async () => {
   }
 }
 
+// 搜索物料
+const searchProducts = (query: string) => {
+  if (query) {
+    const filtered = products.value.filter((product: any) =>
+      product.name.toLowerCase().includes(query.toLowerCase()) ||
+      product.code.toLowerCase().includes(query.toLowerCase())
+    )
+    products.value = filtered
+  } else {
+      fetchProducts()
+  }
+}
+
 // 添加明细行
-const addDetailRow = () => {
+const handleAddDetail = () => {
   formData.details.push({
     productId: '',
     plannedQty: 0,
-    inboundQty: 0,
     quantity: 0,
-    unitPrice: 0
+    unitPrice: 0,
+    taxRate: 0,
+    taxAmount: 0,
+    amount: 0
   })
 }
 
 // 删除明细行
-const removeDetailRow = (index: number) => {
+const handleRemoveDetail = (index: number) => {
   formData.details.splice(index, 1)
+  calculateAmounts()
+}
+
+// 明细变更
+const handleDetailChange = (index: number) => {
+  const item = formData.details[index]
+  if (item.quantity && item.unitPrice) {
+    item.amount = item.quantity * item.unitPrice
+    item.taxRate = item.taxRate || 0
+    item.taxAmount = (item.amount * item.taxRate) / 100
+  }
+  calculateAmounts()
 }
 
 // 产品变更
@@ -653,6 +790,7 @@ const handleProductChange = (productId: string, index: number) => {
   const product = products.value.find((p: any) => p.id === productId)
   if (product) {
     formData.details[index].unitPrice = Number(product.costPrice) || 0
+    handleDetailChange(index)
   }
 }
 
@@ -661,15 +799,70 @@ const handleOrderChange = (orderId: string) => {
   const order = purchaseOrders.value.find((o: any) => o.id === orderId)
   if (order) {
     formData.supplierId = order.supplierId
-    formData.details = order.details?.map((detail: any) => ({
+    formData.details = (order.items || order.details || []).map((detail: any) => ({
       id: detail.id,
       productId: detail.productId,
       plannedQty: detail.quantity,
-      inboundQty: 0,
       quantity: 0,
-      unitPrice: detail.unitPrice
-    })) || []
+      unitPrice: detail.unitPrice,
+      taxRate: detail.taxRate || 0,
+      taxAmount: detail.taxAmount || 0,
+      amount: detail.amount || 0
+    }))
+    calculateAmounts()
   }
+}
+
+// 计算金额
+const calculateAmounts = () => {
+  let goodsAmount = 0
+  let totalTaxAmount = 0
+  
+  for (const item of formData.details) {
+    if (item.quantity && item.unitPrice) {
+      item.amount = item.quantity * item.unitPrice
+      item.taxRate = item.taxRate || 0
+      item.taxAmount = (item.amount * item.taxRate) / 100
+      goodsAmount += item.amount
+      totalTaxAmount += item.taxAmount
+    }
+  }
+  
+  formData.goodsAmount = goodsAmount
+  formData.taxAmount = totalTaxAmount
+  const totalAmount = goodsAmount + totalTaxAmount + (formData.logisticsCost || 0)
+  formData.finalAmount = totalAmount - (formData.discountAmount || 0)
+}
+
+// 获取物料属性
+const getProductAttr = (productId: string, attr: string) => {
+  const product = products.value.find((p: any) => p.id === productId)
+  return product ? (product as any)[attr] || '-' : '-'
+}
+
+// 获取汇总
+const getSummary = ({ columns, data }: any) => {
+  return columns.map((column: any, index: number) => {
+    if (index === 0) {
+      return '合计'
+    }
+    if (column.property === 'amount') {
+      return '¥' + formatAmount(formData.goodsAmount)
+    }
+    return ''
+  })
+}
+
+// 获取物料总额（查看用）
+const getGoodsAmount = () => {
+  if (!currentInbound.value) return 0
+  return (currentInbound.value.items || []).reduce((sum: number, item: any) => sum + (item.amount || 0), 0)
+}
+
+// 获取税额（查看用）
+const getTaxAmount = () => {
+  if (!currentInbound.value) return 0
+  return (currentInbound.value.items || []).reduce((sum: number, item: any) => sum + (item.taxAmount || 0), 0)
 }
 
 // 搜索
@@ -705,17 +898,22 @@ const handleCreate = async () => {
   if (!warehouses.value.length) {
     await fetchWarehouses()
   }
+  if (!purchaseOrders.value.length) {
+    await fetchPurchaseOrders()
+  }
 
   // 设置默认仓库
   try {
     const res: any = await getDefaultWarehouse()
     if (res.success && res.data?.id) {
       formData.warehouseId = res.data.id
-      formData.warehouseName = res.data.name
     }
   } catch (e) {
     console.error('获取默认仓库失败:', e)
   }
+
+  // 默认添加一行明细
+  handleAddDetail()
 
   dialogVisible.value = true
 
@@ -733,40 +931,10 @@ const handleCreate = async () => {
 // 查看
 const handleView = async (row: any) => {
   try {
-    dialogTitle.value = '查看采购入库单'
-    isEdit.value = false
-    isView.value = true
-    
     const response: any = await getPurchaseInboundById(row.id)
     if (response.success) {
-      const inbound = response.data
-      Object.assign(formData, {
-        id: inbound.id,
-        inboundNo: inbound.inboundNo,
-        orderNo: inbound.order?.orderNo || '',
-        orderId: inbound.orderId,
-        supplierName: inbound.order?.supplier?.name || '',
-        supplierId: inbound.order?.supplier?.id || '',
-        inboundDate: new Date(inbound.inboundDate),
-        warehouseName: inbound.warehouse?.name || '',
-        warehouseId: inbound.warehouseId,
-        totalAmount: inbound.totalAmount,
-        logisticsCost: inbound.logisticsCost || 0,
-        remark: inbound.remark || '',
-        details: inbound.details?.map((detail: any) => ({
-          id: detail.id,
-          productId: detail.productId,
-          productName: detail.product?.name || '',
-          productCode: detail.product?.code || '',
-          spec: detail.product?.spec || '',
-          unit: detail.product?.unit || '',
-          plannedQty: detail.plannedQty || 0,
-          inboundQty: detail.inboundQty || 0,
-          quantity: detail.inboundQty || 0,
-          unitPrice: detail.unitPrice || 0
-        })) || []
-      })
-      dialogVisible.value = true
+      currentInbound.value = response.data
+      viewDrawer.value = true
     }
   } catch (error) {
     console.error('获取采购入库单详情失败:', error)
@@ -779,7 +947,54 @@ const handleEdit = async (row: any) => {
   dialogTitle.value = '编辑采购入库单'
   isEdit.value = true
   isView.value = false
-  await handleView(row)
+  try {
+    if (!suppliers.value.length) {
+      await fetchSuppliers()
+    }
+    if (!products.value.length) {
+      await fetchProducts()
+    }
+    if (!warehouses.value.length) {
+      await fetchWarehouses()
+    }
+    if (!purchaseOrders.value.length) {
+      await fetchPurchaseOrders()
+    }
+
+    const response: any = await getPurchaseInboundById(row.id)
+    if (response.success) {
+      const inbound = response.data
+      Object.assign(formData, {
+        id: inbound.id,
+        orderNo: inbound.inboundNo,
+        purchaseOrderId: inbound.orderId,
+        supplierId: inbound.order?.supplier?.id || '',
+        inboundDate: inbound.inboundDate,
+        warehouseId: inbound.warehouseId,
+        remark: inbound.remark || '',
+        logisticsCost: inbound.logisticsCost || 0,
+        discountAmount: inbound.discountAmount || 0,
+        goodsAmount: 0,
+        taxAmount: 0,
+        finalAmount: inbound.finalAmount || inbound.totalAmount || 0,
+        details: (inbound.items || inbound.details || []).map((item: any) => ({
+          id: item.id,
+          productId: item.productId,
+          plannedQty: item.plannedQty || 0,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          taxRate: item.taxRate || 0,
+          taxAmount: item.taxAmount || 0,
+          amount: item.amount
+        }))
+      })
+      calculateAmounts()
+      dialogVisible.value = true
+    }
+  } catch (error) {
+    console.error('获取采购入库单详情失败:', error)
+    ElMessage.error('获取采购入库单详情失败')
+  }
 }
 
 // 复制
@@ -791,6 +1006,114 @@ const handleCopy = async (row: any) => {
   formData.orderNo = ''
   formData.purchaseOrderId = ''
   dialogTitle.value = '复制采购入库单'
+  
+  // 重新生成编号
+  try {
+    const res = await generateNextNumber('purchase_inbound') as any
+    if (res.success && res.data?.number) {
+      formData.orderNo = res.data.number
+    }
+  } catch (e) {
+    console.error('生成编号失败:', e)
+  }
+}
+
+// 保存草稿
+const handleSaveDraft = async () => {
+  await doSubmit(false)
+}
+
+// 提交单据
+const handleSubmit = async () => {
+  await doSubmit(true)
+}
+
+// 实际提交
+const doSubmit = async (isConfirm: boolean) => {
+  if (formData.details.length === 0) {
+    ElMessage.warning('请至少添加一条明细')
+    return
+  }
+
+  try {
+    // 验证明细
+    for (const detail of formData.details) {
+      if (!detail.productId) {
+        ElMessage.warning('请选择物料')
+        return
+      }
+      if (!detail.quantity || detail.quantity <= 0) {
+        ElMessage.warning('入库数量必须大于0')
+        return
+      }
+    }
+
+    submitLoading.value = true
+
+    // 构建提交数据
+    const submitData: any = {
+      inboundNo: formData.orderNo,
+      purchaseOrderId: formData.purchaseOrderId || undefined,
+      inboundDate: formData.inboundDate,
+      warehouseId: formData.warehouseId,
+      remark: formData.remark,
+      logisticsCost: formData.logisticsCost,
+      discountAmount: formData.discountAmount,
+      finalAmount: formData.finalAmount,
+      items: formData.details.map(detail => ({
+        productId: detail.productId,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        taxRate: detail.taxRate || 0,
+        taxAmount: detail.taxAmount || 0,
+        amount: detail.amount,
+        plannedQty: detail.plannedQty || 0
+      }))
+    }
+
+    if (isEdit.value) {
+      await updatePurchaseInbound(formData.id, submitData)
+      ElMessage.success('更新成功')
+    } else {
+      try {
+        const res = await createPurchaseInbound(submitData) as any
+        if (res.success) {
+          ElMessage.success('创建成功')
+          dialogVisible.value = false
+          fetchPurchaseInbounds()
+        }
+      } catch (error: any) {
+        // 如果编号冲突，重新生成编号并重试
+        if (error?.response?.data?.message?.includes('编号已存在')) {
+          console.log('编号冲突，重新生成...')
+          const res = await generateNextNumber('purchase_inbound') as any
+          if (res.success && res.data?.number) {
+            formData.orderNo = res.data.number
+            submitData.inboundNo = res.data.number
+            // 重试保存
+            const retryRes = await createPurchaseInbound(submitData) as any
+            if (retryRes.success) {
+              ElMessage.success('创建成功')
+              dialogVisible.value = false
+              fetchPurchaseInbounds()
+              return
+            }
+          }
+        }
+        throw error
+      }
+    }
+
+    dialogVisible.value = false
+    fetchPurchaseInbounds()
+  } catch (error: any) {
+    console.error('提交失败:', error)
+    if (error?.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    }
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 // 审核入库单
@@ -843,7 +1166,7 @@ const handleUnconfirm = async (row: any) => {
 const handleDelete = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除采购入库单 "${row.orderNo}" 吗？`,
+      `确定要删除采购入库单 "${row.inboundNo}" 吗？`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -862,18 +1185,6 @@ const handleDelete = async (row: any) => {
   }
 }
 
-// 获取物料规格
-const getProductSpec = (productId: string) => {
-  const product = products.value.find((p: any) => p.id === productId)
-  return product?.spec || '-'
-}
-
-// 获取物料单位
-const getProductUnit = (productId: string) => {
-  const product = products.value.find((p: any) => p.id === productId)
-  return product?.unit || '-'
-}
-
 // 获取状态类型
 const getStatusType = (status: string) => {
   return getStatusColor(status)
@@ -886,7 +1197,15 @@ const getStatusText = (status: string) => {
 // 格式化日期
 const formatDate = (date: string | Date) => {
   if (!date) return '-'
-  return new Date(date).toLocaleDateString('zh-CN')
+  const d = new Date(date)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// 格式化日期时间
+const formatDateTime = (date: string | Date) => {
+  if (!date) return '-'
+  const d = new Date(date)
+  return `${formatDate(date)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
 }
 
 // 格式化金额
@@ -897,103 +1216,20 @@ const formatAmount = (amount: any) => {
   return numAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-// 提交表单
-const handleSubmit = async () => {
-  if (!formRef.value) return
-
-  if (formData.details.length === 0) {
-    ElMessage.warning('请至少添加一条明细')
-    return
-  }
-
-  try {
-    await formRef.value.validate()
-
-    // 验证明细
-    for (const detail of formData.details) {
-      if (!detail.productId) {
-        ElMessage.warning('请选择物料')
-        return
-      }
-      if (!detail.quantity || detail.quantity <= 0) {
-        ElMessage.warning('入库数量必须大于0')
-        return
-      }
-    }
-
-    submitLoading.value = true
-
-    // 构建提交数据
-    const submitData: any = {
-      purchaseOrderId: formData.purchaseOrderId || undefined,
-      inboundDate: formData.inboundDate,
-      warehouseId: formData.warehouseId,
-      remark: formData.remark,
-      details: formData.details.map(detail => ({
-        productId: detail.productId,
-        quantity: detail.quantity,
-        unitPrice: detail.unitPrice
-      }))
-    }
-
-    if (isEdit.value) {
-      submitData.inboundNo = formData.orderNo
-      await updatePurchaseInbound(formData.id, submitData)
-      ElMessage.success('更新成功')
-    } else {
-      // 新增时使用当前编号
-      submitData.inboundNo = formData.orderNo
-
-      try {
-        const res = await createPurchaseInbound(submitData) as any
-        if (res.success) {
-          ElMessage.success('创建成功')
-          dialogVisible.value = false
-          fetchPurchaseInbounds()
-        }
-      } catch (error: any) {
-        // 如果编号冲突，重新生成编号并重试
-        if (error?.response?.data?.message?.includes('编号已存在')) {
-          console.log('编号冲突，重新生成...')
-          const res = await generateNextNumber('purchase_inbound') as any
-          if (res.success && res.data?.number) {
-            formData.orderNo = res.data.number
-            submitData.inboundNo = res.data.number
-            // 重试保存
-            const retryRes = await createPurchaseInbound(submitData) as any
-            if (retryRes.success) {
-              ElMessage.success('创建成功')
-              dialogVisible.value = false
-              fetchPurchaseInbounds()
-              return
-            }
-          }
-        }
-        throw error
-      }
-    }
-
-    dialogVisible.value = false
-    fetchPurchaseInbounds()
-  } catch (error: any) {
-    console.error('提交失败:', error)
-    if (error?.response?.data?.message) {
-      ElMessage.error(error.response.data.message)
-    }
-  } finally {
-    submitLoading.value = false
-  }
-}
-
 // 重置表单
 const resetForm = () => {
   formData.id = ''
   formData.orderNo = ''
   formData.purchaseOrderId = ''
   formData.supplierId = ''
-  formData.inboundDate = new Date()
+  formData.inboundDate = formatDate(new Date())
   formData.warehouseId = ''
   formData.remark = ''
+  formData.logisticsCost = 0
+  formData.discountAmount = 0
+  formData.goodsAmount = 0
+  formData.taxAmount = 0
+  formData.finalAmount = 0
   formData.details = []
 }
 
@@ -1001,6 +1237,7 @@ const resetForm = () => {
 const handleDialogClose = () => {
   resetForm()
   isView.value = false
+  isEdit.value = false
   if (formRef.value) {
     formRef.value.resetFields()
   }
@@ -1026,11 +1263,10 @@ const helpData = {
       title: '新增采购入库单',
       steps: [
         '点击"新增入库单"按钮',
-        '选择供应商',
         '选择入库仓库',
         '添加入库明细，选择物料和数量',
         '设置入库日期和备注',
-        '点击"确定"保存草稿或直接审核'
+        '点击"保存草稿"保存或"提交单据"直接审核'
       ]
     },
     {
@@ -1061,7 +1297,7 @@ const helpData = {
   tips: [
     '可以使用采购订单快速入库功能',
     '支持批量入库操作',
-    '入库单审核后不可撤销',
+    '入库单审核后可反审核',
     '可以按供应商、状态、日期等条件筛选入库单'
   ],
   shortcuts: [
@@ -1074,7 +1310,8 @@ const helpData = {
   changes: [
     '新增采购入库单功能',
     '支持关联采购订单',
-    '新增帮助文档功能'
+    '新增帮助文档功能',
+    '优化新增/编辑界面升级'
   ]
 }
 
@@ -1225,46 +1462,91 @@ onMounted(async () => {
   padding: 16px;
 }
 
-.card-header {
+.inbound-form {
+  padding: 0 10px;
+}
+
+.form-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
-
-.details-section {
-  margin-top: 20px;
-}
-
-.details-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.details-header h3 {
-  margin: 0;
   font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.section-title .el-icon {
+  margin-right: 8px;
+  color: #409eff;
+}
+
+.details-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.total-amount :deep(.el-input__wrapper) {
+  background-color: #f0f9eb;
+}
+
+.total-amount :deep(.el-input__inner) {
+  color: #67c23a;
+  font-weight: 600;
+}
+
+.inbound-detail {
+  padding: 0 20px 20px;
+}
+
+.detail-section {
+  margin-bottom: 24px;
+}
+
+.detail-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.detail-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+.detail-summary span {
+  font-size: 14px;
+  color: #606266;
+}
+
+.detail-summary .total {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f56c6c;
+}
+
+.detail-section p {
+  margin: 0;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  color: #606266;
 }
 
 .amount {
   color: #67c23a;
   font-weight: 500;
-}
-
-.readonly-text {
-  display: inline-block;
-  padding: 6px 12px;
-  background: #f5f7fa;
-  border-radius: 4px;
-  color: #606266;
-  font-size: 14px;
 }
 
 .action-buttons {

@@ -1155,7 +1155,7 @@ const handleEdit = async (row: any) => {
         orderDate: order.orderDate?.split('T')[0],
         supplierId: order.supplierId,
         remark: order.remark || '',
-        discountAmount: order.discountAmount || 0,
+        discountAmount: Number(order.discountAmount || 0),
         details: order.items?.map((d: any) => ({
           id: d.id,
           productId: d.productId,

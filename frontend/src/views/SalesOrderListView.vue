@@ -1573,7 +1573,15 @@ const handleConfirmPushPurchase = async () => {
       orderNo,
       supplierId: pushPurchaseForm.supplierId,
       orderDate: pushPurchaseForm.purchaseDate,
-      items: details,
+      items: details.map(item => ({
+        ...item,
+        taxRate: 0, // 默认税率0
+        taxAmount: 0, // 默认税额0
+        amount: item.quantity * item.unitPrice
+      })),
+      logisticsCost: 0,
+      discountRate: 0,
+      discountAmount: 0,
       remark: `由销售订单 ${pushPurchaseForm.orderNo} 下推生成`
     })
 

@@ -21,8 +21,14 @@ export interface CreatePurchaseOrderParams {
     quantity: number
     unitPrice?: number
     price?: number
+    taxRate?: number
+    taxAmount?: number
+    amount?: number
   }>
   remark?: string
+  logisticsCost?: number
+  discountRate?: number
+  discountAmount?: number
 }
 
 // 获取采购订单列表
