@@ -162,18 +162,6 @@ export const getPurchaseOrderById = async (req: Request, res: Response) => {
             phone: true,
           },
         },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        updater: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         items: {
           include: {
             product: {
