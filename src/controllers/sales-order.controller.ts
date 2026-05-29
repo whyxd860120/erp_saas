@@ -1284,6 +1284,8 @@ export const importSalesOrders = async (req: Request, res: Response) => {
       message: `导入完成：成功 ${successItems.length} 条，失败 ${errors.length} 条`,
       data: {
         success: successItems,
+        successCount: successItems.length,
+        failCount: errors.length,
         errors
       }
     });
