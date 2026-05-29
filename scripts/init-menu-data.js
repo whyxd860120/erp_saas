@@ -62,6 +62,7 @@ const defaultMenus = [
   { name: 'API密钥', code: 'api_keys', type: 'menu', path: '/api-keys', icon: 'Key', sortOrder: 10, parentCode: 'system_settings' },
   { name: 'Webhook', code: 'webhook', type: 'menu', path: '/webhooks', icon: 'Connection', sortOrder: 11, parentCode: 'system_settings' },
   { name: '审计日志', code: 'audit_log', type: 'menu', path: '/audit-logs', icon: 'Document', sortOrder: 12, parentCode: 'system_settings' },
+  { name: '数据重算', code: 'recalculate', type: 'menu', path: '/recalculate', icon: 'Refresh', sortOrder: 13, parentCode: 'system_settings' },
 ];
 
 async function initMenus() {

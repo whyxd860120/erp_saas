@@ -232,6 +232,12 @@ const router = createRouter({
           component: () => import('@/views/WebhookListView.vue'),
           meta: { title: 'Webhook', requiresAuth: true, requiresAdmin: true }
         },
+        {
+          path: 'recalculate',
+          name: 'Recalculate',
+          component: () => import('@/views/RecalculateView.vue'),
+          meta: { title: '数据重算', requiresAuth: true, requiresAdmin: true }
+        },
         // 微信商城管理
         {
           path: 'shop-products',
