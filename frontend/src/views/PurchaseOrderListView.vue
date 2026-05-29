@@ -1135,7 +1135,16 @@ const handleImportSubmit = async (data: any[]) => {
   const supplierMap = new Map<string, string>()
   const productMap = new Map<string, string>()
 
-  suppliers.value.forEach(s => supplierMap.set(s.name, s.id))
+  // 获取所有供应商数据用于导入验证
+  try {
+    const response: any = await getSuppliers({ page: 1, limit: 10000, status: '' })
+    if (response.success) {
+      const allSuppliers = response.data.items || []
+      allSuppliers.forEach(s => supplierMap.set(s.name, s.id))
+    }
+  } catch (error) {
+    console.error('获取供应商列表失败:', error)
+  }
 
   // 获取所有物料数据用于导入验证
   try {
