@@ -157,24 +157,33 @@
             {{ row.warehouse?.name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" link @click="handleView(row)">
               查看
             </el-button>
-            <el-button 
+            <el-button
               v-if="row.status === 'draft'"
-              type="warning" 
-              size="small" 
+              type="warning"
+              size="small"
               link
               @click="handleConfirm(row)"
             >
               确认
             </el-button>
-            <el-button 
+            <el-button
+              v-if="row.status === 'confirmed'"
+              type="info"
+              size="small"
+              link
+              @click="handleUnconfirm(row)"
+            >
+              反确认
+            </el-button>
+            <el-button
               v-if="row.status === 'draft'"
-              type="danger" 
-              size="small" 
+              type="danger"
+              size="small"
               link
               @click="handleDelete(row)"
             >
@@ -204,6 +213,7 @@
       :title="dialogTitle"
       width="900px"
       @close="handleDialogClose"
+      class="purchase-inbound-dialog"
     >
       <el-form
         ref="formRef"
@@ -304,26 +314,42 @@
           <div class="details-header">
             <h3>入库明细</h3>
           </div>
-          
-          <el-table v-if="isView" :data="formData.details" border style="width: 100%">
-            <el-table-column label="物料编码" width="150">
-              <template #default="{ row }">
-                {{ row.productCode }}
+
+          <el-table :data="formData.details" border style="width: 100%">
+            <el-table-column :label="isView ? '物料编码' : '物料'" width="200">
+              <template #default="{ row, $index }">
+                <template v-if="isView">
+                  <span>{{ row.productCode }}</span>
+                </template>
+                <el-select v-else
+                  v-model="formData.details[$index].productId"
+                  placeholder="请选择物料"
+                  filterable
+                  style="width: 100%"
+                  @change="(val: any) => handleProductChange(val, $index)"
+                >
+                  <el-option
+                    v-for="product in products"
+                    :key="product.id"
+                    :label="`${product.code} - ${product.name}`"
+                    :value="product.id"
+                  />
+                </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="物料名称" width="180">
+            <el-table-column v-if="isView" label="物料名称" width="180">
               <template #default="{ row }">
                 {{ row.productName }}
               </template>
             </el-table-column>
             <el-table-column label="规格" width="120">
               <template #default="{ row }">
-                {{ row.spec || '-' }}
+                {{ isView ? (row.spec || '-') : getProductSpec(row.productId) }}
               </template>
             </el-table-column>
             <el-table-column label="单位" width="80">
               <template #default="{ row }">
-                {{ row.unit || '-' }}
+                {{ isView ? (row.unit || '-') : getProductUnit(row.productId) }}
               </template>
             </el-table-column>
             <el-table-column label="计划数量" width="120">
@@ -351,87 +377,21 @@
                 {{ ((row.quantity || 0) * (row.unitPrice || 0))?.toFixed(2) || '0.00' }}
               </template>
             </el-table-column>
-          </el-table>
-          
-          <el-table v-else :data="formData.details" border style="width: 100%">
-            <el-table-column label="物料" width="250">
-              <template #default="{ row, $index }">
-                <el-select
-                  v-model="formData.details[$index].productId"
-                  placeholder="请选择物料"
-                  filterable
-                  style="width: 100%"
-                  @change="(val: any) => handleProductChange(val, $index)"
-                >
-                  <el-option
-                    v-for="product in products"
-                    :key="product.id"
-                    :label="`${product.code} - ${product.name}`"
-                    :value="product.id"
-                  />
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column label="规格" width="120">
-              <template #default="{ row }">
-                {{ getProductSpec(row.productId) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="单位" width="80">
-              <template #default="{ row }">
-                {{ getProductUnit(row.productId) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="计划数量" width="120">
-              <template #default="{ row }">
-                {{ row.plannedQty || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="已入库数量" width="120">
-              <template #default="{ row }">
-                {{ row.inboundQty || 0 }}
-              </template>
-            </el-table-column>
-            <el-table-column label="本次入库" width="150">
-              <template #default="{ row, $index }">
-                <el-input-number
-                  v-model="formData.details[$index].quantity"
-                  :min="0"
-                  :precision="0"
-                  style="width: 100%;"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column label="单价" width="150">
-              <template #default="{ row, $index }">
-                <el-input-number
-                  v-model="formData.details[$index].unitPrice"
-                  :min="0"
-                  :precision="2"
-                  style="width: 100%;"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column label="金额" width="120">
-              <template #default="{ row }">
-                {{ (row.quantity * row.unitPrice)?.toFixed(2) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="80" fixed="right">
+            <el-table-column v-if="!isView" label="操作" width="80" fixed="right">
               <template #default="{ $index }">
                 <el-button type="danger" size="small" link @click="removeDetailRow($index)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
 
-          <div style="margin-top: 10px">
+          <div v-if="!isView" style="margin-top: 10px">
             <el-button type="primary" size="small" @click="addDetailRow">
               <el-icon><Plus /></el-icon> 添加物料
             </el-button>
           </div>
         </div>
       </el-form>
-      
+
       <template #footer>
         <template v-if="isView">
           <el-button @click="dialogVisible = false">关闭</el-button>
@@ -458,10 +418,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, QuestionFilled, Download, Document, Clock, Money, Wallet } from '@element-plus/icons-vue'
-import { getPurchaseInbounds, getPurchaseInboundById, createPurchaseInbound, updatePurchaseInbound, confirmPurchaseInbound, deletePurchaseInbound } from '@/api/purchase-inbound'
+import { getPurchaseInbounds, getPurchaseInboundById, createPurchaseInbound, updatePurchaseInbound, confirmPurchaseInbound, unconfirmPurchaseInbound, deletePurchaseInbound } from '@/api/purchase-inbound'
 import { getPurchaseOrders } from '@/api/purchase-order'
 import { getSuppliers } from '@/api/supplier'
-import { getWarehouses } from '@/api/warehouse'
+import { getWarehouses, getDefaultWarehouse } from '@/api/warehouse'
 import { getProducts } from '@/api/product'
 import { generateNextNumber } from '@/api/numbering-rule'
 import { getStatusColor, getPurchaseInboundStatusText } from '@/utils/status.util'
@@ -685,8 +645,9 @@ const handleReset = () => {
 const handleCreate = async () => {
   dialogTitle.value = '新增采购入库单'
   isEdit.value = false
+  isView.value = false
   resetForm()
-  
+
   // 按需加载数据，确保必要数据已加载
   if (!suppliers.value.length) {
     await fetchSuppliers()
@@ -697,7 +658,18 @@ const handleCreate = async () => {
   if (!warehouses.value.length) {
     await fetchWarehouses()
   }
-  
+
+  // 设置默认仓库
+  try {
+    const res: any = await getDefaultWarehouse()
+    if (res.success && res.data?.id) {
+      formData.warehouseId = res.data.id
+      formData.warehouseName = res.data.name
+    }
+  } catch (e) {
+    console.error('获取默认仓库失败:', e)
+  }
+
   dialogVisible.value = true
 
   // 打开时生成编号
@@ -759,7 +731,7 @@ const handleView = async (row: any) => {
 const handleConfirm = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `确定要确认采购入库单 "${row.orderNo}" 吗？`,
+      `确定要确认采购入库单 "${row.inboundNo}" 吗？`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -767,13 +739,36 @@ const handleConfirm = async (row: any) => {
         type: 'warning'
       }
     )
-    
+
     await confirmPurchaseInbound(row.id)
     ElMessage.success('确认成功')
     fetchPurchaseInbounds()
   } catch (error: any) {
     if (error !== 'cancel') {
       console.error('确认采购入库单失败:', error)
+    }
+  }
+}
+
+// 反确认入库单
+const handleUnconfirm = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要反确认采购入库单 "${row.inboundNo}" 吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await unconfirmPurchaseInbound(row.id)
+    ElMessage.success('反确认成功')
+    fetchPurchaseInbounds()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('反确认采购入库单失败:', error)
     }
   }
 }

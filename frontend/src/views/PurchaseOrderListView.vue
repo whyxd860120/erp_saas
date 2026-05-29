@@ -142,11 +142,11 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
       <el-form :inline="true" :model="searchForm">
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12" :md="5">
-            <el-form-item label="单据编号/供应商" class="search-item">
-              <el-input v-model="searchForm.keyword" placeholder="订单号/供应商" clearable style="width: 100%;" @keyup.enter="handleSearch" />
+            <el-form-item label="单据编号" class="search-item">
+              <el-input v-model="searchForm.keyword" placeholder="单据编号" clearable style="width: 100%;" @keyup.enter="handleSearch" />
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="12" :md="9">
             <el-form-item label="供应商" class="search-item">
               <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable style="width: 100%;" @change="handleSearch">
                 <el-option
@@ -158,7 +158,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="7">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="单据状态" class="search-item">
               <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 100%;" @change="handleSearch">
                 <el-option label="草稿" value="draft" />
