@@ -161,18 +161,6 @@ export const getPurchaseInboundById = async (req: Request, res: Response) => {
         tenantId: req.user.tenantId,
       },
       include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        updater: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         order: {
           select: {
             id: true,
@@ -438,7 +426,7 @@ export const createPurchaseInbound = async (req: Request, res: Response) => {
           inboundDate: new Date(inboundDate),
           totalAmount,
           logisticsCost,
-          status: 'draft',
+          status: 'confirmed',
           remark,
         },
       });

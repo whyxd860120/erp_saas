@@ -1,89 +1,171 @@
 <template>
-  <div class="purchase-inbound-list">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>采购入库单</span>
-          <div class="header-actions">
-            <el-button @click="handleHelp">
-              <el-icon><QuestionFilled /></el-icon>
-              帮助
-            </el-button>
-            <el-button type="primary" @click="handleCreate">
-              <el-icon><Plus /></el-icon>
-              新增入库单
-            </el-button>
+  <div class="purchase-inbound-page">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <div class="header-left">
+        <h2 class="page-title">采购入库</h2>
+      </div>
+      <div class="header-right">
+        <el-button @click="handleExport">
+          <el-icon><Download /></el-icon>
+          导出
+        </el-button>
+        <el-button @click="handleHelp">
+          <el-icon><QuestionFilled /></el-icon>
+          帮助
+        </el-button>
+        <el-button type="primary" @click="handleCreate">
+          <el-icon><Plus /></el-icon>
+          新增入库单
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 统计概览 -->
+    <el-row :gutter="16" class="stats-row">
+      <el-col :xs="12" :sm="6">
+        <div class="stat-card">
+          <div class="stat-icon"><el-icon><Document /></el-icon></div>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats.total }}</span>
+            <span class="stat-label">总入库数</span>
           </div>
         </div>
-      </template>
-      
-      <!-- 搜索栏 -->
-      <el-form :inline="true" :model="searchForm" class="search-form">
-        <el-form-item label="入库单号">
-          <el-input v-model="searchForm.orderNo" placeholder="入库单号" clearable />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
-            <el-option label="草稿" value="draft" />
-            <el-option label="已确认" value="confirmed" />
-            <el-option label="已取消" value="cancelled" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="供应商">
-          <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable>
-            <el-option
-              v-for="supplier in suppliers"
-              :key="supplier.id"
-              :label="supplier.name"
-              :value="supplier.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
+      </el-col>
+      <el-col :xs="12" :sm="6">
+        <div class="stat-card">
+          <div class="stat-icon pending"><el-icon><Clock /></el-icon></div>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats.pending }}</span>
+            <span class="stat-label">待确认</span>
+          </div>
+        </div>
+      </el-col>
+      <el-col :xs="12" :sm="6">
+        <div class="stat-card">
+          <div class="stat-icon amount"><el-icon><Money /></el-icon></div>
+          <div class="stat-info">
+            <span class="stat-value">¥{{ formatAmount(stats.amount) }}</span>
+            <span class="stat-label">入库总额</span>
+          </div>
+        </div>
+      </el-col>
+      <el-col :xs="12" :sm="6">
+        <div class="stat-card">
+          <div class="stat-icon unpaid"><el-icon><Wallet /></el-icon></div>
+          <div class="stat-info">
+            <span class="stat-value">¥{{ formatAmount(stats.unpaid) }}</span>
+            <span class="stat-label">应付未付</span>
+          </div>
+        </div>
+      </el-col>
+    </el-row>
+
+    <!-- 高级搜索 -->
+    <el-card class="search-card" shadow="never">
+      <el-form :inline="true" :model="searchForm">
+        <el-row :gutter="16">
+          <el-col :xs="24" :sm="12" :md="5">
+            <el-form-item label="入库单号" class="search-item">
+              <el-input v-model="searchForm.orderNo" placeholder="入库单号" clearable style="width: 100%;" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="7">
+            <el-form-item label="供应商" class="search-item">
+              <el-select v-model="searchForm.supplierId" placeholder="请选择供应商" clearable filterable style="width: 100%;" @change="handleSearch">
+                <el-option
+                  v-for="supplier in suppliers"
+                  :key="supplier.id"
+                  :label="supplier.name"
+                  :value="supplier.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="6">
+            <el-form-item label="单据状态" class="search-item">
+              <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 100%;" @change="handleSearch">
+                <el-option label="草稿" value="draft" />
+                <el-option label="已确认" value="confirmed" />
+                <el-option label="已取消" value="cancelled" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="6">
+            <el-form-item label="日期范围" class="search-item">
+              <el-date-picker
+                v-model="searchForm.dateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                value-format="YYYY-MM-DD"
+                style="width: 100%;"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <div class="search-actions">
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
+        </div>
       </el-form>
-      
-      <!-- 表格 -->
-      <el-table :data="tableData" stripe border style="width: 100%">
-        <el-table-column prop="orderNo" label="入库单号" width="180" />
-        <el-table-column label="采购订单" width="180">
+    </el-card>
+
+    <!-- 数据表格 -->
+    <el-card class="table-card" shadow="never">
+      <el-table
+        :data="tableData"
+        v-loading="loading"
+        stripe
+      >
+        <el-table-column prop="inboundNo" label="入库单号" width="180" fixed>
           <template #default="{ row }">
-            {{ row.purchaseOrder?.orderNo || '-' }}
+            <el-link type="primary" @click="handleView(row)">{{ row.inboundNo }}</el-link>
           </template>
         </el-table-column>
-        <el-table-column label="供应商" width="180">
+        <el-table-column label="采购订单" width="150">
           <template #default="{ row }">
-            {{ row.supplier?.name || '-' }}
+            {{ row.order?.orderNo || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="入库日期" width="120">
+        <el-table-column label="供应商" min-width="150">
+          <template #default="{ row }">
+            <span>{{ row.order?.supplier?.name || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="入库日期" width="110">
           <template #default="{ row }">
             {{ formatDate(row.inboundDate) }}
           </template>
         </el-table-column>
-        <el-table-column prop="totalAmount" label="总金额" width="120">
+        <el-table-column label="入库金额" width="120" align="right">
           <template #default="{ row }">
-            {{ formatAmount(row.totalAmount) }}
+            <span class="amount">¥{{ formatAmount(row.totalAmount) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
+            <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="仓库" width="120">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleView(row)">
+            {{ row.warehouse?.name || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" size="small" link @click="handleView(row)">
               查看
             </el-button>
             <el-button 
               v-if="row.status === 'draft'"
               type="warning" 
               size="small" 
+              link
               @click="handleConfirm(row)"
             >
               确认
@@ -92,6 +174,7 @@
               v-if="row.status === 'draft'"
               type="danger" 
               size="small" 
+              link
               @click="handleDelete(row)"
             >
               删除
@@ -300,7 +383,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, QuestionFilled } from '@element-plus/icons-vue'
+import { Plus, QuestionFilled, Download, Document, Clock, Money, Wallet } from '@element-plus/icons-vue'
 import { getPurchaseInbounds, getPurchaseInboundById, createPurchaseInbound, updatePurchaseInbound, confirmPurchaseInbound, deletePurchaseInbound } from '@/api/purchase-inbound'
 import { getPurchaseOrders } from '@/api/purchase-order'
 import { getSuppliers } from '@/api/supplier'
@@ -312,14 +395,23 @@ import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 // 数据列表
-const tableData = ref([])
+const tableData = ref<any[]>([])
 const loading = ref(false)
+
+// 统计
+const stats = ref({
+  total: 0,
+  pending: 0,
+  amount: 0,
+  unpaid: 0
+})
 
 // 搜索表单
 const searchForm = reactive({
   orderNo: '',
   status: '',
-  supplierId: ''
+  supplierId: '',
+  dateRange: [] as string[]
 })
 
 // 下拉数据
@@ -373,16 +465,35 @@ const formRules: FormRules = {
 const fetchPurchaseInbounds = async () => {
   try {
     loading.value = true
-    const params = {
+    const params: any = {
       page: pagination.page,
-      limit: pagination.limit,
-      ...searchForm
+      limit: pagination.limit
+    }
+    
+    if (searchForm.orderNo) {
+      params.search = searchForm.orderNo
+    }
+    if (searchForm.status) {
+      params.status = searchForm.status
+    }
+    if (searchForm.dateRange && searchForm.dateRange.length === 2) {
+      params.startDate = searchForm.dateRange[0]
+      params.endDate = searchForm.dateRange[1]
     }
     
     const response: any = await getPurchaseInbounds(params)
     if (response.success) {
-      tableData.value = response.data.items
+      tableData.value = response.data.items || []
       pagination.total = response.data.total
+      
+      // 计算统计数据
+      const items = response.data.items || []
+      stats.value = {
+        total: response.data.total || 0,
+        pending: items.filter((t: any) => t.status === 'draft').length,
+        amount: items.reduce((sum: number, t: any) => sum + Number(t.totalAmount || 0), 0),
+        unpaid: items.filter((t: any) => t.status === 'confirmed').reduce((sum: number, t: any) => sum + Number(t.totalAmount || 0), 0)
+      }
     }
   } catch (error) {
     console.error('获取采购入库单列表失败:', error)
@@ -490,6 +601,7 @@ const handleReset = () => {
   searchForm.orderNo = ''
   searchForm.status = ''
   searchForm.supplierId = ''
+  searchForm.dateRange = []
   pagination.page = 1
   fetchPurchaseInbounds()
 }
@@ -818,6 +930,11 @@ const helpData = {
   ]
 }
 
+// 导出
+const handleExport = () => {
+  ElMessage.info('导出功能开发中')
+}
+
 // 打开帮助
 const handleHelp = () => {
   helpDialogVisible.value = true
@@ -831,18 +948,129 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.purchase-inbound-list {
-  padding: 20px;
+.purchase-inbound-page {
+  padding: 0;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 0 20px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.header-right {
+  display: flex;
+  gap: 8px;
+}
+
+.stats-row {
+  padding: 0 20px;
+  margin-bottom: 16px !important;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #ecf5ff;
+  color: #409eff;
+  font-size: 24px;
+  margin-right: 16px;
+}
+
+.stat-icon.pending {
+  background: #fdf6ec;
+  color: #e6a23c;
+}
+
+.stat-icon.amount {
+  background: #f0f9eb;
+  color: #67c23a;
+}
+
+.stat-icon.unpaid {
+  background: #fef0f0;
+  color: #f56c6c;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.search-card {
+  margin: 0 20px 16px;
+}
+
+.search-card :deep(.el-card__body) {
+  padding: 16px;
+}
+
+.search-item {
+  width: 100%;
+}
+
+.search-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.table-card {
+  margin: 0 20px;
+}
+
+.table-card :deep(.el-card__body) {
+  padding: 0;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.search-form {
-  margin-bottom: 20px;
 }
 
 .pagination-container {
@@ -865,5 +1093,10 @@ onMounted(async () => {
 .details-header h3 {
   margin: 0;
   font-size: 16px;
+}
+
+.amount {
+  color: #67c23a;
+  font-weight: 500;
 }
 </style>

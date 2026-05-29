@@ -160,18 +160,6 @@ export const getSalesOutboundById = async (req: Request, res: Response) => {
         tenantId: req.user.tenantId,
       },
       include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        updater: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         order: {
           select: {
             id: true,
@@ -454,7 +442,7 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
           outboundDate: new Date(outboundDate),
           totalAmount,
           logisticsCost,
-          status: 'draft',
+          status: 'confirmed',
           remark,
         },
       });
