@@ -20,6 +20,12 @@ const router = Router();
 router.get('/', authenticate, tenantIsolation(true), getAccounts);
 
 /**
+ * 获取默认账户
+ * GET /api/v1/accounts/default
+ */
+router.get('/default', authenticate, tenantIsolation(true), getDefaultAccount);
+
+/**
  * 获取账户详情
  * GET /api/v1/accounts/:id
  */
@@ -51,11 +57,5 @@ router.delete('/:id', authenticate, authorize(['admin']), tenantIsolation(true),
  * Body: { amount, remark? }
  */
 router.post('/:id/adjust-balance', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), adjustBalance);
-
-/**
- * 获取默认账户
- * GET /api/v1/accounts/default
- */
-router.get('/default', authenticate, tenantIsolation(true), getDefaultAccount);
 
 export default router;

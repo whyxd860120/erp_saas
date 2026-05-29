@@ -21,6 +21,12 @@ const router = Router();
 router.get('/', authenticate, tenantIsolation(true), checkFeature('multiWarehouse'), getWarehouses);
 
 /**
+ * 获取默认仓库
+ * GET /api/v1/warehouses/default
+ */
+router.get('/default', authenticate, tenantIsolation(true), checkFeature('multiWarehouse'), getDefaultWarehouse);
+
+/**
  * 获取仓库详情
  * GET /api/v1/warehouses/:id
  */
@@ -52,11 +58,5 @@ router.delete('/:id', authenticate, authorize(['admin']), tenantIsolation(true),
  * Body: [{ code, name, address?, manager?, remark? }, ...]
  */
 router.post('/import', authenticate, authorize(['admin', 'manager']), tenantIsolation(true), checkFeature('multiWarehouse'), importWarehouses);
-
-/**
- * 获取默认仓库
- * GET /api/v1/warehouses/default
- */
-router.get('/default', authenticate, tenantIsolation(true), checkFeature('multiWarehouse'), getDefaultWarehouse);
 
 export default router;
