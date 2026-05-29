@@ -10,6 +10,7 @@ import {
   batchDeletePurchaseOrders,
   importPurchaseOrders,
 } from '../controllers/purchase-order.controller';
+import { quickInbound } from '../controllers/quick-inbound.controller';
 import { authenticate, authorize, tenantIsolation } from '../middlewares/auth.middleware';
 import { checkFiscalPeriod } from '../middlewares/fiscal-period.middleware';
 
@@ -53,6 +54,13 @@ router.post('/:id/confirm', authenticate, authorize(['admin', 'manager']), tenan
  * POST /api/v1/purchase-orders/:id/unconfirm
  */
 router.post('/:id/unconfirm', authenticate, authorize(['admin', 'manager']), tenantIsolation(), checkFiscalPeriod('orderDate'), unconfirmPurchaseOrder);
+
+/**
+ * 快速入库 - 根据采购订单直接创建入库单并确认
+ * POST /api/v1/purchase-orders/:id/quick-inbound
+ * Body: { warehouseId, inboundDate?, remark?, items? }
+ */
+router.post('/:id/quick-inbound', authenticate, authorize(['admin', 'manager', 'staff']), tenantIsolation(), checkFiscalPeriod('inboundDate'), quickInbound);
 
 /**
  * 批量删除采购订单（仅草稿状态）

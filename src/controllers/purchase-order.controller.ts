@@ -207,7 +207,6 @@ export const getPurchaseOrderById = async (req: Request, res: Response) => {
     const auditLogs = await getAuditLogs({
       tenantId: req.user.tenantId,
       module: 'purchase_order',
-      resource: id,
       limit: 20,
     });
 

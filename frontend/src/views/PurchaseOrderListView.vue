@@ -758,13 +758,13 @@ import {
 } from '@element-plus/icons-vue'
 import {
   getPurchaseOrders, getPurchaseOrderById, createPurchaseOrder,
-  updatePurchaseOrder, confirmPurchaseOrder, unconfirmPurchaseOrder, deletePurchaseOrder, importPurchaseOrders
+  updatePurchaseOrder, confirmPurchaseOrder, unconfirmPurchaseOrder, deletePurchaseOrder, importPurchaseOrders,
+  quickInbound
 } from '@/api/purchase-order'
 import { getSuppliers } from '@/api/supplier'
 import { getProducts } from '@/api/product'
 import { getUsers } from '@/api/user'
 import { getWarehouses, getDefaultWarehouse } from '@/api/warehouse'
-import { createPurchaseInbound } from '@/api/purchase-inbound'
 import { getStatusColor, getPurchaseOrderStatusText } from '@/utils/status.util'
 import CommonImportDialog from '@/components/CommonImportDialog.vue'
 import CommonHelpDialog from '@/components/CommonHelpDialog.vue'
@@ -1269,7 +1269,7 @@ const handleConfirmQuickInbound = async () => {
     quickInboundLoading.value = true
 
     // 构建入库单明细（只包含有入库数量的物料）
-    const details = quickInboundForm.details
+    const items = quickInboundForm.details
       .filter(d => d.quantity > 0)
       .map(item => ({
         productId: item.productId,
@@ -1277,15 +1277,14 @@ const handleConfirmQuickInbound = async () => {
         unitPrice: Number(item.unitPrice) || 0
       }))
 
-    // 创建入库单
-    await createPurchaseInbound({
-      orderId: quickInboundForm.orderId,
+    // 调用快速入库接口
+    await quickInbound(quickInboundForm.orderId, {
       warehouseId: quickInboundForm.warehouseId,
       inboundDate: quickInboundForm.inboundDate,
       remark: quickInboundForm.inboundType === 'all' 
         ? `由订单 ${quickInboundForm.orderNo} 整单入库`
         : `由订单 ${quickInboundForm.orderNo} 部分入库`,
-      details
+      items
     })
 
     ElMessage.success('快速入库成功')

@@ -92,3 +92,23 @@ export const importPurchaseOrders = (data: any[]) => {
     data
   })
 }
+
+// 快速入库 - 根据采购订单直接创建入库单并确认
+export interface QuickInboundParams {
+  warehouseId: string
+  inboundDate?: string
+  remark?: string
+  items?: Array<{
+    productId: string
+    quantity: number
+    unitPrice: number
+  }>
+}
+
+export const quickInbound = (orderId: string, data: QuickInboundParams) => {
+  return request({
+    url: `/api/v1/purchase-orders/${orderId}/quick-inbound`,
+    method: 'post',
+    data
+  })
+}
