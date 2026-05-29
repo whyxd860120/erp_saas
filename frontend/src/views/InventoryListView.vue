@@ -578,7 +578,7 @@ const fetchData = async () => {
     const params = {
       page: pagination.page,
       limit: pagination.limit,
-      keyword: searchForm.keyword,
+      search: searchForm.keyword,
       warehouseId: searchForm.warehouseId,
       categoryId: searchForm.categoryId,
       stockStatus: searchForm.stockStatus

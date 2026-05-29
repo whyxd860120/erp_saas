@@ -8,6 +8,7 @@ export interface SalesOrderParams {
   customerId?: string
   startDate?: string
   endDate?: string
+  search?: string
 }
 
 // 创建/更新销售订单参数

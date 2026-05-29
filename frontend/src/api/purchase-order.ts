@@ -8,6 +8,7 @@ export interface PurchaseOrderParams {
   supplierId?: string
   startDate?: string
   endDate?: string
+  search?: string
 }
 
 // 创建/更新采购订单参数
