@@ -1645,6 +1645,9 @@ const handleImportSubmit = async (data: any[]) => {
   }
 
   salesmen.value.forEach(s => salesmanMap.set(s.name, s.id))
+  
+  console.log('导入销售订单 - 业务员映射:', Array.from(salesmanMap.entries()))
+  console.log('导入销售订单 - 可用业务员列表:', salesmen.value)
 
   // 获取所有物料数据用于导入验证
   try {
@@ -1670,8 +1673,10 @@ const handleImportSubmit = async (data: any[]) => {
     if (item.salesmanName && salesmanMap.has(item.salesmanName)) {
       newItem.salesmanId = salesmanMap.get(item.salesmanName)
       delete newItem.salesmanName
+      console.log(`导入 - 业务员匹配成功: ${item.salesmanName} -> ${newItem.salesmanId}`)
     } else if (item.salesmanName) {
       newItem.salesmanError = `业务员 "${item.salesmanName}" 不存在`
+      console.warn(`导入 - 业务员匹配失败: "${item.salesmanName}"，可用业务员:`, Array.from(salesmanMap.keys()))
     }
 
     if (item.productCode && productMap.has(item.productCode)) {

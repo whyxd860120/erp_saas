@@ -1185,12 +1185,30 @@ export const importSalesOrders = async (req: Request, res: Response) => {
           }
         }
 
-        // 计算总金额
+        // 计算总金额（优先使用Excel中的金额，如果没有填金额则计算）
         let totalAmount = 0;
         const itemsData = orderItems.map(item => {
-          const quantity = parseInt(item.quantity) || 0;
-          const unitPrice = parseFloat(item.unitPrice) || 0;
-          const amount = quantity * unitPrice;
+          const quantity = parseFloat(item.quantity) || 0;
+          const excelAmount = parseFloat(item.amount) || 0; // Excel中的金额
+          const excelUnitPrice = parseFloat(item.unitPrice) || 0; // Excel中的单价
+          
+          let amount: number;
+          let unitPrice: number;
+          
+          if (excelAmount > 0 && quantity > 0) {
+            // 如果Excel中有金额和数量，计算单价
+            amount = excelAmount;
+            unitPrice = excelUnitPrice > 0 ? excelUnitPrice : (amount / quantity);
+          } else if (quantity > 0 && excelUnitPrice > 0) {
+            // 如果Excel中没有金额但有数量和单价，计算金额
+            unitPrice = excelUnitPrice;
+            amount = quantity * unitPrice;
+          } else {
+            // 都没有则都为0
+            unitPrice = 0;
+            amount = 0;
+          }
+          
           totalAmount += amount;
 
           return {
