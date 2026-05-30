@@ -7,14 +7,20 @@ const prisma = new PrismaClient();
 
 /**
  * 构建 batchNo 查询条件，兼容 null 和空字符串
- * 返回 Prisma compatible 的查询对象
+ * 当批次号为空时，在 where 顶层使用 OR 同时匹配 null 和空字符串
  */
-function buildBatchNoCondition(batchNo?: string): any {
+function buildBatchNoWhere(baseWhere: any, batchNo?: string): any {
   if (batchNo && batchNo.trim() !== '') {
-    return batchNo;
+    return { ...baseWhere, batchNo };
   }
   // 同时匹配 null 和空字符串
-  return { OR: [{ equals: null }, { equals: '' }] };
+  const { batchNo: _, ...rest } = baseWhere;
+  return {
+    OR: [
+      { ...rest, batchNo: null },
+      { ...rest, batchNo: '' },
+    ],
+  };
 }
 
 /**
@@ -526,12 +532,11 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
       // 扣减库存
       for (const detail of details) {
         const inventory = await tx.inventoryItem.findFirst({
-          where: {
+          where: buildBatchNoWhere({
             tenantId: req.user!.tenantId!,
             productId: detail.productId,
             warehouseId,
-            batchNo: buildBatchNoCondition(detail.batchNo),
-          },
+          }, detail.batchNo),
         });
 
         if (!inventory || inventory.quantity < detail.quantity) {
@@ -732,12 +737,11 @@ export const confirmSalesOutbound = async (req: Request, res: Response) => {
       for (const detail of existingOutbound.details) {
         // 查找库存记录
         const inventory = await tx.inventoryItem.findFirst({
-          where: {
+          where: buildBatchNoWhere({
             tenantId: req.user!.tenantId!,
             productId: detail.productId,
             warehouseId: existingOutbound.warehouseId,
-            batchNo: buildBatchNoCondition(detail.batchNo),
-          },
+          }, detail.batchNo),
         });
 
         if (!inventory || inventory.quantity < detail.quantity) {
@@ -896,12 +900,11 @@ export const unconfirmSalesOutbound = async (req: Request, res: Response) => {
       for (const detail of existingOutbound.details) {
         // 查找库存记录
         const inventory = await tx.inventoryItem.findFirst({
-          where: {
+          where: buildBatchNoWhere({
             tenantId: req.user!.tenantId!,
             productId: detail.productId,
             warehouseId: existingOutbound.warehouseId,
-            batchNo: buildBatchNoCondition(detail.batchNo),
-          },
+          }, detail.batchNo),
         });
 
         if (inventory) {
@@ -1475,12 +1478,11 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
               // 只对新合并的明细扣减库存
               for (const item of newItemsData) {
                 const inventory = await tx.inventoryItem.findFirst({
-                  where: {
+                  where: buildBatchNoWhere({
                     tenantId,
                     productId: item.productId,
                     warehouseId: existingOutbound.warehouseId,
-                    batchNo: buildBatchNoCondition(item.batchNo),
-                  },
+                  }, item.batchNo),
                 });
 
                 if (!inventory || inventory.quantity < item.quantity) {
@@ -1649,12 +1651,11 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
           // 扣减库存
           for (const detail of itemsData) {
             const inventory = await tx.inventoryItem.findFirst({
-              where: {
+              where: buildBatchNoWhere({
                 tenantId,
                 productId: detail.productId,
                 warehouseId: firstItem.warehouseId,
-                batchNo: buildBatchNoCondition(detail.batchNo),
-              },
+              }, detail.batchNo),
             });
 
             if (!inventory || inventory.quantity < detail.quantity) {
