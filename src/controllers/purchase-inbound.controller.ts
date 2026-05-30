@@ -683,26 +683,46 @@ export const confirmPurchaseInbound = async (req: Request, res: Response) => {
               },
             });
 
-            // 检查订单所有明细是否都已完成
-            const pendingItems = await tx.purchaseOrderItem.findMany({
-              where: {
-                orderId: existingInbound.orderId,
-                status: { not: 'completed' },
-              },
+            // 重新计算订单所有明细的状态
+            const allItems = await tx.purchaseOrderItem.findMany({
+              where: { orderId: existingInbound.orderId },
             });
 
-            // 如果所有明细都已完成，更新订单状态
-            if (pendingItems.length === 0) {
-              await tx.purchaseOrder.update({
-                where: { id: existingInbound.orderId },
-                data: { status: 'completed' },
-              });
-            } else {
-              await tx.purchaseOrder.update({
-                where: { id: existingInbound.orderId },
-                data: { status: 'partial' },
-              });
+            let completedItemsCount = 0;
+            let hasPartial = false;
+            let hasAnyQuantity = false;
+            
+            for (const item of allItems) {
+              if (item.status === 'completed') {
+                completedItemsCount++;
+              } else if (item.status === 'partial') {
+                hasPartial = true;
+              }
+              if ((item.receivedQty || 0) > 0) {
+                hasAnyQuantity = true;
+              }
             }
+
+            // 根据实际情况更新订单状态
+            let orderStatus = 'pending';
+            if (completedItemsCount === allItems.length && allItems.length > 0) {
+              orderStatus = 'completed';
+            } else if (hasPartial || hasAnyQuantity) {
+              orderStatus = 'partial';
+            } else {
+              // 获取当前订单状态
+              const currentOrder = await tx.purchaseOrder.findUnique({
+                where: { id: existingInbound.orderId }
+              });
+              if (currentOrder?.status === 'confirmed') {
+                orderStatus = 'confirmed';
+              }
+            }
+
+            await tx.purchaseOrder.update({
+              where: { id: existingInbound.orderId },
+              data: { status: orderStatus },
+            });
           }
         }
       }
