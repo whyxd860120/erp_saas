@@ -6,6 +6,17 @@ import { auditLog, getAuditLogs } from '../utils/audit.util';
 const prisma = new PrismaClient();
 
 /**
+ * 构建 batchNo 查询条件，兼容 null 和空字符串
+ */
+function buildBatchNoCondition(batchNo?: string) {
+  if (batchNo && batchNo.trim() !== '') {
+    return batchNo;
+  }
+  // 同时匹配 null 和空字符串
+  return { in: [null, ''] };
+}
+
+/**
  * 格式化日期用于编码规则
  */
 function formatDateForRule(date: Date, format: string): string {
@@ -518,7 +529,7 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
             tenantId: req.user!.tenantId!,
             productId: detail.productId,
             warehouseId,
-            batchNo: detail.batchNo || null,
+            batchNo: buildBatchNoCondition(detail.batchNo),
           },
         });
 
@@ -724,7 +735,7 @@ export const confirmSalesOutbound = async (req: Request, res: Response) => {
             tenantId: req.user!.tenantId!,
             productId: detail.productId,
             warehouseId: existingOutbound.warehouseId,
-            batchNo: detail.batchNo || null,
+            batchNo: buildBatchNoCondition(detail.batchNo),
           },
         });
 
@@ -888,7 +899,7 @@ export const unconfirmSalesOutbound = async (req: Request, res: Response) => {
             tenantId: req.user!.tenantId!,
             productId: detail.productId,
             warehouseId: existingOutbound.warehouseId,
-            batchNo: detail.batchNo || null,
+            batchNo: buildBatchNoCondition(detail.batchNo),
           },
         });
 
@@ -1467,7 +1478,7 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
                     tenantId,
                     productId: item.productId,
                     warehouseId: existingOutbound.warehouseId,
-                    batchNo: item.batchNo || null,
+                    batchNo: buildBatchNoCondition(item.batchNo),
                   },
                 });
 
@@ -1641,7 +1652,7 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
                 tenantId,
                 productId: detail.productId,
                 warehouseId: firstItem.warehouseId,
-                batchNo: detail.batchNo || null,
+                batchNo: buildBatchNoCondition(detail.batchNo),
               },
             });
 
