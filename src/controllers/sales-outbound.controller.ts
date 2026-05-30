@@ -397,14 +397,15 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
       });
     }
 
-    let finalCustomerId = customerId;
-    let finalSalesmanId = salesmanId;
+    let finalCustomerId = customerId || null;
+    let finalSalesmanId = salesmanId || null;
+    const finalOrderId = orderId || null;
     
     // 如果关联销售订单，检查是否存在
-    if (orderId) {
+    if (finalOrderId) {
       const order = await prisma.salesOrder.findFirst({
         where: {
-          id: orderId,
+          id: finalOrderId,
           tenantId: req.user.tenantId,
         },
       });
@@ -502,7 +503,7 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
         data: {
           tenantId: req.user!.tenantId!,
           outboundNo: generatedOutboundNo,
-          orderId,
+          orderId: finalOrderId,
           customerId: finalCustomerId,
           salesmanId: finalSalesmanId,
           warehouseId,
@@ -568,47 +569,57 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
       }
 
       // 如果关联了销售订单，更新订单状态
-      if (orderId) {
+      if (finalOrderId) {
         // 获取销售订单及其所有明细
         const salesOrder = await tx.salesOrder.findFirst({
-          where: { id: orderId, tenantId: req.user!.tenantId! },
+          where: { id: finalOrderId, tenantId: req.user!.tenantId! },
           include: {
             items: true,
-            outbounds: {
-              where: { status: 'confirmed' },
-              include: { details: true }
-            }
-          }
+          },
         });
 
         if (salesOrder) {
-          // 计算总数量
-          const totalQuantity = salesOrder.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
-          
-          // 计算已出库数量（包括本次创建的）
-          let outboundQuantity = details.reduce((sum, detail) => sum + (detail.quantity || 0), 0);
-          
-          for (const outbound of salesOrder.outbounds) {
-            if (outbound.details) {
-              for (const detail of outbound.details) {
-                outboundQuantity += detail.quantity || 0;
-              }
+          // 按明细行逐行比较（而非全局数量汇总）判断订单出库状态
+          // 获取所有已确认的出库单明细（包括本次创建的）
+          const allOutboundDetails = await tx.salesOutboundDetail.findMany({
+            where: {
+              outbound: {
+                orderId: finalOrderId,
+                status: 'confirmed',
+                tenantId: req.user!.tenantId!,
+              },
+            },
+          });
+
+          // 按 productId 汇总每个物料的已出库数量
+          const outboundByProduct = new Map<string, number>();
+          for (const d of allOutboundDetails) {
+            outboundByProduct.set(d.productId, (outboundByProduct.get(d.productId) || 0) + (d.quantity || 0));
+          }
+
+          let allCompleted = salesOrder.items.length > 0;
+          let anyOutbound = false;
+
+          for (const item of salesOrder.items) {
+            const shipped = outboundByProduct.get(item.productId) || 0;
+            if (shipped > 0) anyOutbound = true;
+            if (shipped < (item.quantity || 0)) {
+              allCompleted = false;
             }
           }
 
-          // 判断订单状态
           let newStatus: string;
-          if (outboundQuantity >= totalQuantity) {
-            newStatus = 'completed'; // 全部出库
-          } else if (outboundQuantity > 0) {
-            newStatus = 'partial'; // 部分出库
+          if (allCompleted && salesOrder.items.length > 0) {
+            newStatus = 'completed';
+          } else if (anyOutbound) {
+            newStatus = 'partial';
           } else {
-            newStatus = salesOrder.status; // 保持原状态
+            newStatus = salesOrder.status;
           }
 
           // 更新销售订单状态
           await tx.salesOrder.update({
-            where: { id: orderId },
+            where: { id: finalOrderId },
             data: { status: newStatus }
           });
         }
@@ -624,7 +635,7 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
       action: 'create',
       module: 'sales_outbound',
       resource: outbound.id,
-      detail: JSON.stringify({ outboundNo, orderId, warehouseId, totalAmount }),
+      detail: JSON.stringify({ outboundNo, orderId: finalOrderId, warehouseId, totalAmount }),
       ip: req.ip,
       userAgent: req.get('user-agent'),
     });
@@ -1111,7 +1122,7 @@ export const updateSalesOutbound = async (req: Request, res: Response) => {
     // 构建更新数据
     const updateData: any = {};
     if (outboundNo !== undefined) updateData.outboundNo = outboundNo;
-    if (orderId !== undefined) updateData.orderId = orderId;
+    if (orderId !== undefined) updateData.orderId = orderId || null;
     if (warehouseId !== undefined) updateData.warehouseId = warehouseId;
     if (outboundDate !== undefined) updateData.outboundDate = new Date(outboundDate);
     if (remark !== undefined) updateData.remark = remark;

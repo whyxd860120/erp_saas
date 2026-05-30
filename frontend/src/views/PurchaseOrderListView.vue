@@ -714,30 +714,105 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
       <div class="quick-inbound-details">
         <div class="detail-header">
           <span>物料明细</span>
-          <el-button size="small" @click="handleSelectAllInbound">全选</el-button>
+          <div>
+            <el-button size="small" @click="handleSelectAllInbound">全选</el-button>
+            <el-button size="small" type="primary" @click="handleAddQuickInboundDetail">
+              <el-icon><Plus /></el-icon>
+              添加明细
+            </el-button>
+          </div>
         </div>
-        <el-table :data="quickInboundForm.details" border size="small" max-height="300">
+        <el-table :data="quickInboundForm.details" border size="small" max-height="400">
           <el-table-column type="selection" width="50" :selectable="(row: any) => row.canInbound > 0" />
-          <el-table-column prop="product.code" label="物料编码" width="120" />
-          <el-table-column prop="product.name" label="物料名称" min-width="150" />
-          <el-table-column prop="product.spec" label="规格" width="100" />
-          <el-table-column prop="product.unit" label="单位" width="60" />
-          <el-table-column prop="orderQuantity" label="订单数量" width="80" align="right" />
-          <el-table-column prop="inboundQuantity" label="已入库数量" width="90" align="right" />
-          <el-table-column prop="canInbound" label="可入库数量" width="90" align="right" />
-          <el-table-column label="本次入库数量" width="120" align="right">
+          <el-table-column label="物料" min-width="200">
+            <template #default="{ row, $index }">
+              <template v-if="row.isNew">
+                <el-select
+                  v-model="row.productId"
+                  placeholder="请选择物料"
+                  filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="searchProducts"
+                  size="small"
+                  @change="handleQuickProductSelect($index)"
+                  style="width: 100%;"
+                >
+                  <el-option
+                    v-for="product in products"
+                    :key="product.id"
+                    :label="`${product.code} - ${product.name}`"
+                    :value="product.id"
+                  />
+                </el-select>
+              </template>
+              <template v-else>
+                <span>{{ row.product?.code }} - {{ row.product?.name }}</span>
+              </template>
+            </template>
+          </el-table-column>
+          <el-table-column label="规格" width="100">
             <template #default="{ row }">
+              {{ row.product?.spec || row.spec || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="单位" width="60">
+            <template #default="{ row }">
+              {{ row.product?.unit || row.unit || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="orderQuantity" label="订单数量" width="80" align="right" />
+          <el-table-column prop="inboundQuantity" label="已入库" width="70" align="right" />
+          <el-table-column prop="canInbound" label="可入库" width="70" align="right" />
+          <el-table-column label="本次入库数量" width="110" align="right">
+            <template #default="{ row, $index }">
               <el-input-number
                 v-model="row.quantity"
                 :min="0"
-                :max="row.canInbound"
-                :disabled="quickInboundForm.inboundType === 'all'"
+                :max="row.isNew ? undefined : row.canInbound"
+                :disabled="!row.isNew && quickInboundForm.inboundType === 'all'"
                 size="small"
                 style="width: 100%;"
+                @change="handleQuickInboundDetailChange($index)"
               />
             </template>
           </el-table-column>
+          <el-table-column label="单价" width="120" align="right">
+            <template #default="{ row, $index }">
+              <el-input-number
+                v-model="row.unitPrice"
+                :min="0"
+                :precision="2"
+                size="small"
+                style="width: 100%;"
+                @change="handleQuickInboundDetailChange($index)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="金额" width="120" align="right">
+            <template #default="{ row, $index }">
+              <el-input-number
+                v-model="row.amount"
+                :min="0"
+                :precision="2"
+                size="small"
+                style="width: 100%;"
+                @change="handleQuickInboundAmountChange($index)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="60">
+            <template #default="{ $index }">
+              <el-button type="danger" size="small" link @click="handleRemoveQuickInboundDetail($index)">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
+        <div class="quick-summary">
+          <span>物料总额：¥{{ formatAmount(quickInboundTotalAmount) }}</span>
+          <span>明细行数：{{ quickInboundForm.details.length }}</span>
+        </div>
       </div>
 
       <template #footer>
@@ -926,7 +1001,10 @@ const calculateAmounts = () => {
   let goodsAmount = 0
   let taxAmount = 0
   formData.details.forEach(detail => {
-    const amount = Number((detail.quantity || 0) * (detail.unitPrice || 0))
+    // 优先使用行上的 amount 字段（可能是手动输入的），否则根据数量*单价计算
+    const amount = (detail.amount !== undefined && detail.amount !== null && detail.amount > 0)
+      ? Number(detail.amount)
+      : Number((detail.quantity || 0) * (detail.unitPrice || 0))
     const tax = Number(amount * ((detail.taxRate || 0) / 100))
     goodsAmount += amount
     taxAmount += tax
@@ -1251,7 +1329,8 @@ const handleUnconfirm = async (row: any) => {
     fetchData()
   } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error('反审核失败')
+      const msg = error?.response?.data?.message || error?.message || '反审核失败'
+      ElMessage.error(msg)
     }
   }
 }
@@ -1314,6 +1393,61 @@ const handleSelectAllInbound = () => {
   })
 }
 
+// 快速入库总金额
+const quickInboundTotalAmount = computed(() => {
+  return quickInboundForm.details.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
+})
+
+// 添加快速入库明细行
+const handleAddQuickInboundDetail = () => {
+  if (!products.value.length) {
+    fetchProducts()
+  }
+  quickInboundForm.details.push({
+    isNew: true,
+    productId: '',
+    product: null,
+    orderQuantity: 0,
+    inboundQuantity: 0,
+    canInbound: 0,
+    quantity: 0,
+    unitPrice: 0,
+    amount: 0
+  })
+}
+
+// 删除快速入库明细行
+const handleRemoveQuickInboundDetail = (index: number) => {
+  quickInboundForm.details.splice(index, 1)
+}
+
+// 快速入库物料选择
+const handleQuickProductSelect = (index: number) => {
+  const detail = quickInboundForm.details[index]
+  const product = products.value.find(p => p.id === detail.productId)
+  if (product) {
+    detail.product = product
+    detail.unitPrice = Number(product.costPrice) || 0
+    if (detail.quantity > 0) {
+      detail.amount = detail.quantity * detail.unitPrice
+    }
+  }
+}
+
+// 快速入库明细变更（数量/单价变化时自动计算金额）
+const handleQuickInboundDetailChange = (index: number) => {
+  const detail = quickInboundForm.details[index]
+  detail.amount = Number(((detail.quantity || 0) * (detail.unitPrice || 0)).toFixed(2))
+}
+
+// 快速入库金额变更（反算单价）
+const handleQuickInboundAmountChange = (index: number) => {
+  const detail = quickInboundForm.details[index]
+  if (detail.quantity > 0) {
+    detail.unitPrice = Number((detail.amount / detail.quantity).toFixed(4))
+  }
+}
+
 // 确认快速入库
 const handleConfirmQuickInbound = async () => {
   if (!quickInboundForm.warehouseId) {
@@ -1326,6 +1460,14 @@ const handleConfirmQuickInbound = async () => {
   if (!hasInboundQuantity) {
     ElMessage.warning('请设置入库数量')
     return
+  }
+
+  // 验证新增行已选择物料
+  for (const detail of quickInboundForm.details) {
+    if (detail.quantity > 0 && !detail.productId) {
+      ElMessage.warning('请为有入库数量的行选择物料')
+      return
+    }
   }
 
   try {
@@ -1983,5 +2125,33 @@ const fetchWarehouses = async () => {
   gap: 4px;
   flex-wrap: nowrap;
   justify-content: flex-end;
+}
+
+.quick-inbound-details {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+.quick-inbound-details .detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.quick-inbound-details .detail-header > div {
+  display: flex;
+  gap: 8px;
+}
+.quick-inbound-details .quick-summary {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin-top: 12px;
+  background: #fff;
+  border-radius: 4px;
+  font-weight: 600;
+  color: #303133;
 }
 </style>

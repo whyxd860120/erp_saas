@@ -484,6 +484,14 @@ const calculateAmount = (index: number) => {
   detail.amount = (detail.quantity || 0) * (detail.unitPrice || 0)
 }
 
+// 金额变更时反算单价
+const handleAmountChange = (index: number) => {
+  const detail = createForm.details[index]
+  if (detail.quantity > 0) {
+    detail.unitPrice = Number((detail.amount / detail.quantity).toFixed(4))
+  }
+}
+
 // 提交创建
 const handleCreateSubmit = async () => {
   if (!createForm.warehouseId) {

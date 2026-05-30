@@ -189,8 +189,8 @@
           </template>
         </el-table-column>
         <el-table-column label="金额" width="120">
-          <template #default="{ row }">
-            {{ ((row.quantity || 0) * (row.unitCost || 0)).toFixed(2) }}
+          <template #default="{ row, $index }">
+            <el-input-number v-model="createForm.details[$index].amount" :min="0" :precision="2" style="width: 100%" @change="() => handleAmountChange($index)" />
           </template>
         </el-table-column>
         <el-table-column v-if="visibleColumns.batchNo" label="批次号" width="120">
@@ -470,6 +470,14 @@ const handleProductSelect = (index: number, product: any) => {
 const calculateAmount = (index: number) => {
   const detail = createForm.details[index]
   detail.amount = (detail.quantity || 0) * (detail.unitCost || 0)
+}
+
+// 金额变更反算单价
+const handleAmountChange = (index: number) => {
+  const detail = createForm.details[index]
+  if (detail.quantity && detail.quantity > 0) {
+    detail.unitCost = (detail.amount || 0) / detail.quantity
+  }
 }
 
 // 提交创建

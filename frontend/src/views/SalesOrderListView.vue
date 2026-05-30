@@ -500,9 +500,16 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column label="金额" width="120">
-              <template #default="{ row }">
-                <span class="amount">¥{{ formatAmount(row.amount) }}</span>
+            <el-table-column label="金额" width="130">
+              <template #default="{ row, $index }">
+                <el-input-number
+                  v-model="row.amount"
+                  :min="0"
+                  :precision="2"
+                  size="small"
+                  @change="handleOrderAmountChange($index)"
+                  style="width: 100%;"
+                />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="60">
@@ -615,36 +622,155 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="客户">
+              <el-select
+                v-model="quickOutboundForm.customerId"
+                placeholder="请选择客户（可搜索）"
+                filterable
+                remote
+                reserve-keyword
+                :remote-method="searchCustomers"
+                clearable
+                style="width: 100%;"
+              >
+                <el-option
+                  v-for="customer in customers"
+                  :key="customer.id"
+                  :label="customer.name"
+                  :value="customer.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="业务员">
+              <el-select
+                v-model="quickOutboundForm.salesmanId"
+                placeholder="请选择业务员（可搜索）"
+                filterable
+                remote
+                reserve-keyword
+                :remote-method="searchSalesmen"
+                clearable
+                style="width: 100%;"
+              >
+                <el-option
+                  v-for="salesman in salesmen"
+                  :key="salesman.id"
+                  :label="salesman.name"
+                  :value="salesman.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       
       <!-- 物料明细 -->
       <div class="quick-outbound-details">
         <div class="detail-header">
           <span>物料明细</span>
-          <el-button size="small" @click="handleSelectAllOutbound">全选</el-button>
+          <div>
+            <el-button size="small" @click="handleSelectAllOutbound">全选</el-button>
+            <el-button size="small" type="primary" @click="handleAddQuickOutboundDetail">
+              <el-icon><Plus /></el-icon>
+              添加明细
+            </el-button>
+          </div>
         </div>
-        <el-table :data="quickOutboundForm.details" border size="small" max-height="300">
+        <el-table :data="quickOutboundForm.details" border size="small" max-height="400">
           <el-table-column type="selection" width="50" :selectable="(row: any) => row.canOutbound > 0" />
-          <el-table-column prop="product.code" label="物料编码" width="120" />
-          <el-table-column prop="product.name" label="物料名称" min-width="150" />
-          <el-table-column prop="product.spec" label="规格" width="100" />
-          <el-table-column prop="product.unit" label="单位" width="60" />
-          <el-table-column prop="orderQuantity" label="订单数量" width="80" align="right" />
-          <el-table-column prop="outboundQuantity" label="已出库数量" width="90" align="right" />
-          <el-table-column prop="canOutbound" label="可出库数量" width="90" align="right" />
-          <el-table-column label="本次出库数量" width="120" align="right">
+          <el-table-column label="物料" min-width="200">
+            <template #default="{ row, $index }">
+              <template v-if="row.isNew">
+                <el-select
+                  v-model="row.productId"
+                  placeholder="请选择物料"
+                  filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="searchProducts"
+                  size="small"
+                  @change="handleQuickProductSelect($index)"
+                  style="width: 100%;"
+                >
+                  <el-option
+                    v-for="product in products"
+                    :key="product.id"
+                    :label="`${product.code} - ${product.name}`"
+                    :value="product.id"
+                  />
+                </el-select>
+              </template>
+              <template v-else>
+                <span>{{ row.product?.code }} - {{ row.product?.name }}</span>
+              </template>
+            </template>
+          </el-table-column>
+          <el-table-column label="规格" width="100">
             <template #default="{ row }">
+              {{ row.product?.spec || row.spec || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="单位" width="60">
+            <template #default="{ row }">
+              {{ row.product?.unit || row.unit || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="orderQuantity" label="订单数量" width="80" align="right" />
+          <el-table-column prop="outboundQuantity" label="已出库" width="70" align="right" />
+          <el-table-column prop="canOutbound" label="可出库" width="70" align="right" />
+          <el-table-column label="本次出库数量" width="110" align="right">
+            <template #default="{ row, $index }">
               <el-input-number
                 v-model="row.quantity"
                 :min="0"
-                :max="row.canOutbound"
-                :disabled="quickOutboundForm.outboundType === 'all'"
+                :max="row.isNew ? undefined : row.canOutbound"
+                :disabled="!row.isNew && quickOutboundForm.outboundType === 'all'"
                 size="small"
                 style="width: 100%;"
+                @change="handleQuickOutboundDetailChange($index)"
               />
             </template>
           </el-table-column>
+          <el-table-column label="单价" width="120" align="right">
+            <template #default="{ row, $index }">
+              <el-input-number
+                v-model="row.unitPrice"
+                :min="0"
+                :precision="2"
+                size="small"
+                style="width: 100%;"
+                @change="handleQuickOutboundDetailChange($index)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="金额" width="120" align="right">
+            <template #default="{ row, $index }">
+              <el-input-number
+                v-model="row.amount"
+                :min="0"
+                :precision="2"
+                size="small"
+                style="width: 100%;"
+                @change="handleQuickOutboundAmountChange($index)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="60">
+            <template #default="{ $index }">
+              <el-button type="danger" size="small" link @click="handleRemoveQuickOutboundDetail($index)">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
+        <div class="quick-summary">
+          <span>物料总额：¥{{ formatAmount(quickOutboundTotalAmount) }}</span>
+          <span>明细行数：{{ quickOutboundForm.details.length }}</span>
+        </div>
       </div>
       
       <template #footer>
@@ -1052,7 +1178,10 @@ const calculateAmounts = () => {
   let goodsAmount = 0
   let taxAmount = 0
   formData.details.forEach(detail => {
-    const amount = Number((detail.quantity || 0) * (detail.unitPrice || 0))
+    // 优先使用行上的 amount 字段（可能是手动输入的），否则根据数量*单价计算
+    const amount = (detail.amount !== undefined && detail.amount !== null && detail.amount > 0)
+      ? Number(detail.amount)
+      : Number((detail.quantity || 0) * (detail.unitPrice || 0))
     const tax = Number(amount * ((detail.taxRate || 0) / 100))
     goodsAmount += amount
     taxAmount += tax
@@ -1227,6 +1356,18 @@ const searchCustomers = async (keyword: string) => {
     }
   } catch (error) {
     console.error('搜索客户失败:', error)
+  }
+}
+
+// 远程搜索业务员
+const searchSalesmen = async (keyword: string) => {
+  try {
+    const response: any = await getUsers({ page: 1, limit: 100, search: keyword, status: 'active' })
+    if (response.success) {
+      salesmen.value = response.data.items || []
+    }
+  } catch (error) {
+    console.error('搜索业务员失败:', error)
   }
 }
 
@@ -1467,7 +1608,8 @@ const handleUnconfirm = async (row: any) => {
     fetchData()
   } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error('反审核失败')
+      const msg = error?.response?.data?.message || error?.message || '反审核失败'
+      ElMessage.error(msg)
     }
   }
 }
@@ -1488,6 +1630,10 @@ const handleDelete = async (row: any) => {
 
 // 快速出库
 const handleQuickOutbound = (row: any) => {
+  // 预加载客户和业务员数据
+  if (!customers.value.length) fetchCustomers()
+  if (!salesmen.value.length) fetchSalesmen()
+  
   // 获取订单详情
   getSalesOrderById(row.id).then((response: any) => {
     if (response.success) {
@@ -1499,6 +1645,14 @@ const handleQuickOutbound = (row: any) => {
       quickOutboundForm.outboundType = 'all'
       quickOutboundForm.customerId = order.customer?.id || ''
       quickOutboundForm.salesmanId = order.salesman?.id || ''
+      // 确保订单关联的客户在列表中
+      if (order.customer && !customers.value.find((c: any) => c.id === order.customer.id)) {
+        customers.value = [order.customer, ...customers.value]
+      }
+      // 确保订单关联的业务员在列表中
+      if (order.salesman && !salesmen.value.find((s: any) => s.id === order.salesman.id)) {
+        salesmen.value = [order.salesman, ...salesmen.value]
+      }
       
       // 构建出库明细
       quickOutboundForm.details = order.items.map((item: any) => {
@@ -1530,6 +1684,61 @@ const handleSelectAllOutbound = () => {
       detail.quantity = detail.canOutbound
     }
   })
+}
+
+// 快速出库总金额
+const quickOutboundTotalAmount = computed(() => {
+  return quickOutboundForm.details.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
+})
+
+// 添加快速出库明细行
+const handleAddQuickOutboundDetail = () => {
+  if (!products.value.length) {
+    fetchProducts()
+  }
+  quickOutboundForm.details.push({
+    isNew: true,
+    productId: '',
+    product: null,
+    orderQuantity: 0,
+    outboundQuantity: 0,
+    canOutbound: 0,
+    quantity: 0,
+    unitPrice: 0,
+    amount: 0
+  })
+}
+
+// 删除快速出库明细行
+const handleRemoveQuickOutboundDetail = (index: number) => {
+  quickOutboundForm.details.splice(index, 1)
+}
+
+// 快速出库物料选择
+const handleQuickProductSelect = (index: number) => {
+  const detail = quickOutboundForm.details[index]
+  const product = products.value.find(p => p.id === detail.productId)
+  if (product) {
+    detail.product = product
+    detail.unitPrice = Number(product.salePrice) || 0
+    if (detail.quantity > 0) {
+      detail.amount = detail.quantity * detail.unitPrice
+    }
+  }
+}
+
+// 快速出库明细变更（数量/单价变化时自动计算金额）
+const handleQuickOutboundDetailChange = (index: number) => {
+  const detail = quickOutboundForm.details[index]
+  detail.amount = Number(((detail.quantity || 0) * (detail.unitPrice || 0)).toFixed(2))
+}
+
+// 快速出库金额变更（反算单价）
+const handleQuickOutboundAmountChange = (index: number) => {
+  const detail = quickOutboundForm.details[index]
+  if (detail.quantity > 0) {
+    detail.unitPrice = Number((detail.amount / detail.quantity).toFixed(4))
+  }
 }
 
 // 下推采购订单
@@ -1692,6 +1901,14 @@ const handleConfirmQuickOutbound = async () => {
     return
   }
 
+  // 验证新增行已选择物料
+  for (const detail of quickOutboundForm.details) {
+    if (detail.quantity > 0 && !detail.productId) {
+      ElMessage.warning('请为有出库数量的行选择物料')
+      return
+    }
+  }
+
   try {
     quickOutboundLoading.value = true
 
@@ -1701,7 +1918,8 @@ const handleConfirmQuickOutbound = async () => {
       .map(item => ({
         productId: item.productId,
         quantity: Number(item.quantity) || 0,
-        unitPrice: Number(item.unitPrice) || 0
+        unitPrice: Number(item.unitPrice) || 0,
+        amount: Number(item.amount) || 0
       }))
 
     // 创建出库单
@@ -1720,9 +1938,10 @@ const handleConfirmQuickOutbound = async () => {
     ElMessage.success('快速出库成功')
     quickOutboundDialogVisible.value = false
     fetchData()
-  } catch (error) {
+  } catch (error: any) {
     console.error('快速出库失败:', error)
-    ElMessage.error('快速出库失败')
+    const msg = error?.response?.data?.message || error?.message || '快速出库失败'
+    ElMessage.error(msg)
   } finally {
     quickOutboundLoading.value = false
   }
@@ -1910,6 +2129,15 @@ const handleProductSelect = (index: number) => {
 const handleDetailChange = (index: number) => {
   const detail = formData.details[index]
   detail.amount = Number((detail.quantity || 0) * (detail.unitPrice || 0))
+  calculateAmounts()
+}
+
+// 金额变更（反算单价）
+const handleOrderAmountChange = (index: number) => {
+  const detail = formData.details[index]
+  if (detail.quantity > 0) {
+    detail.unitPrice = Number((detail.amount / detail.quantity).toFixed(4))
+  }
   calculateAmounts()
 }
 
@@ -2350,6 +2578,20 @@ const handleHelp = () => {
   align-items: center;
   margin-bottom: 12px;
   font-weight: 600;
+}
+.quick-outbound-details .detail-header > div {
+  display: flex;
+  gap: 8px;
+}
+.quick-outbound-details .quick-summary {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin-top: 12px;
+  background: #fff;
+  border-radius: 4px;
+  font-weight: 600;
+  color: #303133;
 }
 .push-purchase-details {
   margin-top: 16px;

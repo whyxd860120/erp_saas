@@ -888,9 +888,10 @@ export const unconfirmPurchaseOrder = async (req: Request, res: Response) => {
 
     // 检查是否有关联的入库单
     if (existingOrder.inbounds.length > 0) {
+      const inboundNos = existingOrder.inbounds.map((i: any) => i.inboundNo).join('、');
       return res.status(400).json({
         success: false,
-        message: '已有关联入库单，无法反确认',
+        message: `已有关联入库单，无法反确认。关联入库单号：${inboundNos}`,
       });
     }
 

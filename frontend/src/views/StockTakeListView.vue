@@ -264,8 +264,8 @@
               </template>
             </el-table-column>
             <el-table-column v-if="visibleColumns.diffCost" label="差异金额" width="120" align="right">
-          <template #default="{ row }">
-            {{ formatCurrency(row.diffCost) }}
+          <template #default="{ row, $index }">
+            <el-input-number v-model="row.diffCost" :min="0" :precision="2" controls-position="right" @change="() => handleAmountChange($index)" style="width: 100%" />
           </template>
         </el-table-column>
         <el-table-column v-if="visibleColumns.batchNo" label="批次号" width="130">
@@ -508,6 +508,14 @@ const calculateDiff = (index: number) => {
   const detail = createForm.details[index]
   detail.diffQty = (detail.countQty || 0) - (detail.systemQty || 0)
   detail.diffCost = detail.diffQty * (detail.unitCost || 0)
+}
+
+// 金额变更反算单价
+const handleAmountChange = (index: number) => {
+  const detail = createForm.details[index]
+  if (detail.diffQty && detail.diffQty !== 0) {
+    detail.unitCost = Math.abs((detail.diffCost || 0) / detail.diffQty)
+  }
 }
 
 // 提交创建

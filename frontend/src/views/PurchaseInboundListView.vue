@@ -431,9 +431,16 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column label="金额" width="130" prop="amount">
-              <template #default="{ row }">
-                <span class="amount">¥{{ formatAmount(row.amount) }}</span>
+            <el-table-column label="金额" width="130">
+              <template #default="{ row, $index }">
+                <el-input-number
+                  v-model="row.amount"
+                  :min="0"
+                  :precision="2"
+                  size="small"
+                  @change="handleAmountChange($index)"
+                  style="width: 100%;"
+                />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="60">
@@ -906,6 +913,19 @@ const handleDetailChange = (index: number) => {
   const item = formData.details[index]
   if (item.quantity && item.unitPrice) {
     item.amount = item.quantity * item.unitPrice
+    item.taxRate = item.taxRate || 0
+    item.taxAmount = (item.amount * item.taxRate) / 100
+  }
+  calculateAmounts()
+}
+
+// 金额变更时反算单价
+const handleAmountChange = (index: number) => {
+  const item = formData.details[index]
+  if (item.quantity > 0) {
+    item.unitPrice = Number((item.amount / item.quantity).toFixed(4))
+  }
+  if (item.unitPrice && item.quantity) {
     item.taxRate = item.taxRate || 0
     item.taxAmount = (item.amount * item.taxRate) / 100
   }

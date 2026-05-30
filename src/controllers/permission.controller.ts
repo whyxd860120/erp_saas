@@ -97,6 +97,26 @@ export const defaultPermissions = [
   { name: '库存查询', code: 'inventory_query', type: 'menu', path: '/inventory', icon: 'Search', parentCode: 'inventory', sortOrder: 1 },
   { name: '查看库存', code: 'inventory:read', type: 'button', parentCode: 'inventory_query', sortOrder: 1 },
   { name: '库存调整', code: 'inventory:adjust', type: 'button', parentCode: 'inventory_query', sortOrder: 2 },
+  { name: '盘点单', code: 'stock_take', type: 'menu', path: '/stock-take', icon: 'Document', parentCode: 'inventory', sortOrder: 2 },
+  { name: '查看盘点单', code: 'stock_take:read', type: 'button', parentCode: 'stock_take', sortOrder: 1 },
+  { name: '新增盘点单', code: 'stock_take:create', type: 'button', parentCode: 'stock_take', sortOrder: 2 },
+  { name: '编辑盘点单', code: 'stock_take:update', type: 'button', parentCode: 'stock_take', sortOrder: 3 },
+  { name: '确认盘点单', code: 'stock_take:confirm', type: 'button', parentCode: 'stock_take', sortOrder: 4 },
+  { name: '其他入库', code: 'other_inbound', type: 'menu', path: '/other-inbounds', icon: 'Box', parentCode: 'inventory', sortOrder: 3 },
+  { name: '查看其他入库', code: 'other_inbound:read', type: 'button', parentCode: 'other_inbound', sortOrder: 1 },
+  { name: '新增其他入库', code: 'other_inbound:create', type: 'button', parentCode: 'other_inbound', sortOrder: 2 },
+  { name: '编辑其他入库', code: 'other_inbound:update', type: 'button', parentCode: 'other_inbound', sortOrder: 3 },
+  { name: '确认其他入库', code: 'other_inbound:confirm', type: 'button', parentCode: 'other_inbound', sortOrder: 4 },
+  { name: '其他出库', code: 'other_outbound', type: 'menu', path: '/other-outbounds', icon: 'Van', parentCode: 'inventory', sortOrder: 4 },
+  { name: '查看其他出库', code: 'other_outbound:read', type: 'button', parentCode: 'other_outbound', sortOrder: 1 },
+  { name: '新增其他出库', code: 'other_outbound:create', type: 'button', parentCode: 'other_outbound', sortOrder: 2 },
+  { name: '编辑其他出库', code: 'other_outbound:update', type: 'button', parentCode: 'other_outbound', sortOrder: 3 },
+  { name: '确认其他出库', code: 'other_outbound:confirm', type: 'button', parentCode: 'other_outbound', sortOrder: 4 },
+  { name: '调拨单', code: 'stock_transfer', type: 'menu', path: '/stock-transfers', icon: 'Connection', parentCode: 'inventory', sortOrder: 5 },
+  { name: '查看调拨单', code: 'stock_transfer:read', type: 'button', parentCode: 'stock_transfer', sortOrder: 1 },
+  { name: '新增调拨单', code: 'stock_transfer:create', type: 'button', parentCode: 'stock_transfer', sortOrder: 2 },
+  { name: '编辑调拨单', code: 'stock_transfer:update', type: 'button', parentCode: 'stock_transfer', sortOrder: 3 },
+  { name: '确认调拨单', code: 'stock_transfer:confirm', type: 'button', parentCode: 'stock_transfer', sortOrder: 4 },
 
   // 微信商城
   { name: '微信商城', code: 'shop', type: 'menu', icon: 'ShoppingBag', sortOrder: 55 },
@@ -119,44 +139,123 @@ export const defaultPermissions = [
   { name: '编辑角色', code: 'role:update', type: 'button', parentCode: 'role', sortOrder: 3 },
   { name: '删除角色', code: 'role:delete', type: 'button', parentCode: 'role', sortOrder: 4 },
   { name: '配置权限', code: 'role:permission', type: 'button', parentCode: 'role', sortOrder: 5 },
+
+  { name: '菜单管理', code: 'menu_management', type: 'menu', path: '/menus', icon: 'Menu', parentCode: 'user_permission', sortOrder: 3 },
+
+  // 工作流
+  { name: '工作流', code: 'workflow', type: 'menu', icon: 'Guide', sortOrder: 70 },
+  { name: '工作流管理', code: 'workflow_management', type: 'menu', path: '/workflows', icon: 'Guide', parentCode: 'workflow', sortOrder: 1 },
+  { name: '审批中心', code: 'approval_center', type: 'menu', path: '/approvals', icon: 'Stamp', parentCode: 'workflow', sortOrder: 2 },
+
+  // 系统设置
+  { name: '系统设置', code: 'system_settings', type: 'menu', icon: 'Setting', sortOrder: 80 },
+  { name: '单据编码规则', code: 'numbering_rule', type: 'menu', path: '/numbering-rules', icon: 'Document', parentCode: 'system_settings', sortOrder: 1 },
+  { name: '账套参数', code: 'account_period', type: 'menu', path: '/account-period', icon: 'Calendar', parentCode: 'system_settings', sortOrder: 2 },
+  { name: '账套初始化', code: 'account_init', type: 'menu', path: '/account-init', icon: 'Setting', parentCode: 'system_settings', sortOrder: 3 },
+  { name: '期末处理', code: 'period_end', type: 'menu', path: '/period-end', icon: 'Calendar', parentCode: 'system_settings', sortOrder: 4 },
+  { name: '租户信息', code: 'tenant_setting', type: 'menu', path: '/tenant-settings', icon: 'OfficeBuilding', parentCode: 'system_settings', sortOrder: 5 },
+  { name: '套餐与账单', code: 'subscription', type: 'menu', path: '/subscription', icon: 'CreditCard', parentCode: 'system_settings', sortOrder: 6 },
+  { name: '功能开关', code: 'feature_settings', type: 'menu', path: '/feature-settings', icon: 'SetUp', parentCode: 'system_settings', sortOrder: 7 },
+  { name: '安全设置', code: 'security_settings', type: 'menu', path: '/security-settings', icon: 'Lock', parentCode: 'system_settings', sortOrder: 8 },
+  { name: '集成与文档', code: 'integrations', type: 'menu', path: '/integrations', icon: 'Connection', parentCode: 'system_settings', sortOrder: 9 },
+  { name: 'API密钥', code: 'api_keys', type: 'menu', path: '/api-keys', icon: 'Key', parentCode: 'system_settings', sortOrder: 10 },
+  { name: 'Webhook', code: 'webhook', type: 'menu', path: '/webhooks', icon: 'Connection', parentCode: 'system_settings', sortOrder: 11 },
+  { name: '审计日志', code: 'audit_log', type: 'menu', path: '/audit-logs', icon: 'Document', parentCode: 'system_settings', sortOrder: 12 },
+  { name: '数据重算', code: 'recalculate', type: 'menu', path: '/recalculate', icon: 'Refresh', parentCode: 'system_settings', sortOrder: 13 },
 ];
 
 /**
  * 初始化权限数据
- * 系统启动时调用
+ * 系统启动时调用，支持增量补全缺失的权限
  */
 export const initPermissions = async () => {
   try {
-    // 检查是否已有权限数据
     const existingCount = await prisma.permission.count();
-    if (existingCount > 0) {
-      console.log('权限数据已存在，跳过初始化');
-      return;
+
+    if (existingCount === 0) {
+      // 空数据库：全量初始化
+      console.log('开始全量初始化权限数据...');
+      for (const perm of defaultPermissions) {
+        const parent = perm.parentCode
+          ? await prisma.permission.findUnique({ where: { code: perm.parentCode } })
+          : null;
+
+        await prisma.permission.create({
+          data: {
+            name: perm.name,
+            code: perm.code,
+            type: perm.type,
+            parentId: parent?.id || null,
+            path: perm.path || null,
+            icon: perm.icon || null,
+            sortOrder: perm.sortOrder,
+            isSystem: true,
+          },
+        });
+      }
+      console.log(`权限数据全量初始化完成，共 ${defaultPermissions.length} 条`);
+    } else {
+      // 已有数据：增量补全缺失的权限
+      const existingCodes = new Set(
+        (await prisma.permission.findMany({ select: { code: true } })).map(p => p.code)
+      );
+
+      const missingPerms = defaultPermissions.filter(p => !existingCodes.has(p.code));
+
+      if (missingPerms.length === 0) {
+        console.log('权限数据完整，无需补全');
+        return;
+      }
+
+      console.log(`检测到 ${missingPerms.length} 条缺失权限，开始补全...`);
+
+      // 需要按依赖顺序处理：先创建没有 parentCode 的，再创建有 parentCode 的
+      const noParent = missingPerms.filter(p => !p.parentCode);
+      const hasParent = missingPerms.filter(p => p.parentCode);
+
+      // 先创建顶级权限（无父级）
+      for (const perm of noParent) {
+        await prisma.permission.create({
+          data: {
+            name: perm.name,
+            code: perm.code,
+            type: perm.type,
+            parentId: null,
+            path: perm.path || null,
+            icon: perm.icon || null,
+            sortOrder: perm.sortOrder,
+            isSystem: true,
+          },
+        });
+        existingCodes.add(perm.code); // 更新缓存，方便后续子权限查找父级
+        console.log(`  + 补全: [${perm.code}] ${perm.name}`);
+      }
+
+      // 再创建子权限（有父级）
+      for (const perm of hasParent) {
+        const parent = await prisma.permission.findUnique({ where: { code: perm.parentCode! } });
+        if (!parent) {
+          console.warn(`  ⚠ 跳过 [${perm.code}] ${perm.name}：父权限 [${perm.parentCode}] 不存在`);
+          continue;
+        }
+
+        await prisma.permission.create({
+          data: {
+            name: perm.name,
+            code: perm.code,
+            type: perm.type,
+            parentId: parent.id,
+            path: perm.path || null,
+            icon: perm.icon || null,
+            sortOrder: perm.sortOrder,
+            isSystem: true,
+          },
+        });
+        console.log(`  + 补全: [${perm.code}] ${perm.name} (父: ${perm.parentCode})`);
+      }
+
+      console.log(`权限数据补全完成，新增 ${missingPerms.length} 条`);
     }
-
-    console.log('开始初始化权限数据...');
-
-    // 创建权限数据
-    for (const perm of defaultPermissions) {
-      const parent = perm.parentCode
-        ? await prisma.permission.findUnique({ where: { code: perm.parentCode } })
-        : null;
-
-      await prisma.permission.create({
-        data: {
-          name: perm.name,
-          code: perm.code,
-          type: perm.type,
-          parentId: parent?.id || null,
-          path: perm.path || null,
-          icon: perm.icon || null,
-          sortOrder: perm.sortOrder,
-          isSystem: true,
-        },
-      });
-    }
-
-    console.log('权限数据初始化完成');
   } catch (error) {
     console.error('初始化权限数据失败:', error);
   }

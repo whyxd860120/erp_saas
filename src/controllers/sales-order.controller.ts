@@ -900,9 +900,10 @@ export const unconfirmSalesOrder = async (req: Request, res: Response) => {
 
     // 检查是否有关联的出库单
     if (existingOrder.outbounds.length > 0) {
+      const outboundNos = existingOrder.outbounds.map(o => o.outboundNo).join('、');
       return res.status(400).json({
         success: false,
-        message: '已有关联出库单，无法反确认',
+        message: `已有关联出库单，无法反确认。关联出库单号：${outboundNos}`,
       });
     }
 

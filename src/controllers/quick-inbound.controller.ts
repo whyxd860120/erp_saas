@@ -253,26 +253,37 @@ export const quickInbound = async (req: Request, res: Response) => {
         }
       }
 
-      // 更新采购订单入库状态
-      const totalInboundQuantity = await tx.purchaseInboundDetail.aggregate({
+      // 更新采购订单入库状态（按明细行逐行比较）
+      const allInboundDetails = await tx.purchaseInboundDetail.findMany({
         where: {
           inbound: {
             orderId: id,
             tenantId: req.user!.tenantId!,
           },
         },
-        _sum: {
-          quantity: true,
-        },
       });
 
-      const orderTotalQuantity = order.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
-      const inboundQuantity = totalInboundQuantity._sum.quantity || 0;
+      // 按 productId 汇总每个物料的已入库数量
+      const inboundByProduct = new Map<string, number>();
+      for (const d of allInboundDetails) {
+        inboundByProduct.set(d.productId, (inboundByProduct.get(d.productId) || 0) + (d.quantity || 0));
+      }
+
+      let allCompleted = order.items.length > 0;
+      let anyInbound = false;
+
+      for (const item of order.items) {
+        const received = inboundByProduct.get(item.productId) || 0;
+        if (received > 0) anyInbound = true;
+        if (received < (item.quantity || 0)) {
+          allCompleted = false;
+        }
+      }
 
       let newStatus = order.status;
-      if (inboundQuantity >= orderTotalQuantity) {
+      if (allCompleted && order.items.length > 0) {
         newStatus = 'completed';
-      } else if (inboundQuantity > 0) {
+      } else if (anyInbound) {
         newStatus = 'partial';
       }
 
