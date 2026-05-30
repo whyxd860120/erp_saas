@@ -1429,8 +1429,10 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
             // 更新出库单，添加新明细，并确保状态为已确认（事务：更新单据 + 扣减库存）
             const updatedOutbound = await prisma.$transaction(async (tx) => {
               // 构建更新数据，如果导入数据有customerId/salesmanId且已有出库单没有，则补填
+              const newCombinedTotal = existingTotalAmount + newTotalAmount;
               const updateData: any = {
-                totalAmount: existingTotalAmount + newTotalAmount,
+                totalAmount: newCombinedTotal,
+                goodsAmount: newCombinedTotal,
                 status: 'confirmed',
                 creatorId: req.user.id,
                 details: {
@@ -1631,6 +1633,7 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
               remark: firstItem.remark || '',
               status: 'confirmed',
               totalAmount: totalAmount,
+              goodsAmount: totalAmount,
               creatorId: req.user.id,
               details: {
                 create: itemsData
