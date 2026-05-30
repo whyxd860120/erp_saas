@@ -56,6 +56,7 @@ export const getSalesOutbounds = async (req: Request, res: Response) => {
       limit = '10',
       status,
       orderId,
+      customerId,
       warehouseId,
       startDate,
       endDate,
@@ -77,6 +78,10 @@ export const getSalesOutbounds = async (req: Request, res: Response) => {
 
     if (orderId) {
       where.orderId = orderId;
+    }
+
+    if (customerId) {
+      where.customerId = customerId;
     }
 
     if (warehouseId) {
