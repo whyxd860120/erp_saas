@@ -193,15 +193,19 @@
             {{ row.creator && row.creator.name ? row.creator.name : '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="关联单据" width="150">
+        <el-table-column label="关联单据" width="200">
           <template #default="{ row }">
             <div class="relation-links">
-              <el-tag v-if="row.outbounds?.length" size="small" type="success">
-                出库单 {{ row.outbounds.length }}
-              </el-tag>
-              <el-tag v-if="row.receipts?.length" size="small" type="warning">
-                收款单 {{ row.receipts.length }}
-              </el-tag>
+              <div v-if="row.outbounds?.length">
+                <el-tag v-for="outbound in row.outbounds" :key="outbound.id" size="small" type="success" style="margin-right: 4px; margin-bottom: 4px;">
+                  {{ outbound.outboundNo || '出库单' }}
+                </el-tag>
+              </div>
+              <div v-if="row.receipts?.length">
+                <el-tag v-for="receipt in row.receipts" :key="receipt.id" size="small" type="warning" style="margin-right: 4px; margin-bottom: 4px;">
+                  {{ receipt.paymentNo || '收款单' }}
+                </el-tag>
+              </div>
             </div>
           </template>
         </el-table-column>
@@ -272,7 +276,7 @@
                 反审核
               </el-tag>
               <el-tag
-                v-if="row.status === 'confirmed' || row.status === 'partial'"
+                v-if="(row.status === 'confirmed' || row.status === 'partial') && !hasAllOutboundCompleted(row)"
                 type="warning"
                 size="small"
                 @click="handleQuickOutbound(row)"
@@ -1626,6 +1630,29 @@ const handleDelete = async (row: any) => {
       ElMessage.error('删除失败')
     }
   }
+}
+
+// 检查订单是否所有物料都已出库完成（用于隐藏快速出库按钮）
+const hasAllOutboundCompleted = (row: any) => {
+  if (!row.outbounds?.length) return false
+  // 统计所有已确认出库单中每个物料的出库数量
+  const outboundByProduct: Record<string, number> = {}
+  for (const outbound of row.outbounds) {
+    if (outbound.status !== 'confirmed') continue
+    if (outbound.details) {
+      for (const detail of outbound.details) {
+        outboundByProduct[detail.productId] = (outboundByProduct[detail.productId] || 0) + (detail.quantity || 0)
+      }
+    }
+  }
+  // 对比订单明细，检查是否所有物料都已完全出库
+  if (row.items?.length) {
+    return row.items.every((item: any) => {
+      const shipped = outboundByProduct[item.productId] || 0
+      return shipped >= (item.quantity || 0)
+    })
+  }
+  return false
 }
 
 // 快速出库

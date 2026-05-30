@@ -762,11 +762,15 @@ const formRules: FormRules = {
 }
 
 // 计算金额
+// 注意：如果明细已有amount值（用户手动输入），则保留该值，不重新计算
+// 只有当amount为0或空时，才用 quantity * unitPrice 计算
 const calculateAmounts = () => {
   let goodsAmount = 0
   formData.details.forEach(detail => {
-    detail.amount = Number((detail.quantity || 0) * (detail.unitPrice || 0))
-    goodsAmount += detail.amount
+    if (!detail.amount && detail.quantity > 0 && detail.unitPrice > 0) {
+      detail.amount = Number((detail.quantity || 0) * (detail.unitPrice || 0))
+    }
+    goodsAmount += detail.amount || 0
   })
   formData.goodsAmount = Number(goodsAmount)
   formData.totalAmount = Number(formData.goodsAmount + (formData.logisticsCost || 0) - (formData.extraDiscount || 0))
@@ -970,8 +974,11 @@ const handleOrderChange = (orderId: string) => {
   }
 }
 
-// 明细变更
+// 明细变更（数量或单价变化时，重新计算金额）
 const handleDetailChange = (index: number) => {
+  const detail = formData.details[index]
+  // 数量或单价变化时，重新计算金额
+  detail.amount = Number((detail.quantity || 0) * (detail.unitPrice || 0))
   calculateAmounts()
 }
 

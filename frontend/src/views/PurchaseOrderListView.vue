@@ -292,7 +292,7 @@ invoker @ vue.runtime.esm-bundler-DE1Egqpx.js?v=1d9d485c:7651
               反审核
             </el-tag>
             <el-tag
-              v-if="row.status === 'confirmed'"
+              v-if="row.status === 'confirmed' && !hasAllInboundCompleted(row)"
               type="success"
               size="small"
               @click="handleQuickInbound(row)"
@@ -1347,6 +1347,29 @@ const handleDelete = async (row: any) => {
       ElMessage.error('删除失败')
     }
   }
+}
+
+// 检查订单是否所有物料都已入库完成（用于隐藏快速入库按钮）
+const hasAllInboundCompleted = (row: any) => {
+  if (!row.inbounds?.length) return false
+  // 统计所有已确认入库单中每个物料的入库数量
+  const inboundByProduct: Record<string, number> = {}
+  for (const inbound of row.inbounds) {
+    if (inbound.status !== 'confirmed') continue
+    if (inbound.details) {
+      for (const detail of inbound.details) {
+        inboundByProduct[detail.productId] = (inboundByProduct[detail.productId] || 0) + (detail.quantity || 0)
+      }
+    }
+  }
+  // 对比订单明细，检查是否所有物料都已完全入库
+  if (row.items?.length) {
+    return row.items.every((item: any) => {
+      const received = inboundByProduct[item.productId] || 0
+      return received >= (item.quantity || 0)
+    })
+  }
+  return false
 }
 
 // 快速入库

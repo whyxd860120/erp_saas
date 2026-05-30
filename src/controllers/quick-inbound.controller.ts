@@ -129,6 +129,38 @@ export const quickInbound = async (req: Request, res: Response) => {
       });
     }
 
+    // 检查是否已有已确认的入库单覆盖了所有订单物料（防止重复入库）
+    const existingConfirmedInbounds = await prisma.purchaseInboundDetail.findMany({
+      where: {
+        inbound: {
+          orderId: id,
+          status: 'confirmed',
+          tenantId: req.user.tenantId,
+        },
+      },
+    });
+
+    if (existingConfirmedInbounds.length > 0) {
+      // 按 productId 汇总已入库数量
+      const inboundByProduct = new Map<string, number>();
+      for (const d of existingConfirmedInbounds) {
+        inboundByProduct.set(d.productId, (inboundByProduct.get(d.productId) || 0) + (d.quantity || 0));
+      }
+
+      // 检查是否所有物料都已完全入库
+      const allReceived = order.items.every(item => {
+        const received = inboundByProduct.get(item.productId) || 0;
+        return received >= (item.quantity || 0);
+      });
+
+      if (allReceived) {
+        return res.status(400).json({
+          success: false,
+          message: '该订单所有物料已全部入库，无需重复入库',
+        });
+      }
+    }
+
     // 验证仓库
     const warehouse = await prisma.warehouse.findFirst({
       where: {

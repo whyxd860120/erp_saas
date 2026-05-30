@@ -129,12 +129,15 @@ export const getSalesOrders = async (req: Request, res: Response) => {
           },
           items: {
             select: {
+              productId: true,
               quantity: true,
               amount: true,
             },
           },
           outbounds: {
             select: {
+              id: true,
+              outboundNo: true,
               status: true,
               totalAmount: true,
               details: {

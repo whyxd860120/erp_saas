@@ -961,13 +961,18 @@ const handleOrderChange = (orderId: string) => {
 }
 
 // 计算金额
+// 注意：如果明细已有amount值（用户手动输入），则保留该值，不重新计算
+// 只有当amount为0或空时，才用 quantity * unitPrice 计算
 const calculateAmounts = () => {
   let goodsAmount = 0
   let totalTaxAmount = 0
   
   for (const item of formData.details) {
     if (item.quantity && item.unitPrice) {
-      item.amount = item.quantity * item.unitPrice
+      // 只有金额为0时才自动计算，保留用户手动输入的金额
+      if (!item.amount) {
+        item.amount = item.quantity * item.unitPrice
+      }
       item.taxRate = item.taxRate || 0
       item.taxAmount = (item.amount * item.taxRate) / 100
       goodsAmount += item.amount

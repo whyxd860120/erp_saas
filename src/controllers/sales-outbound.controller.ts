@@ -424,6 +424,44 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
           message: '只有已确认或部分出库的订单可以出库',
         });
       }
+
+      // 检查是否已有已确认的出库单覆盖了所有订单物料（防止重复出库）
+      const existingConfirmedOutbounds = await prisma.salesOutboundDetail.findMany({
+        where: {
+          outbound: {
+            orderId: finalOrderId,
+            status: 'confirmed',
+            tenantId: req.user.tenantId,
+          },
+        },
+      });
+
+      if (existingConfirmedOutbounds.length > 0) {
+        // 获取订单明细
+        const orderItems = await prisma.salesOrderItem.findMany({
+          where: { orderId: finalOrderId },
+          select: { productId: true, quantity: true },
+        });
+
+        // 按 productId 汇总已出库数量
+        const outboundByProduct = new Map<string, number>();
+        for (const d of existingConfirmedOutbounds) {
+          outboundByProduct.set(d.productId, (outboundByProduct.get(d.productId) || 0) + (d.quantity || 0));
+        }
+
+        // 检查是否所有物料都已完全出库
+        const allShipped = orderItems.every(item => {
+          const shipped = outboundByProduct.get(item.productId) || 0;
+          return shipped >= (item.quantity || 0);
+        });
+
+        if (allShipped) {
+          return res.status(400).json({
+            success: false,
+            message: '该订单所有物料已全部出库，无需重复出库',
+          });
+        }
+      }
       
       // 从销售订单中获取客户和业务员，如果前端没有提供
       if (!finalCustomerId) {
