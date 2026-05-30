@@ -1463,6 +1463,19 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
                       },
                     },
                   },
+                  customer: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                    },
+                  },
+                  salesman: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
                   warehouse: {
                     select: {
                       id: true,
@@ -1635,6 +1648,19 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
                       name: true,
                     },
                   },
+                },
+              },
+              customer: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true,
+                },
+              },
+              salesman: {
+                select: {
+                  id: true,
+                  name: true,
                 },
               },
               warehouse: {
