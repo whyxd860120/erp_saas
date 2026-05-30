@@ -1428,16 +1428,27 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
 
             // 更新出库单，添加新明细，并确保状态为已确认（事务：更新单据 + 扣减库存）
             const updatedOutbound = await prisma.$transaction(async (tx) => {
+              // 构建更新数据，如果导入数据有customerId/salesmanId且已有出库单没有，则补填
+              const updateData: any = {
+                totalAmount: existingTotalAmount + newTotalAmount,
+                status: 'confirmed',
+                creatorId: req.user.id,
+                details: {
+                  create: newItemsData
+                }
+              };
+              // 如果已有出库单没有customerId，且导入数据有，则补填
+              if (!existingOutbound.customerId && firstItem.customerId) {
+                updateData.customerId = firstItem.customerId;
+              }
+              // 如果已有出库单没有salesmanId，且导入数据有，则补填
+              if (!existingOutbound.salesmanId && firstItem.salesmanId) {
+                updateData.salesmanId = firstItem.salesmanId;
+              }
+
               const result = await tx.salesOutbound.update({
                 where: { id: existingOutbound.id },
-                data: {
-                  totalAmount: existingTotalAmount + newTotalAmount,
-                  status: 'confirmed',
-                  creatorId: req.user.id,
-                  details: {
-                    create: newItemsData
-                  }
-                },
+                data: updateData,
                 include: {
                   order: {
                     select: {
@@ -1602,6 +1613,7 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
               orderId: firstItem.orderId,
               warehouseId: firstItem.warehouseId,
               customerId: firstItem.customerId,
+              salesmanId: firstItem.salesmanId || null,
               outboundDate,
               remark: firstItem.remark || '',
               status: 'confirmed',

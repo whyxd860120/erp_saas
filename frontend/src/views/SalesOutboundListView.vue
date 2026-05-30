@@ -135,7 +135,12 @@
         </el-table-column>
         <el-table-column label="客户" min-width="150">
           <template #default="{ row }">
-            <span>{{ row.order?.customer?.name || '-' }}</span>
+            <span>{{ row.customer?.name || row.order?.customer?.name || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="业务员" width="100">
+          <template #default="{ row }">
+            <span>{{ row.salesman?.name || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="出库日期" width="110">
@@ -532,8 +537,8 @@
                 {{ getStatusText(currentOutbound.status) }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="客户">{{ currentOutbound.order?.customer?.name || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="销售员">{{ currentOutbound.salesman?.name || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="客户">{{ currentOutbound.customer?.name || currentOutbound.order?.customer?.name || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="业务员">{{ currentOutbound.salesman?.name || '-' }}</el-descriptions-item>
             <el-descriptions-item label="仓库">{{ currentOutbound.warehouse?.name || '-' }}</el-descriptions-item>
             <el-descriptions-item label="制单人">{{ currentOutbound.creator?.name || '-' }}</el-descriptions-item>
             <el-descriptions-item label="制单时间">{{ formatDateTime(currentOutbound.createdAt) }}</el-descriptions-item>
@@ -682,6 +687,7 @@ const importColumns = [
   { prop: 'outboundDate', label: '出库日期', required: true },
   { prop: 'warehouseName', label: '仓库名称', required: true },
   { prop: 'customerName', label: '客户名称', required: true },
+  { prop: 'salesmanName', label: '业务员' },
   { prop: 'orderNo', label: '销售订单号' },
   { prop: 'productCode', label: '物料编码', required: true },
   { prop: 'productName', label: '物料名称', required: true },
@@ -698,6 +704,7 @@ const importFormatTips = [
   '出库日期：必填，格式：YYYY-MM-DD',
   '仓库名称：必填，填写仓库名称',
   '客户名称：必填，填写客户名称',
+  '业务员：可选，填写业务员姓名',
   '销售订单号：可选，填写关联的销售订单号',
   '物料编码：必填，填写物料编码',
   '物料名称：必填，填写物料名称',
@@ -1413,6 +1420,7 @@ const handleImport = () => {
 const handleImportSubmit = async (data: any[]) => {
   const warehouseMap = new Map<string, string>()
   const customerMap = new Map<string, string>()
+  const salesmanMap = new Map<string, string>()
   const productMap = new Map<string, string>()
   const orderMap = new Map<string, string>()
 
@@ -1434,6 +1442,16 @@ const handleImportSubmit = async (data: any[]) => {
     }
   } catch (error) {
     console.error('获取客户列表失败:', error)
+  }
+
+  try {
+    const usersResponse: any = await getUsers({ page: 1, limit: 10000, status: '' })
+    if (usersResponse.success) {
+      const allUsers = usersResponse.data.items || []
+      allUsers.forEach((u: any) => salesmanMap.set(u.name, u.id))
+    }
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
   }
 
   try {
@@ -1471,6 +1489,14 @@ const handleImportSubmit = async (data: any[]) => {
       delete newItem.customerName
     } else if (item.customerName) {
       newItem.customerError = `客户 "${item.customerName}" 不存在`
+    }
+
+    if (item.salesmanName && salesmanMap.has(item.salesmanName)) {
+      newItem.salesmanId = salesmanMap.get(item.salesmanName)
+      delete newItem.salesmanName
+    } else if (item.salesmanName) {
+      console.warn(`业务员 "${item.salesmanName}" 不存在，已跳过设置业务员`)
+      delete newItem.salesmanName
     }
 
     if (item.orderNo && orderMap.has(item.orderNo)) {
