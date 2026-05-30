@@ -503,12 +503,49 @@ export const createSalesOutbound = async (req: Request, res: Response) => {
           data: {
             outboundId: newOutbound.id,
             productId: detail.productId,
-            plannedQty: detail.quantity,
-            outboundQty: detail.quantity,
             quantity: detail.quantity,
             unitPrice: detail.unitPrice,
             amount: detail.amount,
             batchNo: detail.batchNo,
+          },
+        });
+      }
+
+      // 扣减库存
+      for (const detail of details) {
+        const inventory = await tx.inventoryItem.findFirst({
+          where: {
+            tenantId: req.user!.tenantId!,
+            productId: detail.productId,
+            warehouseId,
+            batchNo: detail.batchNo || null,
+          },
+        });
+
+        if (!inventory || inventory.quantity < detail.quantity) {
+          throw new Error(`商品库存不足: ${detail.productId}，当前库存: ${inventory?.quantity || 0}，需要: ${detail.quantity}`);
+        }
+
+        await tx.inventoryItem.update({
+          where: { id: inventory.id },
+          data: {
+            quantity: inventory.quantity - detail.quantity,
+          },
+        });
+
+        // 记录库存变动日志
+        await tx.inventoryLog.create({
+          data: {
+            tenantId: req.user!.tenantId!,
+            productId: detail.productId,
+            warehouseId,
+            batchNo: detail.batchNo,
+            changeType: 'sales_outbound',
+            changeQty: -detail.quantity,
+            beforeQty: inventory.quantity,
+            afterQty: inventory.quantity - detail.quantity,
+            relatedOrderNo: generatedOutboundNo,
+            remark: `销售出库: ${generatedOutboundNo}`,
           },
         });
       }
