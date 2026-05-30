@@ -14,42 +14,29 @@
         </div>
       </template>
       <p class="section-desc">
-        根据所有已确认的采购入库、销售出库、其他入库、其他出库、盘点单、调整单、调拨单，重新汇总计算每个商品的库存数量。
+        根据所有已确认单据<b>全量重建</b>库存表：先清空旧数据，再根据采购入库、销售出库、其他入库、其他出库、盘点单、调整单、调拨单重新计算。<br/>
+        自动处理批次号：启用批次管理的物料批次号必须有值，未启用批次的物料统一归为无批次。
       </p>
       <div class="section-actions">
         <el-select v-model="selectedWarehouse" placeholder="全部仓库" clearable style="width: 240px">
           <el-option v-for="wh in warehouses" :key="wh.id" :label="wh.name" :value="wh.id" />
         </el-select>
-        <el-button type="primary" :loading="inventoryLoading" :disabled="inventoryLoading" @click="handleRecalculateInventory">
-          <el-icon><RefreshRight /></el-icon>
-          {{ inventoryLoading ? '重算中...' : '开始重算库存' }}
-        </el-button>
+        <el-popconfirm title="确认全量重建库存？这将清空并重新计算所有库存数据。" @confirm="handleRecalculateInventory">
+          <template #reference>
+            <el-button type="primary" :loading="inventoryLoading" :disabled="inventoryLoading">
+              <el-icon><RefreshRight /></el-icon>
+              {{ inventoryLoading ? '重算中...' : '开始重算库存' }}
+            </el-button>
+          </template>
+        </el-popconfirm>
       </div>
       <div v-if="inventoryResult" class="result-box">
-        <el-alert :title="inventoryMessage" :type="inventoryResult.changedCount > 0 ? 'warning' : 'success'" :closable="false" show-icon />
-        <el-descriptions v-if="inventoryResult" :column="4" border style="margin-top: 12px">
-          <el-descriptions-item label="库存维度总数">{{ inventoryResult.totalKeys }}</el-descriptions-item>
-          <el-descriptions-item label="更新数量">{{ inventoryResult.updatedCount }}</el-descriptions-item>
-          <el-descriptions-item label="新建数量">{{ inventoryResult.createdCount }}</el-descriptions-item>
-          <el-descriptions-item label="归零删除">{{ inventoryResult.zeroCount }}</el-descriptions-item>
+        <el-alert :title="inventoryMessage" type="success" :closable="false" show-icon />
+        <el-descriptions :column="3" border style="margin-top: 12px">
+          <el-descriptions-item label="删除旧记录">{{ inventoryResult.deletedCount }} 条</el-descriptions-item>
+          <el-descriptions-item label="写入新记录">{{ inventoryResult.createdCount }} 条</el-descriptions-item>
+          <el-descriptions-item label="库存维度总数">{{ inventoryResult.totalDimensions }}</el-descriptions-item>
         </el-descriptions>
-        <div v-if="inventoryResult.changes && inventoryResult.changes.length > 0" style="margin-top: 12px">
-          <h4>变化明细（前100条）：</h4>
-          <el-table :data="inventoryResult.changes" size="small" max-height="300" border stripe>
-            <el-table-column prop="warehouseId" label="仓库ID" width="180" />
-            <el-table-column prop="productId" label="商品ID" width="180" />
-            <el-table-column prop="batchNo" label="批次" width="120" />
-            <el-table-column prop="oldQty" label="原数量" width="100" />
-            <el-table-column prop="newQty" label="新数量" width="100" />
-            <el-table-column prop="diff" label="差异" width="100">
-              <template #default="{ row }">
-                <span :style="{ color: row.diff > 0 ? '#67c23a' : row.diff < 0 ? '#f56c6c' : '' }">
-                  {{ row.diff > 0 ? '+' : '' }}{{ row.diff }}
-                </span>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
       </div>
     </el-card>
 

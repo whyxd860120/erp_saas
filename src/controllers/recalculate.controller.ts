@@ -5,7 +5,18 @@ import { auditLog } from '../utils/audit.util';
 const prisma = new PrismaClient();
 
 /**
- * 重算库存（根据所有已确认单据重新计算库存数量）
+ * 处理批次号：根据物料是否启用批次管理来规范化
+ * - enableBatch=true  → batchNo 必须有值，空值用 '__DEFAULT__' 替代
+ * - enableBatch=false → batchNo 统一为 null
+ */
+const normalizeBatchNo = (batchNo: string | null | undefined, enableBatch: boolean): string | null => {
+  if (!enableBatch) return null;
+  if (!batchNo || batchNo.trim() === '') return '__DEFAULT__';
+  return batchNo.trim();
+};
+
+/**
+ * 重算库存（全量重建：先清空库存表，再根据所有已确认单据重新计算）
  * POST /api/v1/recalculate/inventory
  */
 export const recalculateInventory = async (req: Request, res: Response) => {
@@ -18,185 +29,190 @@ export const recalculateInventory = async (req: Request, res: Response) => {
     const { warehouseId } = req.body;
     console.log(`[重算库存] 开始，租户: ${tenantId}${warehouseId ? ', 仓库: ' + warehouseId : ''}`);
 
-    // 统计各来源的库存变动
+    // ===== 第一步：先加载所有物料的批次管理属性 =====
+    const allProducts = await prisma.product.findMany({
+      where: { tenantId },
+      select: { id: true, enableBatch: true, code: true, name: true },
+    });
+    const productBatchMap = new Map<string, boolean>();
+    for (const p of allProducts) {
+      productBatchMap.set(p.id, p.enableBatch);
+    }
+    console.log(`[重算库存] 加载物料 ${allProducts.length} 个，启用批次: ${allProducts.filter(p => p.enableBatch).length} 个`);
+
+    // ===== 第二步：收集所有单据明细，汇总库存变动 =====
+    // Map: key = `${productId}|${warehouseId}|${normalizedBatchNo}`
     const adjustments: Map<string, number> = new Map();
-    // key = `${productId}|${warehouseId}|${batchNo || '__NULL__'}`
-    const makeKey = (productId: string, whId: string, batchNo?: string | null) =>
-      `${productId}|${whId}|${batchNo || '__NULL__'}`;
+
+    const makeKey = (productId: string, whId: string, batchNo: string | null) =>
+      `${productId}|${whId}|${batchNo ?? '__NULL__'}`;
 
     const warehouseFilter = warehouseId ? { warehouseId } : {};
 
-    // 1. 采购入库（confirmed）
+    // 辅助函数：获取物料的批次管理属性
+    const isBatchProduct = (productId: string) => productBatchMap.get(productId) ?? false;
+
+    // 辅助函数：处理明细列表，累加/扣减数量
+    const processDetails = (
+      details: Array<{ productId: string; batchNo?: string | null; quantity: number }>,
+      warehouseId: string,
+      multiplier: 1 | -1,
+      sourceLabel: string,
+    ) => {
+      let count = 0;
+      for (const detail of details) {
+        const enableBatch = isBatchProduct(detail.productId);
+        const normalizedBatchNo = normalizeBatchNo(detail.batchNo, enableBatch);
+        const key = makeKey(detail.productId, warehouseId, normalizedBatchNo);
+        adjustments.set(key, (adjustments.get(key) || 0) + detail.quantity * multiplier);
+        count++;
+      }
+      return count;
+    };
+
+    // 1. 采购入库（confirmed） +入库
     const purchaseInbounds = await prisma.purchaseInbound.findMany({
       where: { tenantId, status: 'confirmed', ...warehouseFilter },
       include: { details: true },
     });
+    let detailTotal = 0;
     for (const inbound of purchaseInbounds) {
-      for (const detail of inbound.details) {
-        const key = makeKey(detail.productId, inbound.warehouseId, detail.batchNo);
-        adjustments.set(key, (adjustments.get(key) || 0) + detail.quantity);
-      }
+      detailTotal += processDetails(inbound.details, inbound.warehouseId, 1, '采购入库');
     }
-    console.log(`[重算库存] 采购入库: ${purchaseInbounds.length} 单`);
+    console.log(`[重算库存] 采购入库: ${purchaseInbounds.length} 单, ${detailTotal} 条明细`);
 
-    // 2. 其他入库（confirmed）
+    // 2. 其他入库（confirmed） +入库
     const otherInbounds = await prisma.otherInbound.findMany({
       where: { tenantId, status: 'confirmed', ...warehouseFilter },
       include: { details: true },
     });
+    detailTotal = 0;
     for (const inbound of otherInbounds) {
-      for (const detail of inbound.details) {
-        const key = makeKey(detail.productId, inbound.warehouseId, detail.batchNo);
-        adjustments.set(key, (adjustments.get(key) || 0) + detail.quantity);
-      }
+      detailTotal += processDetails(inbound.details, inbound.warehouseId, 1, '其他入库');
     }
-    console.log(`[重算库存] 其他入库: ${otherInbounds.length} 单`);
+    console.log(`[重算库存] 其他入库: ${otherInbounds.length} 单, ${detailTotal} 条明细`);
 
-    // 3. 销售出库（confirmed）- 扣减
+    // 3. 销售出库（confirmed） -出库
     const salesOutbounds = await prisma.salesOutbound.findMany({
       where: { tenantId, status: 'confirmed', ...warehouseFilter },
       include: { details: true },
     });
+    detailTotal = 0;
     for (const outbound of salesOutbounds) {
-      for (const detail of outbound.details) {
-        const key = makeKey(detail.productId, outbound.warehouseId, detail.batchNo);
-        adjustments.set(key, (adjustments.get(key) || 0) - detail.quantity);
-      }
+      detailTotal += processDetails(outbound.details, outbound.warehouseId, -1, '销售出库');
     }
-    console.log(`[重算库存] 销售出库: ${salesOutbounds.length} 单`);
+    console.log(`[重算库存] 销售出库: ${salesOutbounds.length} 单, ${detailTotal} 条明细`);
 
-    // 4. 其他出库（confirmed）- 扣减
+    // 4. 其他出库（confirmed） -出库
     const otherOutbounds = await prisma.otherOutbound.findMany({
       where: { tenantId, status: 'confirmed', ...warehouseFilter },
       include: { details: true },
     });
+    detailTotal = 0;
     for (const outbound of otherOutbounds) {
-      for (const detail of outbound.details) {
-        const key = makeKey(detail.productId, outbound.warehouseId, detail.batchNo);
-        adjustments.set(key, (adjustments.get(key) || 0) - detail.quantity);
-      }
+      detailTotal += processDetails(outbound.details, outbound.warehouseId, -1, '其他出库');
     }
-    console.log(`[重算库存] 其他出库: ${otherOutbounds.length} 单`);
+    console.log(`[重算库存] 其他出库: ${otherOutbounds.length} 单, ${detailTotal} 条明细`);
 
-    // 5. 盘点单（confirmed）- 直接覆盖差异
+    // 5. 盘点单（confirmed） - 盘点差异
     const stockTakes = await prisma.stockTake.findMany({
       where: { tenantId, status: 'confirmed', ...warehouseFilter },
       include: { details: true },
     });
+    detailTotal = 0;
     for (const take of stockTakes) {
       for (const detail of take.details) {
-        const key = makeKey(detail.productId, take.warehouseId, detail.batchNo);
-        // 盘点差异：actualQty - bookQty
+        const enableBatch = isBatchProduct(detail.productId);
+        const normalizedBatchNo = normalizeBatchNo(detail.batchNo, enableBatch);
+        const key = makeKey(detail.productId, take.warehouseId, normalizedBatchNo);
         const diffQty = (detail.actualQty || 0) - (detail.bookQty || 0);
         adjustments.set(key, (adjustments.get(key) || 0) + diffQty);
+        detailTotal++;
       }
     }
-    console.log(`[重算库存] 盘点单: ${stockTakes.length} 单`);
+    console.log(`[重算库存] 盘点单: ${stockTakes.length} 单, ${detailTotal} 条明细`);
 
     // 6. 库存调整单（confirmed）
     const stockAdjustments = await prisma.stockAdjustment.findMany({
       where: { tenantId, status: 'confirmed', ...warehouseFilter },
       include: { details: true },
     });
-    for (const adjustment of stockAdjustments) {
-      for (const detail of adjustment.details) {
-        const key = makeKey(detail.productId, adjustment.warehouseId, detail.batchNo);
+    detailTotal = 0;
+    for (const adj of stockAdjustments) {
+      for (const detail of adj.details) {
+        const enableBatch = isBatchProduct(detail.productId);
+        const normalizedBatchNo = normalizeBatchNo(detail.batchNo, enableBatch);
+        const key = makeKey(detail.productId, adj.warehouseId, normalizedBatchNo);
         adjustments.set(key, (adjustments.get(key) || 0) + detail.quantity);
+        detailTotal++;
       }
     }
-    console.log(`[重算库存] 调整单: ${stockAdjustments.length} 单`);
+    console.log(`[重算库存] 调整单: ${stockAdjustments.length} 单, ${detailTotal} 条明细`);
 
-    // 7. 调拨单（confirmed）- 调出仓库扣减，调入仓库增加
+    // 7. 调拨单（confirmed） - 调出扣减，调入增加
     const stockTransfers = await prisma.stockTransfer.findMany({
       where: { tenantId, status: 'confirmed' },
       include: { details: true },
     });
+    detailTotal = 0;
     for (const transfer of stockTransfers) {
       for (const detail of transfer.details) {
+        const enableBatch = isBatchProduct(detail.productId);
+        const normalizedBatchNo = normalizeBatchNo(detail.batchNo, enableBatch);
         // 调出仓库：扣减
-        const outKey = makeKey(detail.productId, transfer.fromWarehouseId, detail.batchNo);
+        const outKey = makeKey(detail.productId, transfer.fromWarehouseId, normalizedBatchNo);
         adjustments.set(outKey, (adjustments.get(outKey) || 0) - detail.quantity);
         // 调入仓库：增加
-        const inKey = makeKey(detail.productId, transfer.toWarehouseId, detail.batchNo);
+        const inKey = makeKey(detail.productId, transfer.toWarehouseId, normalizedBatchNo);
         adjustments.set(inKey, (adjustments.get(inKey) || 0) + detail.quantity);
+        detailTotal++;
       }
     }
-    console.log(`[重算库存] 调拨单: ${stockTransfers.length} 单`);
+    console.log(`[重算库存] 调拨单: ${stockTransfers.length} 单, ${detailTotal} 条明细`);
 
-    // 8. 收款单确认时不涉及库存，跳过
-    // 9. 付款单确认时不涉及库存，跳过
+    console.log(`[重算库存] 汇总完成，共 ${adjustments.size} 个库存维度`);
 
-    // 汇总计算
-    let updatedCount = 0;
+    // ===== 第三步：在事务中全量重建库存表 =====
     let createdCount = 0;
-    let zeroCount = 0;
-    const details: Array<{
-      productId: string;
-      warehouseId: string;
-      batchNo: string | null;
-      oldQty: number;
-      newQty: number;
-      diff: number;
-    }> = [];
+    let deletedCount = 0;
+    let skippedCount = 0;
 
-    // 使用事务批量更新
     await prisma.$transaction(async (tx) => {
+      // 先清空当前租户（及指定仓库）的所有库存记录
+      const deleteWhere: any = { tenantId };
+      if (warehouseId) {
+        deleteWhere.warehouseId = warehouseId;
+      }
+      const deleteResult = await tx.inventoryItem.deleteMany({ where: deleteWhere });
+      deletedCount = deleteResult.count;
+      console.log(`[重算库存] 已清空 ${deletedCount} 条旧库存记录`);
+
+      // 再逐条写入新计算的库存（只写入库存 > 0 的记录）
       for (const [key, targetQty] of adjustments.entries()) {
+        if (targetQty <= 0) {
+          skippedCount++;
+          continue;
+        }
+
         const [productId, whId, batchNoStr] = key.split('|');
         const batchNo = batchNoStr === '__NULL__' ? null : batchNoStr;
 
-        // 查找现有库存
-        const existing = await tx.inventoryItem.findFirst({
-          where: { tenantId, productId, warehouseId: whId, batchNo },
+        await tx.inventoryItem.create({
+          data: {
+            tenantId,
+            productId,
+            warehouseId: whId,
+            batchNo,
+            quantity: targetQty,
+            costPrice: 0,
+            status: 'normal',
+          },
         });
-
-        const oldQty = existing ? existing.quantity : 0;
-
-        if (targetQty === 0) {
-          // 库存归零，删除记录
-          if (existing) {
-            await tx.inventoryItem.delete({ where: { id: existing.id } });
-            zeroCount++;
-          }
-          details.push({ productId, warehouseId: whId, batchNo, oldQty, newQty: 0, diff: -oldQty });
-        } else if (existing) {
-          if (existing.quantity !== targetQty) {
-            await tx.inventoryItem.update({
-              where: { id: existing.id },
-              data: { quantity: targetQty },
-            });
-            updatedCount++;
-          }
-          details.push({ productId, warehouseId: whId, batchNo, oldQty, newQty: targetQty, diff: targetQty - oldQty });
-        } else {
-          // 使用 upsert 避免并发时的唯一约束冲突
-          await tx.inventoryItem.upsert({
-            where: {
-              tenantId_productId_warehouseId_batchNo: {
-                tenantId,
-                productId,
-                warehouseId: whId,
-                batchNo: batchNo || '',
-              },
-            },
-            update: {
-              quantity: targetQty,
-              costPrice: 0,
-            },
-            create: {
-              tenantId,
-              productId,
-              warehouseId: whId,
-              batchNo,
-              quantity: targetQty,
-              costPrice: 0,
-            },
-          });
-          createdCount++;
-          details.push({ productId, warehouseId: whId, batchNo, oldQty: 0, newQty: targetQty, diff: targetQty });
-        }
+        createdCount++;
       }
     });
+
+    console.log(`[重算库存] 写入 ${createdCount} 条，跳过(<=0) ${skippedCount} 条`);
 
     // 记录审计日志
     await auditLog({
@@ -207,28 +223,24 @@ export const recalculateInventory = async (req: Request, res: Response) => {
       resource: null,
       detail: JSON.stringify({
         warehouseId: warehouseId || 'all',
-        updatedCount,
+        deletedCount,
         createdCount,
-        zeroCount,
-        totalKeys: adjustments.size,
-        changedItems: details.filter(d => d.diff !== 0).length,
+        skippedCount,
+        totalDimensions: adjustments.size,
+        batchProducts: allProducts.filter(p => p.enableBatch).length,
       }),
       ip: req.ip,
       userAgent: req.get('user-agent'),
     });
 
-    const changedItems = details.filter(d => d.diff !== 0);
-
     res.json({
       success: true,
-      message: `库存重算完成：更新 ${updatedCount} 条，新建 ${createdCount} 条，归零删除 ${zeroCount} 条，共 ${adjustments.size} 个库存维度，${changedItems.length} 项发生变化`,
+      message: `库存重算完成（全量重建）：删除旧记录 ${deletedCount} 条，写入新记录 ${createdCount} 条，跳过(<=0) ${skippedCount} 个维度`,
       data: {
-        updatedCount,
+        deletedCount,
         createdCount,
-        zeroCount,
-        totalKeys: adjustments.size,
-        changedCount: changedItems.length,
-        changes: changedItems.slice(0, 100), // 最多返回前100条变化
+        skippedCount,
+        totalDimensions: adjustments.size,
       },
     });
   } catch (error) {

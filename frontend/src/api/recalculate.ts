@@ -1,19 +1,10 @@
 import { api } from './http'
 
 export interface RecalculateInventoryResult {
-  updatedCount: number
+  deletedCount: number
   createdCount: number
-  zeroCount: number
-  totalKeys: number
-  changedCount: number
-  changes: Array<{
-    productId: string
-    warehouseId: string
-    batchNo: string | null
-    oldQty: number
-    newQty: number
-    diff: number
-  }>
+  skippedCount: number
+  totalDimensions: number
 }
 
 export interface RecalculateAccountBalanceResult {
