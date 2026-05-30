@@ -1,0 +1,844 @@
+// ==================== 生产管理模块 ====================
+
+// 生产订单（主表）
+model ProductionOrder {
+  id              String    @id @default(cuid())
+  tenantId        String
+  orderNo         String // 生产订单号（租户内唯一）
+  sourceType      String    @default("manual") // manual(手动), mps(MPS生成), mrq(MRQ生成)
+  sourceOrderNo   String? // 来源单据号（如销售订单号）
+  warehouseId     String // 仓库ID（半成品/成品入库仓库）
+  productionType  String    @default("normal") // normal(普通生产), outsource(委外生产)
+  planStartDate   DateTime? // 计划开始日期
+  planEndDate     DateTime? // 计划完成日期
+  actualStartDate DateTime? // 实际开始日期
+  actualEndDate   DateTime? // 实际完成日期
+  status          String    @default("draft") // draft(草稿), confirmed(已确认), in_progress(生产中), completed(已完成), cancelled(已取消)
+  priority        String    @default("normal") // low(低), normal(普通), high(高), urgent(紧急)
+  totalQty        Int       @default(0) // 计划生产数量
+  completedQty    Int       @default(0) // 已完工数量
+  unitCost        Decimal   @default(0) // 单位成本
+  totalCost       Decimal   @default(0) // 总成本
+  remark          String? // 备注
+  createdById     String?
+  confirmedById   String?
+  confirmedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy   User?                   @relation("ProductionOrderCreator", fields: [createdById], references: [id])
+  confirmedBy User?                   @relation("ProductionOrderConfirmer", fields: [confirmedById], references: [id])
+  details     ProductionOrderDetail[]
+  tasks      ProductionTask[]
+
+  @@unique([tenantId, orderNo])
+  @@index([tenantId])
+  @@index([status])
+  @@index([planStartDate])
+  @@index([createdAt])
+  @@map("production_orders")
+}
+
+// 生产订单明细
+model ProductionOrderDetail {
+  id                 String   @id @default(cuid())
+  orderId            String // 生产订单ID
+  productId          String // 产品ID
+  bomId              String? // BOM ID
+  unitPrice          Decimal  @default(0) // 计划单价
+  planQty            Int      @default(0) // 计划数量
+  completedQty       Int      @default(0) // 已完工数量
+  inProgressQty      Int      @default(0) // 在制数量
+  unitCost           Decimal  @default(0) // 单位成本
+  amount             Decimal  @default(0) // 金额
+  remark             String? // 备注
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  order   ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  bom     ProductionBOM? @relation(fields: [bomId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("production_order_details")
+}
+
+// 物料清单（BOM）
+model ProductionBOM {
+  id          String    @id @default(cuid())
+  tenantId    String
+  bomNo       String // BOM编号（租户内唯一）
+  name        String // BOM名称
+  productId   String // 对应产品ID
+  version     String    @default("V1.0") // BOM版本
+  status      String    @default("active") // active(生效), inactive(失效)
+  effectiveDate DateTime @default(now()) // 生效日期
+  obsoleteDate DateTime? // 失效日期
+  isDefault   Boolean   @default(false) // 是否默认BOM
+  remark      String? // 备注
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdBy User?             @relation("ProductionBOMCreator", fields: [createdById], references: [id])
+  items   ProductionBOMItem[]
+
+  @@unique([tenantId, bomNo])
+  @@index([tenantId])
+  @@index([productId])
+  @@index([status])
+  @@map("production_boms")
+}
+
+// BOM明细
+model ProductionBOMItem {
+  id           String   @id @default(cuid())
+  bomId         String // BOM ID
+  productId    String // 物料ID
+  quantity     Decimal  @default(0) // 用量
+  scrapRate    Decimal  @default(0) // 损耗率（%）
+  effectiveQty Decimal  @default(0) // 实际用量（含损耗）
+  level       Int      @default(1) // BOM层级
+  parentItemId String? // 父级物料ID（用于多层级BOM）
+  position     String? // 工序位置
+  isPhantom    Boolean  @default(false) // 是否虚拟件
+  remark       String? // 备注
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  bom     ProductionBOM @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([bomId])
+  @@index([productId])
+  @@map("production_bom_items")
+}
+
+// 生产任务单
+model ProductionTask {
+  id              String    @id @default(cuid())
+  tenantId        String
+  taskNo          String // 任务单号（租户内唯一）
+  orderId         String? // 生产订单ID
+  workshopId      String? // 车间ID
+  workstationId   String? // 工位ID
+  routeOperationId String? // 工序ID
+  productId       String // 产品ID
+  warehouseId     String // 仓库ID
+  taskType        String    @default("normal") // normal(普通), rush(加急)
+  planQty         Int       @default(0) // 计划数量
+  completedQty    Int       @default(0) // 已完成数量
+  qualifiedQty    Int       @default(0) // 合格数量
+  rejectedQty     Int       @default(0) // 不合格数量
+  planStartTime   DateTime? // 计划开始时间
+  planEndTime     DateTime? // 计划结束时间
+  actualStartTime DateTime? // 实际开始时间
+  actualEndTime  DateTime? // 实际结束时间
+  status          String    @default("pending") // pending(待生产), in_progress(生产中), completed(已完成), cancelled(已取消)
+  remark          String? // 备注
+  createdById      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant    Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order    ProductionOrder?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  product  Product                @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse Warehouse              @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy User?                 @relation("ProductionTaskCreator", fields: [createdById], references: [id])
+  materials ProductionTaskMaterial[]
+  reports  ProductionTaskReport[]
+
+  @@unique([tenantId, taskNo])
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("production_tasks")
+}
+
+// 生产投料记录
+model ProductionTaskMaterial {
+  id           String   @id @default(cuid())
+  taskId       String // 生产任务单ID
+  productId    String // 物料ID
+  warehouseId  String // 仓库ID
+  batchNo      String? // 批次号
+  planQty      Decimal  @default(0) // 计划用量
+  actualQty    Decimal  @default(0) // 实际用量
+  issueQty     Decimal  @default(0) // 已发料数量
+  returnQty    Decimal  @default(0) // 退料数量
+  consumeType  String    @default("normal") // normal(普通领料), backflush(倒冲), skip(跳层领料)
+  issueDate    DateTime? // 发料日期
+  status       String    @default("pending") // pending(待发料), issued(已发料), completed(已完成)
+  remark       String? // 备注
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  task     ProductionTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  product  Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@index([taskId])
+  @@index([productId])
+  @@index([status])
+  @@map("production_task_materials")
+}
+
+// 生产报工记录
+model ProductionTaskReport {
+  id            String   @id @default(cuid())
+  taskId        String // 生产任务单ID
+  reportNo      String // 报工单号
+  reportType    String    @default("normal") // normal(正常报工), add(补报), reject(返工)
+  productId     String // 产品ID
+  reportQty     Int       @default(0) // 报工数量
+  qualifiedQty  Int       @default(0) // 合格数量
+  rejectedQty   Int       @default(0) // 不合格数量
+  rejectReason  String? // 不合格原因
+  workstationId String? // 工位ID
+  workerId     String? // 作业员ID
+  workHours    Decimal   @default(0) // 工时
+  unitPrice    Decimal   @default(0) // 计时/计件单价
+  amount       Decimal   @default(0) // 加工费
+  reportDate   DateTime  @default(now()) // 报工日期
+  status       String    @default("confirmed") // confirmed(已确认), cancelled(已取消)
+  remark       String? // 备注
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  task      ProductionTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdBy User?          @relation("ProductionTaskReportCreator", fields: [createdById], references: [id])
+
+  @@unique([taskId, reportNo])
+  @@index([taskId])
+  @@index([reportDate])
+  @@map("production_task_reports")
+}
+
+// 工艺路线
+model ProductionRoute {
+  id          String    @id @default(cuid())
+  tenantId    String
+  routeNo     String // 工艺路线编号
+  name        String // 工艺路线名称
+  productId   String? // 产品ID（可选）
+  version     String    @default("V1.0") // 版本
+  status      String    @default("active") // active, inactive
+  isDefault   Boolean   @default(false) // 是否默认
+  remark      String? // 备注
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product  Product?                 @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdBy User?                  @relation("ProductionRouteCreator", fields: [createdById], references: [id])
+  operations ProductionRouteOperation[]
+
+  @@unique([tenantId, routeNo])
+  @@index([tenantId])
+  @@index([productId])
+  @@map("production_routes")
+}
+
+// 工序定义
+model ProductionRouteOperation {
+  id          String   @id @default(cuid())
+  routeId     String // 工艺路线ID
+  sequence    Int      @default(1) // 工序顺序
+  name        String // 工序名称
+  workstationType String? // 工站类型
+  workCenterId String? // 工作中心ID
+  stdWorkHours Decimal  @default(0) // 标准工时
+  stdLaborRate Decimal   @default(0) // 标准人工费率
+  stdMachineRate Decimal @default(0) // 标准机器费率
+  setupTime   Int       @default(0) // 准备时间(分钟)
+  perPieceTime Int      @default(0) // 单件时间(秒)
+  batchSize   Int       @default(1) // 批量大小
+  qualityCheck Boolean   @default(false) // 是否质检
+  isCritical Boolean    @default(false) // 是否关键工序
+  remark     String? // 备注
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  route ProductionRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId])
+  @@index([sequence])
+  @@map("production_route_operations")
+}
+
+// ==================== 委外加工模块 ====================
+
+// 委外订单
+model SubcontractOrder {
+  id              String    @id @default(cuid())
+  tenantId        String
+  orderNo         String // 委外订单号
+  supplierId      String // 供应商ID
+  warehouseId     String // 入库仓库ID
+  orderDate       DateTime  @default(now()) // 订单日期
+  planDeliveryDate DateTime? // 计划交货日期
+  actualDeliveryDate DateTime? // 实际交货日期
+  totalQty        Int       @default(0) // 总数量
+  completedQty    Int       @default(0) // 已交货数量
+  totalAmount     Decimal   @default(0) // 加工费合计
+  paidAmount      Decimal   @default(0) // 已付款金额
+  status          String    @default("draft") // draft(草稿), confirmed(已确认), in_progress(进行中), completed(已完成), cancelled(已取消)
+  paymentStatus   String    @default("unpaid") // unpaid(未付款), partial(部分付款), paid(已付款)
+  remark          String? // 备注
+  createdById     String?
+  confirmedById   String?
+  confirmedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier    Supplier                @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  warehouse   Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy   User?                   @relation("SubcontractOrderCreator", fields: [createdById], references: [id])
+  confirmedBy User?                   @relation("SubcontractOrderConfirmer", fields: [confirmedById], references: [id])
+  details     SubcontractOrderDetail[]
+  outbound    SubcontractOutbound[]
+  inbound    SubcontractInbound[]
+
+  @@unique([tenantId, orderNo])
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderDate])
+  @@map("subcontract_orders")
+}
+
+// 委外订单明细
+model SubcontractOrderDetail {
+  id              String   @id @default(cuid())
+  orderId         String // 委外订单ID
+  productId       String // 产品ID
+  unitPrice       Decimal  @default(0) // 加工单价
+  planQty         Int      @default(0) // 计划数量
+  deliveredQty    Int      @default(0) // 已交货数量
+  passedQty       Int      @default(0) // 验收合格数量
+  rejectedQty     Int      @default(0) // 不合格数量
+  amount          Decimal  @default(0) // 加工费
+  paidAmount      Decimal  @default(0) // 已付款金额
+  remark          String? // 备注
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order   SubcontractOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("subcontract_order_details")
+}
+
+// 委外发料单
+model SubcontractOutbound {
+  id           String    @id @default(cuid())
+  tenantId     String
+  outboundNo   String // 发料单号
+  orderId      String? // 关联委外订单ID
+  supplierId   String // 供应商ID
+  warehouseId   String // 仓库ID
+  outboundDate DateTime  @default(now()) // 发料日期
+  totalAmount  Decimal   @default(0) // 总金额
+  status       String    @default("draft") // draft, confirmed, cancelled
+  remark       String? // 备注
+  createdById   String?
+  confirmedById String?
+  confirmedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant     Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order      SubcontractOrder?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  supplier   Supplier                  @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  warehouse  Warehouse                 @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy  User?                    @relation("SubcontractOutboundCreator", fields: [createdById], references: [id])
+  confirmedBy User?                   @relation("SubcontractOutboundConfirmer", fields: [confirmedById], references: [id])
+  details   SubcontractOutboundDetail[]
+
+  @@unique([tenantId, outboundNo])
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([supplierId])
+  @@index([status])
+  @@map("subcontract_outbounds")
+}
+
+// 委外发料明细
+model SubcontractOutboundDetail {
+  id           String   @id @default(cuid())
+  outboundId   String // 发料单ID
+  productId    String // 物料ID
+  warehouseId  String // 仓库ID
+  batchNo      String? // 批次号
+  quantity     Int      @default(0) // 发料数量
+  unitPrice    Decimal  @default(0) // 单价
+  amount       Decimal  @default(0) // 金额
+  productionDate DateTime? // 生产日期
+  expiryDate   DateTime? // 有效期
+  returnQty    Int      @default(0) // 退料数量
+  remainQty    Int      @default(0) // 剩余数量（在供应商处）
+  remark       String? // 备注
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  outbound SubcontractOutbound @relation(fields: [outboundId], references: [id], onDelete: Cascade)
+  product  Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse Warehouse            @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@index([outboundId])
+  @@index([productId])
+  @@map("subcontract_outbound_details")
+}
+
+// 委外收料单
+model SubcontractInbound {
+  id            String    @id @default(cuid())
+  tenantId      String
+  inboundNo     String // 收料单号
+  orderId       String? // 关联委外订单ID
+  outboundId    String? // 关联发料单ID（部分交货时）
+  supplierId    String // 供应商ID
+  warehouseId   String // 仓库ID
+  inboundDate  DateTime  @default(now()) // 收料日期
+  totalAmount  Decimal   @default(0) // 总金额
+  totalQty     Int       @default(0) // 总数量
+  qualifiedQty Int       @default(0) // 合格数量
+  rejectedQty  Int       @default(0) // 不合格数量
+  status       String    @default("draft") // draft, confirmed, cancelled
+  qcStatus     String    @default("pending") // pending, qualified, unqualified, partial
+  remark       String? // 备注
+  createdById   String?
+  confirmedById String?
+  confirmedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant     Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order      SubcontractOrder?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  outbound   SubcontractOutbound?      @relation(fields: [outboundId], references: [id], onDelete: SetNull)
+  supplier  Supplier                  @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  warehouse Warehouse                  @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy User?                     @relation("SubcontractInboundCreator", fields: [createdById], references: [id])
+  confirmedBy User?                    @relation("SubcontractInboundConfirmer", fields: [confirmedById], references: [id])
+  details  SubcontractInboundDetail[]
+
+  @@unique([tenantId, inboundNo])
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([supplierId])
+  @@index([status])
+  @@map("subcontract_inbounds")
+}
+
+// 委外收料明细
+model SubcontractInboundDetail {
+  id            String   @id @default(cuid())
+  inboundId     String // 收料单ID
+  productId     String // 产品ID
+  outboundDetailId String? // 关联发料明细ID
+  warehouseId   String // 仓库ID
+  batchNo       String? // 批次号
+  quantity      Int      @default(0) // 交货数量
+  qualifiedQty  Int      @default(0) // 合格数量
+  rejectedQty   Int      @default(0) // 不合格数量
+  unitPrice     Decimal  @default(0) // 加工单价
+  amount        Decimal  @default(0) // 加工费
+  productionDate DateTime? // 生产日期
+  expiryDate    DateTime? // 有效期
+  qcStatus      String    @default("pending") // pending, qualified, unqualified
+  qcReportNo   String? // 质检报告号
+  remark        String? // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  inbound      SubcontractInbound   @relation(fields: [inboundId], references: [id], onDelete: Cascade)
+  outboundDetail SubcontractOutboundDetail? @relation(fields: [outboundDetailId], references: [id], onDelete: SetNull)
+  product       Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse     Warehouse            @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@index([inboundId])
+  @@index([productId])
+  @@map("subcontract_inbound_details")
+}
+
+// 委外结算单
+model SubcontractSettlement {
+  id              String    @id @default(cuid())
+  tenantId        String
+  settlementNo    String // 结算单号
+  supplierId      String // 供应商ID
+  orderId         String? // 关联委外订单ID
+  settlementType   String    @default("normal") // normal(正常结算), advance(预付款), adjustment(调整)
+  settlementDate  DateTime  @default(now()) // 结算日期
+  totalAmount     Decimal   @default(0) // 结算金额
+  paidAmount      Decimal   @default(0) // 已付款金额
+  status          String    @default("draft") // draft, confirmed, paid, cancelled
+  period          String? // 结算期间（如 2025-01）
+  remark          String? // 备注
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier  Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  order     SubcontractOrder?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdBy User?                @relation("SubcontractSettlementCreator", fields: [createdById], references: [id])
+  items    SubcontractSettlementItem[]
+
+  @@unique([tenantId, settlementNo])
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([status])
+  @@map("subcontract_settlements")
+}
+
+// 委外结算明细
+model SubcontractSettlementItem {
+  id             String   @id @default(cuid())
+  settlementId   String // 结算单ID
+  inboundId      String? // 关联收料单ID
+  inboundDetailId String? // 收料单明细ID
+  productId      String // 产品ID
+  quantity       Int      @default(0) // 结算数量
+  unitPrice      Decimal  @default(0) // 结算单价
+  amount         Decimal  @default(0) // 结算金额
+  materialCost   Decimal  @default(0) // 材料费（由我方提供的材料）
+  processCost    Decimal  @default(0) // 加工费
+  remark         String? // 备注
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  settlement    SubcontractSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  inbound       SubcontractInbound?  @relation(fields: [inboundId], references: [id], onDelete: SetNull)
+  inboundDetail SubcontractInboundDetail? @relation(fields: [inboundDetailId], references: [id], onDelete: SetNull)
+  product       Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([settlementId])
+  @@index([inboundId])
+  @@map("subcontract_settlement_items")
+}
+
+// ==================== 受托加工模块（来料加工） ====================
+
+// 客供料登记
+model CustomerMaterial {
+  id           String    @id @default(cuid())
+  tenantId     String
+  materialNo   String // 客供料编号
+  customerId   String // 客户ID
+  productId    String // 物料ID
+  unit         String? // 单位
+  totalQty     Int       @default(0) // 客户提供的总数量
+  remainQty    Int       @default(0) // 剩余数量
+  usedQty      Int       @default(0) // 已使用数量
+  returnQty    Int       @default(0) // 已退货数量
+  warehouseId  String? // 存放仓库
+  status       String    @default("active") // active(使用中), consumed(已用完), returned(已退货)
+  validFrom    DateTime? // 有效期起
+  validTo      DateTime? // 有效期止
+  remark       String? // 备注
+  createdById   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer  Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  product   Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse Warehouse?           @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  createdBy User?                @relation("CustomerMaterialCreator", fields: [createdById], references: [id])
+  inbounds  JobbingInbound[]
+  details   CustomerMaterialDetail[]
+
+  @@unique([tenantId, materialNo])
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([productId])
+  @@index([status])
+  @@map("customer_materials")
+}
+
+// 客供料明细记录
+model CustomerMaterialDetail {
+  id             String   @id @default(cuid())
+  customerMaterialId String // 客供料登记ID
+  batchNo        String? // 批次号
+  quantity       Int      @default(0) // 数量
+  unitPrice      Decimal  @default(0) // 单价（客户估值）
+  amount         Decimal  @default(0) // 金额
+  productionDate DateTime? // 生产日期
+  expiryDate    DateTime? // 有效期
+  inboundId     String? // 关联来料入库单ID
+  usedQty       Int      @default(0) // 已使用数量
+  returnQty     Int      @default(0) // 已退货数量
+  remark        String? // 备注
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  customerMaterial CustomerMaterial @relation(fields: [customerMaterialId], references: [id], onDelete: Cascade)
+  inbound          JobbingInbound?   @relation(fields: [inboundId], references: [id], onDelete: SetNull)
+
+  @@index([customerMaterialId])
+  @@index([batchNo])
+  @@map("customer_material_details")
+}
+
+// 受托加工订单
+model JobbingOrder {
+  id              String    @id @default(cuid())
+  tenantId        String
+  orderNo         String // 受托加工单号
+  customerId      String // 客户ID
+  warehouseId     String // 入库仓库ID
+  orderDate       DateTime  @default(now()) // 接单日期
+  planDeliveryDate DateTime? // 计划交货日期
+  actualDeliveryDate DateTime? // 实际交货日期
+  totalQty        Int       @default(0) // 总数量
+  deliveredQty    Int       @default(0) // 已交货数量
+  totalAmount     Decimal   @default(0) // 加工费合计
+  receivedAmount   Decimal   @default(0) // 已收款金额
+  status          String    @default("draft") // draft, confirmed, in_progress, completed, cancelled
+  paymentStatus   String    @default("unpaid") // unpaid, partial, paid
+  remark          String? // 备注
+  createdById     String?
+  confirmedById   String?
+  confirmedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer    Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  warehouse   Warehouse            @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy   User?                @relation("JobbingOrderCreator", fields: [createdById], references: [id])
+  confirmedBy User?                @relation("JobbingOrderConfirmer", fields: [confirmedById], references: [id])
+  details    JobbingOrderDetail[]
+  inbounds  JobbingInbound[]
+  outbounds JobbingOutbound[]
+
+  @@unique([tenantId, orderNo])
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([status])
+  @@index([orderDate])
+  @@map("jobbing_orders")
+}
+
+// 受托加工订单明细
+model JobbingOrderDetail {
+  id              String   @id @default(cuid())
+  orderId         String // 受托加工订单ID
+  customerMaterialId String? // 客供料ID（使用客户材料时）
+  productId       String // 成品ID
+  processDesc     String? // 加工描述
+  unitPrice       Decimal  @default(0) // 加工单价
+  planQty         Int      @default(0) // 计划数量
+  deliveredQty    Int      @default(0) // 已交货数量
+  amount          Decimal  @default(0) // 加工费
+  receivedAmount  Decimal  @default(0) // 已收款金额
+  remark          String? // 备注
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order           JobbingOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerMaterial CustomerMaterial? @relation(fields: [customerMaterialId], references: [id], onDelete: SetNull)
+  product        Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("jobbing_order_details")
+}
+
+// 来料入库单（客供料到货）
+model JobbingInbound {
+  id            String    @id @default(cuid())
+  tenantId      String
+  inboundNo     String // 来料入库单号
+  orderId       String? // 关联受托加工订单ID
+  customerId    String // 客户ID
+  warehouseId   String // 仓库ID
+  inboundDate   DateTime  @default(now()) // 入库日期
+  totalAmount   Decimal   @default(0) // 客户估值总金额
+  totalQty      Int       @default(0) // 总数量
+  status        String    @default("draft") // draft, confirmed, cancelled
+  qcStatus      String    @default("pending") // pending, qualified, unqualified
+  remark        String? // 备注
+  createdById    String?
+  confirmedById  String?
+  confirmedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order     JobbingOrder?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  customer  Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  warehouse Warehouse            @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy User?                @relation("JobbingInboundCreator", fields: [createdById], references: [id])
+  confirmedBy User?              @relation("JobbingInboundConfirmer", fields: [confirmedById], references: [id])
+  details  JobbingInboundDetail[]
+
+  @@unique([tenantId, inboundNo])
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([customerId])
+  @@index([status])
+  @@map("jobbing_inbounds")
+}
+
+// 来料入库明细
+model JobbingInboundDetail {
+  id               String   @id @default(cuid())
+  inboundId        String // 入库单ID
+  customerMaterialId String? // 客供料ID
+  productId        String // 物料ID
+  warehouseId      String // 仓库ID
+  batchNo          String? // 批次号
+  quantity         Int      @default(0) // 入库数量
+  unitPrice        Decimal  @default(0) // 客户估值单价
+  amount           Decimal  @default(0) // 客户估值金额
+  productionDate   DateTime? // 生产日期
+  expiryDate       DateTime? // 有效期
+  qcStatus         String    @default("pending") // pending, qualified, unqualified
+  qcReportNo      String? // 质检报告号
+  remark           String? // 备注
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  inbound         JobbingInbound    @relation(fields: [inboundId], references: [id], onDelete: Cascade)
+  customerMaterial CustomerMaterial? @relation(fields: [customerMaterialId], references: [id], onDelete: SetNull)
+  product         Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse       Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@index([inboundId])
+  @@index([productId])
+  @@map("jobbing_inbound_details")
+}
+
+// 受托加工出库单（成品交付）
+model JobbingOutbound {
+  id            String    @id @default(cuid())
+  tenantId      String
+  outboundNo    String // 出库单号
+  orderId       String? // 关联受托加工订单ID
+  customerId    String // 客户ID
+  warehouseId   String // 仓库ID
+  outboundDate  DateTime  @default(now()) // 出库日期
+  totalAmount   Decimal   @default(0) // 加工费合计
+  totalQty      Int       @default(0) // 总数量
+  status        String    @default("draft") // draft, confirmed, cancelled
+  remark        String? // 备注
+  createdById   String?
+  confirmedById  String?
+  confirmedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order     JobbingOrder?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  customer  Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  warehouse Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy User?               @relation("JobbingOutboundCreator", fields: [createdById], references: [id])
+  confirmedBy User?             @relation("JobbingOutboundConfirmer", fields: [confirmedById], references: [id])
+  details  JobbingOutboundDetail[]
+
+  @@unique([tenantId, outboundNo])
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([customerId])
+  @@index([status])
+  @@map("jobbing_outbounds")
+}
+
+// 受托加工出库明细
+model JobbingOutboundDetail {
+  id              String   @id @default(cuid())
+  outboundId      String // 出库单ID
+  productId       String // 产品ID
+  inboundDetailId String? // 关联来料入库明细ID（追溯用）
+  warehouseId     String // 仓库ID
+  batchNo         String? // 批次号
+  quantity        Int      @default(0) // 出库数量
+  unitPrice       Decimal  @default(0) // 加工单价
+  amount          Decimal  @default(0) // 加工费
+  materialCost    Decimal  @default(0) // 材料成本（不计入我方成本）
+  remark          String? // 备注
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  outbound     JobbingOutbound   @relation(fields: [outboundId], references: [id], onDelete: Cascade)
+  product      Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  inboundDetail JobbingInboundDetail? @relation(fields: [inboundDetailId], references: [id], onDelete: SetNull)
+  warehouse    Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@index([outboundId])
+  @@index([productId])
+  @@map("jobbing_outbound_details")
+}
+
+// 受托加工结算单
+model JobbingSettlement {
+  id              String    @id @default(cuid())
+  tenantId        String
+  settlementNo    String // 结算单号
+  orderId         String? // 关联受托加工订单ID
+  customerId      String // 客户ID
+  settlementDate  DateTime  @default(now()) // 结算日期
+  totalQty        Int       @default(0) // 结算总数量
+  totalAmount     Decimal   @default(0) // 加工费合计
+  materialAmount   Decimal   @default(0) // 材料费合计（客供料成本，不计入我方收入）
+  netAmount       Decimal   @default(0) // 净加工费（我方收入）
+  receivedAmount  Decimal   @default(0) // 已收款金额
+  status          String    @default("draft") // draft, confirmed, invoiced, paid, cancelled
+  invoiceNo       String? // 发票号
+  remark          String? // 备注
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order     JobbingOrder?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  customer  Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy User?             @relation("JobbingSettlementCreator", fields: [createdById], references: [id])
+  items    JobbingSettlementItem[]
+
+  @@unique([tenantId, settlementNo])
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([status])
+  @@map("jobbing_settlements")
+}
+
+// 受托加工结算明细
+model JobbingSettlementItem {
+  id             String   @id @default(cuid())
+  settlementId   String // 结算单ID
+  outboundId     String? // 关联出库单ID
+  outboundDetailId String? // 出库单明细ID
+  productId      String // 产品ID
+  quantity       Int      @default(0) // 结算数量
+  unitPrice      Decimal  @default(0) // 结算单价
+  amount         Decimal  @default(0) // 加工费
+  materialCost   Decimal  @default(0) // 材料成本（不计入我方收入）
+  remark         String? // 备注
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  settlement    JobbingSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  outbound      JobbingOutbound?  @relation(fields: [outboundId], references: [id], onDelete: SetNull)
+  outboundDetail JobbingOutboundDetail? @relation(fields: [outboundDetailId], references: [id], onDelete: SetNull)
+  product       Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([settlementId])
+  @@index([outboundId])
+  @@map("jobbing_settlement_items")
+)

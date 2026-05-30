@@ -303,10 +303,25 @@ export const getPermissions = async (req: Request, res: Response) => {
  */
 export const getMyPermissions = async (req: Request, res: Response) => {
   try {
-    if (!req.user?.id || !req.user?.tenantId) {
+    if (!req.user?.id) {
       return res.status(401).json({
         success: false,
         message: '未登录',
+      });
+    }
+
+    // 超级管理员拥有所有权限
+    if (req.user.role === 'super_admin') {
+      const allPermissions = await prisma.permission.findMany();
+
+      const allMenus = allPermissions.filter(p => p.type === 'menu' && p.path);
+
+      return res.json({
+        success: true,
+        data: {
+          permissions: allPermissions.map(p => p.code),
+          menus: allMenus,
+        },
       });
     }
 
@@ -365,10 +380,36 @@ export const getMyPermissions = async (req: Request, res: Response) => {
  */
 export const getMyMenu = async (req: Request, res: Response) => {
   try {
-    if (!req.user?.id || !req.user?.tenantId) {
+    if (!req.user?.id) {
       return res.status(401).json({
         success: false,
         message: '未登录',
+      });
+    }
+
+    // 获取所有菜单，用于构建树形结构
+    const allMenus = await prisma.permission.findMany({
+      where: { type: 'menu' },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    // 如果是超级管理员，返回所有菜单
+    if (req.user.role === 'super_admin') {
+      const buildTree = (items: any[], parentId: string | null = null): any[] => {
+        return items
+          .filter(item => item.parentId === parentId)
+          .map(item => ({
+            ...item,
+            children: buildTree(items, item.id),
+            hasChildren: items.some(i => i.parentId === item.id),
+          }));
+      };
+
+      const tree = buildTree(allMenus);
+
+      return res.json({
+        success: true,
+        data: tree,
       });
     }
 
@@ -380,12 +421,7 @@ export const getMyMenu = async (req: Request, res: Response) => {
           include: {
             rolePermissions: {
               include: {
-                permission: {
-                  where: {
-                    type: 'menu',
-                    path: { not: null },
-                  },
-                },
+                permission: true,
               },
             },
           },
@@ -393,24 +429,44 @@ export const getMyMenu = async (req: Request, res: Response) => {
       },
     });
 
-    // 收集菜单权限并去重
-    const menuMap = new Map();
+    // 收集用户有权限访问的菜单 code
+    const accessibleMenuCodes = new Set();
 
     for (const userRole of userRoles) {
       if (userRole.role.status !== 'active') continue;
 
       for (const rp of userRole.role.rolePermissions) {
-        if (rp.permission.type === 'menu' && rp.permission.path) {
-          menuMap.set(rp.permission.code, rp.permission);
+        if (rp.permission.type === 'menu') {
+          accessibleMenuCodes.add(rp.permission.code);
         }
       }
     }
 
-    const menus = Array.from(menuMap.values()).sort((a, b) => a.sortOrder - b.sortOrder);
+    // 构建包含所有父级菜单的完整菜单树
+    const buildAccessibleTree = (items: any[], parentId: string | null = null): any[] => {
+      return items
+        .filter(item => {
+          // 如果是父级菜单，只要有子菜单可用就保留
+          const hasAccessibleChildren = items.some(child => 
+            child.parentId === item.id && accessibleMenuCodes.has(child.code)
+          );
+          // 如果是叶子菜单，需要有权限
+          const isAccessible = accessibleMenuCodes.has(item.code);
+          // 保留有子菜单或有权限的菜单
+          return item.parentId === parentId && (hasAccessibleChildren || isAccessible);
+        })
+        .map(item => ({
+          ...item,
+          children: buildAccessibleTree(items, item.id),
+          hasChildren: items.some(i => i.parentId === item.id),
+        }));
+    };
+
+    const tree = buildAccessibleTree(allMenus);
 
     return res.json({
       success: true,
-      data: menus,
+      data: tree,
     });
   } catch (error) {
     console.error('获取用户菜单错误:', error);

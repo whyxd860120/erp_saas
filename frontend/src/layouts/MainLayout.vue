@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { changePassword } from '@/api/auth'
 import { getMenus } from '@/api/menu'
+import { getMyMenu } from '@/api/permission'
 
 const router = useRouter()
 const route = useRoute()
@@ -418,7 +419,15 @@ const iconMap: Record<string, string> = {
   'User': 'User',
   'Tools': 'Tools',
   'Postcard': 'Postcard',
-  'Tickets': 'Tickets'
+  'Tickets': 'Tickets',
+  'Key': 'Key',
+  'Lock': 'Lock',
+  'Refresh': 'Refresh',
+  'Files': 'Files',
+  'Guide': 'Guide',
+  'Setting': 'Setting',
+  'Stamp': 'Stamp',
+  'Menu': 'Menu'
 }
 
 const renderMenu = () => {
@@ -469,7 +478,15 @@ const renderMenu = () => {
 // 切换顶部菜单
 const handleTopMenuSelect = (key: string) => {
   activeTopMenu.value = key
-  if (key === 'dashboard') {
+  // 查找对应的菜单配置
+  const menuItem = databaseMenus.value.find(m => m.code === key)
+  if (menuItem) {
+    // 如果有path，直接跳转
+    if (menuItem.path) {
+      router.push(menuItem.path)
+    }
+    // 如果是父菜单，保持选中状态，让用户在左侧选择子菜单
+  } else if (key === 'dashboard') {
     router.push('/')
   } else if (key === 'logs') {
     router.push('/audit-logs')
@@ -531,12 +548,21 @@ const toggleCollapse = () => {
 const loadMenuData = async () => {
   try {
     loadingMenus.value = true
-    const response: any = await getMenus()
+    // 先尝试获取所有菜单（用于管理员菜单管理），如果权限不够则获取当前用户菜单
+    let response: any
+    try {
+      response = await getMenus()
+    } catch (error) {
+      // 如果没有菜单管理权限，获取当前用户菜单
+      response = await getMyMenu()
+    }
+    
     if (response.success) {
       databaseMenus.value = response.data
     }
   } catch (error) {
     console.error('加载菜单失败:', error)
+    // 即使失败也不影响使用硬编码菜单
   } finally {
     loadingMenus.value = false
   }
@@ -621,7 +647,19 @@ const getIconComponent = (iconName: string) => {
     'Avatar': 'UserFilled',
     'Menu': 'Menu',
     'Stamp': 'Stamp',
-    'Calendar': 'Calendar'
+    'Calendar': 'Calendar',
+    'Key': 'Key',
+    'Lock': 'Lock',
+    'Refresh': 'Refresh',
+    'Tools': 'Tools',
+    'Switch': 'Switch',
+    'FolderOpened': 'FolderOpened',
+    'DocumentCopy': 'DocumentCopy',
+    'VideoPlay': 'VideoPlay',
+    'Timer': 'Timer',
+    'CircleCheck': 'CircleCheck',
+    'Transfer': 'Transfer',
+    'Office': 'OfficeBuilding'
   }
   return iconMap[iconName] || 'Document'
 }

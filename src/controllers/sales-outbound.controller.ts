@@ -823,15 +823,22 @@ export const confirmSalesOutbound = async (req: Request, res: Response) => {
 
         // 4. 如果关联销售订单，更新订单明细的已出库数量
         if (existingOutbound.orderId) {
-          const orderItem = await tx.salesOrderItem.findFirst({
+          // 查找所有匹配的订单明细（支持同一商品多个明细）
+          const orderItems = await tx.salesOrderItem.findMany({
             where: {
               orderId: existingOutbound.orderId,
               productId: detail.productId,
             },
           });
 
-          if (orderItem) {
-            const newShippedQty = orderItem.shippedQty + detail.quantity;
+          let remainingQty = detail.quantity;
+          for (const orderItem of orderItems) {
+            if (remainingQty <= 0) break;
+            
+            const qtyToShip = Math.min(remainingQty, orderItem.quantity - orderItem.shippedQty);
+            if (qtyToShip <= 0) continue;
+            
+            const newShippedQty = orderItem.shippedQty + qtyToShip;
             const newStatus = newShippedQty >= orderItem.quantity ? 'completed' : 'partial';
 
             await tx.salesOrderItem.update({
@@ -841,27 +848,29 @@ export const confirmSalesOutbound = async (req: Request, res: Response) => {
                 status: newStatus,
               },
             });
+            
+            remainingQty -= qtyToShip;
+          }
 
-            // 检查订单所有明细是否都已完成
-            const pendingItems = await tx.salesOrderItem.findMany({
-              where: {
-                orderId: existingOutbound.orderId,
-                status: { not: 'completed' },
-              },
+          // 检查订单所有明细是否都已完成
+          const pendingItems = await tx.salesOrderItem.findMany({
+            where: {
+              orderId: existingOutbound.orderId,
+              status: { not: 'completed' },
+            },
+          });
+
+          // 如果所有明细都已完成，更新订单状态
+          if (pendingItems.length === 0) {
+            await tx.salesOrder.update({
+              where: { id: existingOutbound.orderId },
+              data: { status: 'completed' },
             });
-
-            // 如果所有明细都已完成，更新订单状态
-            if (pendingItems.length === 0) {
-              await tx.salesOrder.update({
-                where: { id: existingOutbound.orderId },
-                data: { status: 'completed' },
-              });
-            } else {
-              await tx.salesOrder.update({
-                where: { id: existingOutbound.orderId },
-                data: { status: 'partial' },
-              });
-            }
+          } else {
+            await tx.salesOrder.update({
+              where: { id: existingOutbound.orderId },
+              data: { status: 'partial' },
+            });
           }
         }
       }
@@ -984,15 +993,22 @@ export const unconfirmSalesOutbound = async (req: Request, res: Response) => {
 
         // 4. 如果关联销售订单，更新订单明细的已出库数量
         if (existingOutbound.orderId) {
-          const orderItem = await tx.salesOrderItem.findFirst({
+          // 查找所有匹配的订单明细（支持同一商品多个明细）
+          const orderItems = await tx.salesOrderItem.findMany({
             where: {
               orderId: existingOutbound.orderId,
               productId: detail.productId,
             },
           });
 
-          if (orderItem) {
-            const newShippedQty = Math.max(0, orderItem.shippedQty - detail.quantity);
+          let remainingQty = detail.quantity;
+          for (const orderItem of orderItems) {
+            if (remainingQty <= 0) break;
+            
+            const qtyToUnship = Math.min(remainingQty, orderItem.shippedQty);
+            if (qtyToUnship <= 0) continue;
+            
+            const newShippedQty = Math.max(0, orderItem.shippedQty - qtyToUnship);
             const newStatus = newShippedQty === 0 ? 'draft' : (newShippedQty >= orderItem.quantity ? 'completed' : 'partial');
 
             await tx.salesOrderItem.update({
@@ -1002,22 +1018,25 @@ export const unconfirmSalesOutbound = async (req: Request, res: Response) => {
                 status: newStatus,
               },
             });
+            
+            remainingQty -= qtyToUnship;
+          }
 
-            // 检查并更新订单状态
-            const pendingItems = await tx.salesOrderItem.findMany({
-              where: {
-                orderId: existingOutbound.orderId,
-                status: { in: ['confirmed', 'partial'] },
-              },
+          // 检查并更新订单状态
+          const pendingItems = await tx.salesOrderItem.findMany({
+            where: {
+              orderId: existingOutbound.orderId,
+              status: { in: ['confirmed', 'partial'] },
+            },
+          });
+
+          // 如果有部分出库的明细，更新订单状态
+          if (pendingItems.length > 0) {
+            await tx.salesOrder.update({
+              where: { id: existingOutbound.orderId },
+              data: { status: 'partial' },
             });
-
-            // 如果有部分出库的明细，更新订单状态
-            if (pendingItems.length > 0 || newShippedQty > 0) {
-              await tx.salesOrder.update({
-                where: { id: existingOutbound.orderId },
-                data: { status: 'partial' },
-              });
-            } else {
+          } else {
               await tx.salesOrder.update({
                 where: { id: existingOutbound.orderId },
                 data: { status: 'confirmed' },
@@ -1589,15 +1608,22 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
 
                 // 如果关联销售订单，更新订单明细的已出库数量
                 if (existingOutbound.orderId) {
-                  const orderItem = await tx.salesOrderItem.findFirst({
+                  // 查找所有匹配的订单明细（支持同一商品多个明细）
+                  const orderItems = await tx.salesOrderItem.findMany({
                     where: {
                       orderId: existingOutbound.orderId,
                       productId: item.productId,
                     },
                   });
 
-                  if (orderItem) {
-                    const newShippedQty = orderItem.shippedQty + item.quantity;
+                  let remainingQty = item.quantity;
+                  for (const orderItem of orderItems) {
+                    if (remainingQty <= 0) break;
+                    
+                    const qtyToShip = Math.min(remainingQty, orderItem.quantity - orderItem.shippedQty);
+                    if (qtyToShip <= 0) continue;
+                    
+                    const newShippedQty = orderItem.shippedQty + qtyToShip;
                     const newStatus = newShippedQty >= orderItem.quantity ? 'completed' : 'partial';
 
                     await tx.salesOrderItem.update({
@@ -1607,12 +1633,15 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
                         status: newStatus,
                       },
                     });
+                    
+                    remainingQty -= qtyToShip;
+                  }
 
-                    const pendingItems = await tx.salesOrderItem.findMany({
-                      where: {
-                        orderId: existingOutbound.orderId,
-                        status: { not: 'completed' },
-                      },
+                  const pendingItems = await tx.salesOrderItem.findMany({
+                    where: {
+                      orderId: existingOutbound.orderId,
+                      status: { not: 'completed' },
+                    },
                     });
 
                     if (pendingItems.length === 0) {
@@ -1777,15 +1806,22 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
 
             // 如果关联销售订单，更新订单明细的已出库数量
             if (firstItem.orderId) {
-              const orderItem = await tx.salesOrderItem.findFirst({
+              // 查找所有匹配的订单明细（支持同一商品多个明细）
+              const orderItems = await tx.salesOrderItem.findMany({
                 where: {
                   orderId: firstItem.orderId,
                   productId: detail.productId,
                 },
               });
 
-              if (orderItem) {
-                const newShippedQty = orderItem.shippedQty + detail.quantity;
+              let remainingQty = detail.quantity;
+              for (const orderItem of orderItems) {
+                if (remainingQty <= 0) break;
+                
+                const qtyToShip = Math.min(remainingQty, orderItem.quantity - orderItem.shippedQty);
+                if (qtyToShip <= 0) continue;
+                
+                const newShippedQty = orderItem.shippedQty + qtyToShip;
                 const newStatus = newShippedQty >= orderItem.quantity ? 'completed' : 'partial';
 
                 await tx.salesOrderItem.update({
@@ -1795,6 +1831,9 @@ export const importSalesOutbounds = async (req: Request, res: Response) => {
                     status: newStatus,
                   },
                 });
+                
+                remainingQty -= qtyToShip;
+              }
 
                 const pendingItems = await tx.salesOrderItem.findMany({
                   where: {

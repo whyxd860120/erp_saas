@@ -32,6 +32,25 @@ const defaultMenus = [
   { name: '其他出库', code: 'other_outbound', type: 'menu', path: '/other-outbounds', icon: 'Van', parentCode: 'inventory', sortOrder: 4 },
   { name: '调拨单', code: 'stock_transfer', type: 'menu', path: '/stock-transfers', icon: 'Connection', parentCode: 'inventory', sortOrder: 5 },
 
+  // 生产管理
+  { name: '生产管理', code: 'production', type: 'menu', icon: 'Setting', sortOrder: 45 },
+  { name: 'BOM管理', code: 'bom_management', type: 'menu', path: '/boms', icon: 'Document', parentCode: 'production', sortOrder: 1 },
+  { name: '生产订单', code: 'production_order', type: 'menu', path: '/production-orders', icon: 'List', parentCode: 'production', sortOrder: 2 },
+  { name: '工序管理', code: 'process_management', type: 'menu', path: '/processes', icon: 'Guide', parentCode: 'production', sortOrder: 3 },
+  { name: '生产入库', code: 'production_inbound', type: 'menu', path: '/production-inbounds', icon: 'Box', parentCode: 'production', sortOrder: 4 },
+
+  // 委外管理
+  { name: '委外管理', code: 'outsourcing', type: 'menu', icon: 'Van', sortOrder: 46 },
+  { name: '委外订单', code: 'outsourcing_order', type: 'menu', path: '/outsourcing-orders', icon: 'Tickets', parentCode: 'outsourcing', sortOrder: 1 },
+  { name: '委外发料', code: 'outsourcing_issue', type: 'menu', path: '/outsourcing-issues', icon: 'Box', parentCode: 'outsourcing', sortOrder: 2 },
+  { name: '委外收料', code: 'outsourcing_receipt', type: 'menu', path: '/outsourcing-receipts', icon: 'Box', parentCode: 'outsourcing', sortOrder: 3 },
+
+  // 受托加工（来料加工）
+  { name: '受托加工', code: 'subcontract', type: 'menu', icon: 'Tools', sortOrder: 47 },
+  { name: '来料订单', code: 'subcontract_order', type: 'menu', path: '/subcontract-orders', icon: 'Tickets', parentCode: 'subcontract', sortOrder: 1 },
+  { name: '客供料管理', code: 'customer_material', type: 'menu', path: '/customer-materials', icon: 'Goods', parentCode: 'subcontract', sortOrder: 2 },
+  { name: '来料加工入库', code: 'subcontract_inbound', type: 'menu', path: '/subcontract-inbounds', icon: 'Box', parentCode: 'subcontract', sortOrder: 3 },
+
   // 财务管理
   { name: '财务管理', code: 'finance', type: 'menu', icon: 'Money', sortOrder: 50 },
   { name: '收款单', code: 'payment_receipt', type: 'menu', path: '/payment-receipts', icon: 'CreditCard', parentCode: 'finance', sortOrder: 1 },
@@ -61,6 +80,12 @@ const defaultMenus = [
   { name: 'API密钥', code: 'api_keys', type: 'menu', path: '/api-keys', icon: 'Key', parentCode: 'system_settings', sortOrder: 9 },
   { name: 'Webhook', code: 'webhook', type: 'menu', path: '/webhooks', icon: 'Connection', parentCode: 'system_settings', sortOrder: 10 },
   { name: '审计日志', code: 'audit_log', type: 'menu', path: '/audit-logs', icon: 'Document', parentCode: 'system_settings', sortOrder: 11 },
+
+  // SaaS 管理
+  { name: 'SaaS管理', code: 'saas_management', type: 'menu', icon: 'OfficeBuilding', sortOrder: 85 },
+  { name: '租户管理', code: 'tenant_management', type: 'menu', path: '/tenants', icon: 'UserFilled', parentCode: 'saas_management', sortOrder: 1 },
+  // 帮助与支持
+  { name: '帮助与支持', code: 'help', type: 'menu', path: '/help', icon: 'QuestionFilled', sortOrder: 90 },
 ];
 
 async function initMenus() {

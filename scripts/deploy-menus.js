@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-const defaultMenus = [
+const completeMenus = [
   // 仪表盘
   { name: '仪表盘', code: 'dashboard', type: 'menu', path: '/', icon: 'Odometer', sortOrder: 1, parentCode: null },
 
@@ -75,7 +75,7 @@ const defaultMenus = [
   { name: '期末处理', code: 'period_end', type: 'menu', path: '/period-end', icon: 'Calendar', sortOrder: 4, parentCode: 'system_settings' },
   { name: '租户信息', code: 'tenant_setting', type: 'menu', path: '/tenant-settings', icon: 'OfficeBuilding', sortOrder: 5, parentCode: 'system_settings' },
   { name: '套餐与账单', code: 'subscription', type: 'menu', path: '/subscription', icon: 'CreditCard', sortOrder: 6, parentCode: 'system_settings' },
-  { name: '功能开关', code: 'feature_settings', type: 'menu', path: '/feature-settings', icon: 'SetUp', sortOrder: 7, parentCode: 'system_settings' },
+  { name: '功能开关', code: 'feature_settings', type: 'menu', path: '/feature-settings', icon: 'Switch', sortOrder: 7, parentCode: 'system_settings' },
   { name: '安全设置', code: 'security_settings', type: 'menu', path: '/security-settings', icon: 'Lock', sortOrder: 8, parentCode: 'system_settings' },
   { name: '集成与文档', code: 'integrations', type: 'menu', path: '/integrations', icon: 'Connection', sortOrder: 9, parentCode: 'system_settings' },
   { name: 'API密钥', code: 'api_keys', type: 'menu', path: '/api-keys', icon: 'Key', sortOrder: 10, parentCode: 'system_settings' },
@@ -86,36 +86,56 @@ const defaultMenus = [
   // SaaS 管理
   { name: 'SaaS管理', code: 'saas_management', type: 'menu', path: null, icon: 'OfficeBuilding', sortOrder: 85, parentCode: null },
   { name: '租户管理', code: 'tenant_management', type: 'menu', path: '/tenants', icon: 'UserFilled', sortOrder: 1, parentCode: 'saas_management' },
+
   // 帮助与支持
   { name: '帮助与支持', code: 'help', type: 'menu', path: '/help', icon: 'QuestionFilled', sortOrder: 90, parentCode: null },
 ];
 
-async function initMenus() {
-  console.log('🚀 开始初始化菜单数据...\n');
+// 微信商城（可能已存在）
+const shopMenus = [
+  { name: '微信商城', code: 'shop', type: 'menu', path: null, icon: 'ShoppingCart', sortOrder: 55, parentCode: null },
+  { name: '商城商品', code: 'shop_product', type: 'menu', path: '/shop-products', icon: 'Goods', sortOrder: 1, parentCode: 'shop' },
+  { name: '商城订单', code: 'shop_order', type: 'menu', path: '/shop-orders', icon: 'Tickets', sortOrder: 2, parentCode: 'shop' },
+  { name: '商城用户', code: 'shop_user', type: 'menu', path: '/shop-users', icon: 'UserFilled', sortOrder: 3, parentCode: 'shop' },
+];
+
+async function deployMenus() {
+  console.log('🚀 开始部署菜单到生产环境...\n');
 
   try {
-    // 先查询数据库中已有的菜单数量
+    // 获取所有现有菜单
     const existingMenus = await prisma.permission.findMany({
       where: { type: 'menu' }
     });
 
-    console.log(`📊 数据库中已有 ${existingMenus.length} 个菜单\n`);
+    console.log(`📊 生产环境已有 ${existingMenus.length} 个菜单\n`);
 
-    // 创建菜单映射表（code -> id）
+    // 创建菜单映射表（code -> menu）
     const menuMap = new Map();
     existingMenus.forEach(menu => {
       menuMap.set(menu.code, menu);
     });
 
+    // 合并所有菜单
+    const allMenusToDeploy = [...completeMenus, ...shopMenus.filter(m => !menuMap.has(m.code))];
+
     let created = 0;
     let updated = 0;
+    let skipped = 0;
 
     // 按顺序创建/更新菜单
-    for (const menuData of defaultMenus) {
+    for (const menuData of allMenusToDeploy) {
       const existingMenu = menuMap.get(menuData.code);
 
       // 查找父菜单ID
       const parentId = menuData.parentCode ? menuMap.get(menuData.parentCode)?.id : null;
+
+      // 如果有父菜单但找不到父菜单ID，跳过
+      if (menuData.parentCode && !parentId) {
+        skipped++;
+        console.log(`  ⏭️  跳过: [${menuData.code}] ${menuData.name} (找不到父菜单 ${menuData.parentCode})`);
+        continue;
+      }
 
       if (existingMenu) {
         // 更新现有菜单
@@ -164,20 +184,20 @@ async function initMenus() {
       }
     }
 
-    console.log('\n' + '='.repeat(50));
-    console.log('✅ 菜单初始化完成！');
+    console.log('\n' + '='.repeat(80));
+    console.log('✅ 菜单部署完成！');
     console.log(`   创建: ${created} 个`);
     console.log(`   更新: ${updated} 个`);
-    console.log(`   总计: ${created + updated} 个`);
-    console.log('='.repeat(50));
+    console.log(`   跳过: ${skipped} 个`);
+    console.log('='.repeat(80));
 
     // 显示最终菜单树
-    console.log('\n📋 当前菜单结构：\n');
+    console.log('\n📋 生产环境完整菜单结构：\n');
     const allMenus = await prisma.permission.findMany({
       where: { type: 'menu' },
       orderBy: [
         { sortOrder: 'asc' },
-        { name: 'asc' }
+        { createdAt: 'asc' }
       ]
     });
 
@@ -188,25 +208,22 @@ async function initMenus() {
         const prefix = level > 0 ? (level === 1 ? '├── ' : '│   ') : '';
         const hasChildren = items.some(m => m.parentId === menu.id);
         const childMarker = hasChildren ? ' 📁' : '';
-        console.log(`${indent}${prefix}${menu.name}${childMarker}`);
+        const pathInfo = menu.path ? ` (${menu.path})` : '';
+        console.log(`${indent}${prefix}${menu.name}${childMarker}${pathInfo}`);
         buildTree(items, menu.id, level + 1);
       });
     };
 
     buildTree(allMenus);
 
-    console.log('\n💡 提示：请刷新前端页面查看更新后的菜单！');
+    console.log('\n💡 提示：共 ' + allMenus.length + ' 个菜单，部署成功！');
 
   } catch (error) {
-    console.error('\n❌ 初始化失败:', error.message);
-    console.error('\n请确保：');
-    console.error('1. 后端服务器正在运行');
-    console.error('2. 数据库连接正常');
-    console.error('3. 数据库已迁移（npx prisma migrate deploy）');
+    console.error('\n❌ 部署菜单失败:', error);
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// 运行
-initMenus();
+deployMenus();
