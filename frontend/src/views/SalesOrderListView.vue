@@ -1659,6 +1659,8 @@ const handleQuickOutbound = (row: any) => {
         const orderQuantity = Number(item.quantity) || 0
         const outboundQuantity = Number(item.outboundQuantity) || 0
         const canOutbound = orderQuantity - outboundQuantity
+        const quantity = canOutbound > 0 ? canOutbound : 0
+        const unitPrice = Number(item.unitPrice) || 0
         
         return {
           id: item.id,
@@ -1667,8 +1669,9 @@ const handleQuickOutbound = (row: any) => {
           orderQuantity,
           outboundQuantity,
           canOutbound,
-          quantity: canOutbound > 0 ? canOutbound : 0,
-          unitPrice: Number(item.unitPrice) || 0
+          quantity,
+          unitPrice,
+          amount: quantity * unitPrice
         }
       })
       
@@ -1688,7 +1691,7 @@ const handleSelectAllOutbound = () => {
 
 // 快速出库总金额
 const quickOutboundTotalAmount = computed(() => {
-  return quickOutboundForm.details.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
+  return quickOutboundForm.details.reduce((sum, d) => sum + (Number(d.quantity) || 0) * (Number(d.unitPrice) || 0), 0)
 })
 
 // 添加快速出库明细行
