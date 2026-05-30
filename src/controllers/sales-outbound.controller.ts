@@ -7,13 +7,14 @@ const prisma = new PrismaClient();
 
 /**
  * 构建 batchNo 查询条件，兼容 null 和空字符串
+ * 返回 Prisma compatible 的查询对象
  */
-function buildBatchNoCondition(batchNo?: string) {
+function buildBatchNoCondition(batchNo?: string): any {
   if (batchNo && batchNo.trim() !== '') {
     return batchNo;
   }
   // 同时匹配 null 和空字符串
-  return { in: [null, ''] };
+  return { OR: [{ equals: null }, { equals: '' }] };
 }
 
 /**
