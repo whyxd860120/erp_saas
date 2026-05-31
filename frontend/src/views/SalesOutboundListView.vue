@@ -847,7 +847,8 @@ const fetchSalesOutbounds = async () => {
 // 获取客户列表
 const fetchCustomers = async () => {
   try {
-    const response: any = await getCustomers({ page: 1, limit: 100 })
+    // 传入空字符串表示不过滤状态，确保能获取到所有客户
+    const response: any = await getCustomers({ page: 1, limit: 100, status: '' })
     if (response.success) {
       customers.value = response.data.items || []
     }
@@ -859,7 +860,8 @@ const fetchCustomers = async () => {
 // 远程搜索客户
 const searchCustomers = async (keyword: string) => {
   try {
-    const response: any = await getCustomers({ page: 1, limit: 100, search: keyword })
+    // 传入空字符串表示不过滤状态，确保能获取到所有客户
+    const response: any = await getCustomers({ page: 1, limit: 100, search: keyword, status: '' })
     if (response.success) {
       customers.value = response.data.items || []
     }
